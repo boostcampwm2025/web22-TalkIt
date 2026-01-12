@@ -47,6 +47,32 @@ export class QuestionFactoryService {
       `qf_batch_start topic=${seed.topicId} expected_overall=${expectedOverall} n_per_cell=${req.nPerCell} chunk=${cfg.chunkSize}`,
     );
 
+    // Optional seeding from existing JSONL to avoid cross-run duplicates
+    if (cfg.seedExisting) {
+      const existingPath = this.exporter.getOutPath(req.version, seed.domain, seed.topicId);
+      try {
+        if (require('fs').existsSync(existingPath)) {
+          const raw = require('fs').readFileSync(existingPath, 'utf8');
+          const lines = raw.split(/\r?\n/).filter(Boolean);
+          for (const l of lines) {
+            try {
+              const bp = JSON.parse(l) as Blueprint;
+              dedup.seed(bp);
+            } catch {
+              // ignore broken lines
+            }
+          }
+          this.logger.log(
+            `qf_seed_loaded topic=${seed.topicId} from=${existingPath} count=${lines.length}`,
+          );
+        }
+      } catch (e) {
+        this.logger.warn(
+          `qf_seed_failed topic=${seed.topicId} reason=${(e as Error)?.message ?? e}`,
+        );
+      }
+    }
+
     for (const level of seed.allowedConceptLevels) {
       for (const depth of seed.allowedQuestionDepths) {
         const target = req.nPerCell;
@@ -142,9 +168,15 @@ export class QuestionFactoryService {
       }
     }
 
-    const outPath = this.exporter.writeJsonl(req.version, seed.domain, seed.topicId, accepted);
+    const outPath = this.exporter.writeJsonl(
+      req.version,
+      seed.domain,
+      seed.topicId,
+      accepted,
+      cfg.exportMode,
+    );
     this.logger.log(
-      `qf_pipeline_stats topic=${seed.topicId} candidates=${totalCandidates} accepted=${accepted.length} rejected=${rejectedCount} duplicate=${duplicateCount} output=${outPath}`,
+      `qf_pipeline_stats topic=${seed.topicId} candidates=${totalCandidates} accepted=${accepted.length} rejected=${rejectedCount} duplicate=${duplicateCount} output=${outPath} mode=${cfg.exportMode}`,
     );
     return {
       acceptedCount: accepted.length,
