@@ -2,7 +2,18 @@ TalkIt 백엔드 - Question Factory (Mock/Real LLM)
 
 개요
 
-- AGENT.md의 "THIS TASK" 범위를 모의(Mock) LLM으로 구현했습니다.
+다음 항목을 로컬에서 실행 가능한 Mock LLM으로 구현해
+Step 1 블루프린트 생성 파이프라인을 엔드 투 엔드로 완성:
+
+- 커리큘럼 로드(v1.2)
+- 배치 프롬프트 빌드
+- Mock LLM이 JSON 배열 반환
+- 파싱 → 검증 → 중복 제거 → JSONL 내보내기
+- 워커 잡 + 관리자 API(작업 등록/상태 조회)
+
+블루프린트 생성을 위해 Mock LLM을 실제 네이버 클로바 스튜디오 연동으로 교체.
+기존 파이프라인(프롬프트 → 파싱 → 검증 → 중복 제거 → 내보내기)은 변경하지 않음.
+
 - 워커 프로세스는 HTTP 포트를 열지 않고 BullMQ 큐의 작업만 처리합니다.
 
 사전 준비
@@ -69,3 +80,36 @@ curl http://localhost:3000/admin/question-gen/<jobId>
 실제 LLM 연동 빠른 확인
 
 - 실행: `pnpm verify:llm` (실행 전에 .env에 Clova 설정과 `LLM_MODE=real` 설정 필요)
+
+---
+
+### 질문 생성 자동화
+
+대량 생성 (전체 도메인 일괄)
+
+- 목적: curriculum.v1.2.json의 모든 도메인에 대해 자동으로 질문 생성 작업을 큐에 등록합니다.
+- 제외: `os.pt.process_vs_thread`는 기존 파일을 그대로 사용하기 위해 자동 등록에서 제외됩니다.
+- 준비
+  - 워커: `pnpm worker` (여러 개 띄우면 병렬 처리)
+  - API: `pnpm dev` (상태 조회 등 필요 시)
+  - .env 권장 값(예시):
+    - `LLM_MODE=real`, `CLOVA_BASE_URL`, `CLOVA_MODEL`, `CLOVA_API_KEY`
+    - `LLM_MAX_TOKENS=2500`, `LLM_TEMPERATURE=0.1~0.2`, `LLM_TIMEOUT_MS=20000~45000`
+    - `QF_CHUNK_SIZE=5~10`, `QF_MAX_CALLS_PER_CELL=8~20`, `QF_OVERGEN_FACTOR=1.2~1.5`
+    - 누적 저장: `QF_EXPORT_MODE=append|merge`, `QF_SEED_EXISTING=true`
+- 실행
+  - `pnpm enqueue:all`
+  - 스크립트는 모든 도메인(OS/Network/DB/Data_Structure)의 `id`를 읽어 큐에 등록합니다(제외 항목은 스킵).
+- 확인
+  - 워커 로그: `qf_cell_request`, `qf_cell_received`, `qf_cell_incomplete`, `qf_pipeline_stats`
+  - 개별 작업 상태: `GET /admin/question-gen/:jobId`
+
+Export 모드 및 시딩
+
+- `QF_EXPORT_MODE`
+  - `overwrite`: 기존 파일을 덮어쓰기(기본)
+  - `append`: 기존 파일 뒤에 Accepted만 추가 기록(빠른 누적)
+  - `merge`: 기존+신규를 합쳐 지문 핑거프린트 기준으로 재중복 제거 후 저장(정기 정리)
+- `QF_SEED_EXISTING`
+  - true일 때 실행 시작 시 기존 JSONL을 읽어 Deduplicator에 시딩합니다.
+  - 효과: 실행 간(이전 생성분 포함) 중복/유사도까지 차단
