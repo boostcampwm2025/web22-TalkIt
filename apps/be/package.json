@@ -16,6 +16,7 @@
     "worker:prod": "node dist/worker",
     "verify:mock": "ts-node -r tsconfig-paths/register src/scripts/verify_mock.ts",
     "verify:llm": "ts-node -r tsconfig-paths/register src/scripts/verify_llm.ts",
+    "enqueue:all": "ts-node -r tsconfig-paths/register src/scripts/enqueue_all_topics.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
