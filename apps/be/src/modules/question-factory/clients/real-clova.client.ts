@@ -39,6 +39,8 @@ export class RealClovaStudioClient implements LlmClient {
   ): Promise<unknown> {
     const started = Date.now();
     const promptLen = prompt.length;
+    const expectedCount =
+      seed.allowedConceptLevels.length * seed.allowedQuestionDepths.length * _nPerCell;
 
     // Defaults and env overrides
     /* eslint-disable turbo/no-undeclared-env-vars */
@@ -92,7 +94,7 @@ export class RealClovaStudioClient implements LlmClient {
           usage.tokens ??
           undefined;
         this.logger.log(
-          `clova_call_ok topic=${seed.topicId} req_id=${reqId ?? 'n/a'} prompt_len=${promptLen} tokens=${
+          `clova_call_ok topic=${seed.topicId} req_id=${reqId ?? 'n/a'} expected_count=${expectedCount} prompt_len=${promptLen} tokens=${
             tokens ?? 'n/a'
           } elapsed_ms=${elapsed} attempt=${attempt + 1}`,
         );
@@ -117,7 +119,7 @@ export class RealClovaStudioClient implements LlmClient {
               role: 'user' as const,
               content:
                 prompt +
-                '\n\n반드시 JSON 배열만 반환하세요. 마크다운/설명/추가 텍스트 금지. 유효한 JSON 배열만 출력.',
+                '\n\n반드시 단일 JSON 배열만 반환하세요. 마크다운/설명/추가 텍스트 금지. 유효한 JSON 배열만 출력하고, 최종 배열 길이는 요구된 개수와 정확히 일치해야 합니다.',
             },
           ];
           const repair = await withTimeout(
@@ -141,7 +143,7 @@ export class RealClovaStudioClient implements LlmClient {
             rUsage.tokens ??
             undefined;
           this.logger.warn(
-            `clova_repair topic=${seed.topicId} req_id=${repairReqId ?? 'n/a'} prompt_len=${promptLen} tokens=${
+            `clova_repair topic=${seed.topicId} req_id=${repairReqId ?? 'n/a'} expected_count=${expectedCount} prompt_len=${promptLen} tokens=${
               rTokens ?? 'n/a'
             } elapsed_ms=${repairElapsed}`,
           );
@@ -158,7 +160,7 @@ export class RealClovaStudioClient implements LlmClient {
         lastErr = e;
         const elapsed = Date.now() - attemptStart;
         this.logger.warn(
-          `clova_call_err topic=${seed.topicId} prompt_len=${promptLen} elapsed_ms=${elapsed} attempt=${
+          `clova_call_err topic=${seed.topicId} expected_count=${expectedCount} prompt_len=${promptLen} elapsed_ms=${elapsed} attempt=${
             attempt + 1
           } error=${(e as Error)?.message ?? e}`,
         );

@@ -18,48 +18,32 @@ export class PromptBuilder {
     const expected =
       seed.allowedConceptLevels.length * seed.allowedQuestionDepths.length * nPerCell;
     return `
-You are an expert CS interviewer and rubric designer. Output must be valid JSON only.
+Return ONLY a single JSON array for BLUEPRINT items. No markdown, no pre/post text.
 
-Create interview question BLUEPRINTS for a spoken-answer CS practice service.
-Return ONLY a JSON array. No markdown, no commentary.
+Context:
+- lang: ko-KR
+- domain: ${seed.domain}
+- topic: ${topic?.name ?? seed.topicId} (id: ${seed.topicId})
+- concept_levels: [${allowedConcepts}]
+- question_depths: [${allowedDepths}]
 
-[Context]
-- Language: ko-KR
-- Domain: ${seed.domain}
-- Topic: ${topic?.name ?? seed.topicId}
-- Topic ID: ${seed.topicId}
-- Allowed concept levels: [${allowedConcepts}]
-- Allowed question depths: [${allowedDepths}]
-- Generate ${nPerCell} blueprints PER allowed (concept_level x question_depth) cell.
-- Total expected count = ${expected}
+Counting:
+- For EACH (concept_level × question_depth) cell, output EXACTLY ${nPerCell} items.
+- FINAL array length MUST be EXACTLY ${expected}.
 
-[Definitions]
-- Concept Level: Basic(single concept), Intermediate(connects multiple), Advanced(abstract + judgement/trade-offs)
-- Question Depth: Low(what/definition), Mid(how/compare), High(why/judgement/design + trade-offs)
+Item schema:
+{ "domain": "OS|Network|DB|Data_Structure", "topic_id": "string",
+  "concept_level": "Basic|Intermediate|Advanced", "question_depth": "Low|Mid|High",
+  "prompt": "string", "intent": "string",
+  "must_include": ["..."], "common_mistakes": ["..."] }
 
-[Output JSON schema for each blueprint item]
-{
-  "domain": string,
-  "topic_id": string,
-  "concept_level": "Basic"|"Intermediate"|"Advanced",
-  "question_depth": "Low"|"Mid"|"High",
-  "prompt": string,
-  "intent": string,
-  "must_include": string[],
-  "common_mistakes": string[]
-}
-
-[Hard constraints]
-- Output MUST be a JSON array.
-- prompt: 20~120 Korean characters, one sentence.
-- must_include: 3~5 concise phrases, no duplicates.
-- common_mistakes: 1~3 concise phrases.
-- High depth MUST ask for judgement/design or trade-offs.
-- Low depth MUST focus on definition/what (no design).
-- Avoid duplicates and near-duplicates across all items.
-- Do not include answers or explanations.
-
-Now generate the blueprints.
+Rules:
+- prompt: 20~120 Korean chars, one sentence.
+- must_include: 3~5, no duplicates.
+- common_mistakes: 1~3.
+- High: judgement/design/trade-offs 포함. Low: 정의/what 중심(설계 금지).
+- Avoid duplicates; evenly cover all cells.
+- No answers/explanations.
 `.trim();
   }
 }

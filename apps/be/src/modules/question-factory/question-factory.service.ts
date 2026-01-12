@@ -37,16 +37,47 @@ export class QuestionFactoryService {
     const cfg = loadQfConfig();
     const effectiveN = Math.max(1, Math.ceil(req.nPerCell * cfg.overgenFactor));
     const prompt = this.promptBuilder.buildBatchPrompt(seed, effectiveN);
+    const expected =
+      seed.allowedConceptLevels.length * seed.allowedQuestionDepths.length * effectiveN;
+    this.logger.log(
+      `qf_llm_request topic=${seed.topicId} expected_count=${expected} prompt_len=${prompt.length} n_per_cell=${effectiveN}`,
+    );
     const raw = await this.llm.generateBlueprintBatch(prompt, seed, effectiveN);
     let candidates: unknown[] = [];
+    let rawLen: number | undefined;
     if (typeof raw === 'string') {
-      candidates = extractJsonArray(raw);
+      rawLen = raw.length;
+      try {
+        candidates = extractJsonArray(raw);
+      } catch (e) {
+        this.logger.error(
+          `qf_llm_parse_error topic=${seed.topicId} raw_len=${rawLen} reason=${(e as Error)?.message ?? e}`,
+        );
+        throw e;
+      }
     } else if (Array.isArray(raw)) {
       candidates = raw as unknown[];
     } else if (raw && typeof raw === 'object' && 'output' in (raw as Record<string, unknown>)) {
       const out = (raw as Record<string, unknown>)['output'];
-      candidates = typeof out === 'string' ? extractJsonArray(out) : Array.isArray(out) ? out : [];
+      if (typeof out === 'string') {
+        rawLen = out.length;
+        try {
+          candidates = extractJsonArray(out);
+        } catch (e) {
+          this.logger.error(
+            `qf_llm_parse_error topic=${seed.topicId} raw_len=${rawLen} reason=${(e as Error)?.message ?? e}`,
+          );
+          throw e;
+        }
+      } else {
+        candidates = Array.isArray(out) ? out : [];
+      }
     }
+    this.logger.log(
+      `qf_llm_received topic=${seed.topicId} expected_count=${expected} received_count=${candidates.length} raw_len=${
+        rawLen ?? 'n/a'
+      }`,
+    );
 
     const dedup = new Deduplicator();
     const accepted: Blueprint[] = [];
@@ -72,6 +103,9 @@ export class QuestionFactoryService {
     }
 
     const outPath = this.exporter.writeJsonl(req.version, seed.domain, seed.topicId, accepted);
+    this.logger.log(
+      `qf_pipeline_stats topic=${seed.topicId} candidates=${candidates.length} accepted=${accepted.length} rejected=${rejectedCount} duplicate=${duplicateCount} output=${outPath}`,
+    );
     return {
       acceptedCount: accepted.length,
       rejectedCount,
