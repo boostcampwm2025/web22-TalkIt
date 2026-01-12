@@ -19,7 +19,6 @@ export class SessionsRecordService {
     dto: RecordSessionAnswerDto,
     file: Express.Multer.File,
   ): Promise<{
-    answerId: string;
     sttText: string;
   }> {
     try {
@@ -79,26 +78,10 @@ export class SessionsRecordService {
       console.log('[SessionsRecordService] STT result:', sttResult);
 
       /**
-       * 답변 저장
-       * - STT 결과 중 text만 저장
-       * - 타입 변환: string → bigint (questionId)
-       */
-      console.log('[SessionsRecordService] 6. Saving answer to database');
-      const answer = await this.sessionsRepository.saveAnswer({
-        sessionId: sessionIdBigInt,
-        userId: session.userId, // 세션에서 userId 가져오기 (이미 bigint)
-        questionId: BigInt(dto.questionId), // string → bigint 변환
-        answerText: sttResult.text,
-        timeSpentSec: 0, // TODO: 실제 소요 시간 계산
-      });
-      console.log('[SessionsRecordService] Answer saved:', answer);
-
-      /**
        * 응답 반환
        */
       console.log('[SessionsRecordService] 7. Record process completed successfully');
       return {
-        answerId: answer.id.toString(),
         sttText: sttResult.text,
       };
     } catch (error) {
