@@ -2,12 +2,10 @@ import { NestFactory } from '@nestjs/core';
 
 import { QuestionFactoryModule } from '../modules/question-factory/question-factory.module';
 import { QuestionFactoryService } from '../modules/question-factory/question-factory.service';
-import { loadDotEnv } from '../utils/load-env';
+import 'dotenv/config';
 import 'reflect-metadata';
 
 async function main() {
-  // Ensure .env is loaded for scripts
-  loadDotEnv();
   // Force real LLM mode for this script
   // eslint-disable-next-line turbo/no-undeclared-env-vars
   process.env.LLM_MODE = 'real';

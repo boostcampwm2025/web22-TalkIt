@@ -2,13 +2,11 @@ import { NestFactory } from '@nestjs/core';
 
 import { QuestionFactoryModule } from './modules/question-factory/question-factory.module';
 import { QuestionFactoryService } from './modules/question-factory/question-factory.service';
-import { loadDotEnv } from './utils/load-env';
 import { Job, Worker } from 'bullmq';
+import 'dotenv/config';
 import 'reflect-metadata';
 
 async function bootstrap() {
-  // Load .env for worker process too
-  loadDotEnv();
   const app = await NestFactory.createApplicationContext(QuestionFactoryModule, {
     logger: ['log', 'error', 'warn'],
   });
