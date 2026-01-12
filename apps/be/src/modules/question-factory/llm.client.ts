@@ -1,5 +1,6 @@
-import { Blueprint, TopicSeed } from './types';
+import { TopicSeed } from './types';
 
 export interface LlmClient {
-  generateBlueprintBatch(prompt: string, seed: TopicSeed, nPerCell: number): Promise<Blueprint[]>;
+  // Real LLMs may return plain text; mock can return an array already.
+  generateBlueprintBatch(prompt: string, seed: TopicSeed, nPerCell: number): Promise<unknown>;
 }

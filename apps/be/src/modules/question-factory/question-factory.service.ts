@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
+import { loadQfConfig } from './config';
 import { CurriculumRepository } from './curriculum.repository';
 import { Deduplicator } from './deduplicator';
 import { Exporter } from './exporter';
@@ -7,6 +8,7 @@ import type { LlmClient } from './llm.client';
 import { PromptBuilder } from './prompt.builder';
 import { parseBlueprint } from './schemas';
 import { Blueprint, GenerationRequest, GenerationResult, TopicSeed } from './types';
+import { extractJsonArray } from './utils/json-extractor';
 import { validateBlueprint } from './validator';
 
 @Injectable()
@@ -32,15 +34,26 @@ export class QuestionFactoryService {
 
   async generate(req: GenerationRequest): Promise<GenerationResult> {
     const seed = req.seed;
-    const prompt = this.promptBuilder.buildBatchPrompt(seed, req.nPerCell);
-    const rawItems = await this.llm.generateBlueprintBatch(prompt, seed, req.nPerCell);
+    const cfg = loadQfConfig();
+    const effectiveN = Math.max(1, Math.ceil(req.nPerCell * cfg.overgenFactor));
+    const prompt = this.promptBuilder.buildBatchPrompt(seed, effectiveN);
+    const raw = await this.llm.generateBlueprintBatch(prompt, seed, effectiveN);
+    let candidates: unknown[] = [];
+    if (typeof raw === 'string') {
+      candidates = extractJsonArray(raw);
+    } else if (Array.isArray(raw)) {
+      candidates = raw as unknown[];
+    } else if (raw && typeof raw === 'object' && 'output' in (raw as Record<string, unknown>)) {
+      const out = (raw as Record<string, unknown>)['output'];
+      candidates = typeof out === 'string' ? extractJsonArray(out) : Array.isArray(out) ? out : [];
+    }
 
     const dedup = new Deduplicator();
     const accepted: Blueprint[] = [];
     let rejectedCount = 0;
     let duplicateCount = 0;
 
-    for (const item of rawItems) {
+    for (const item of candidates) {
       const parsed = parseBlueprint(item);
       if (!parsed) {
         rejectedCount++;

@@ -1,31 +1,65 @@
+import { Injectable } from '@nestjs/common';
+
+import { CurriculumRepository } from './curriculum.repository';
 import { TopicSeed } from './types';
 
 function list(vals: string[]) {
-  return vals.map((v) => `"${v}"`).join(', ');
+  return vals.join(', ');
 }
 
+@Injectable()
 export class PromptBuilder {
+  constructor(private readonly curriculum: CurriculumRepository) {}
+
   buildBatchPrompt(seed: TopicSeed, nPerCell: number): string {
-    const header = `너는 CS 면접 질문 설계자이다. 아래 주제에 대한 질문 설계 블루프린트를 JSON 배열로만 출력하라.`;
-    const schema = `각 항목은 {domain, topic_id, concept_level, question_depth, prompt, intent, must_include(3~5), common_mistakes(1~3)} 필드를 포함한다.`;
-    const rules = [
-      '마크다운/설명 금지, JSON만 출력',
-      'prompt는 한국어 한 문장, 20~120자',
-      'Low는 정의/무엇, High는 판단/설계/트레이드오프 포함',
-    ];
-    const levels = seed.allowedConceptLevels;
-    const depths = seed.allowedQuestionDepths;
-    const grid = `각 (concept_level, question_depth) 조합마다 ${nPerCell}개 생성`;
-    return [
-      header,
-      `domain=${seed.domain}, topic_id=${seed.topicId}`,
-      `concept_levels=[${list(levels)}]`,
-      `question_depths=[${list(depths)}]`,
-      grid,
-      schema,
-      '규칙:',
-      ...rules.map((r) => `- ${r}`),
-      'JSON 배열만 출력하라.',
-    ].join('\n');
+    const topic = this.curriculum.getTopicById(seed.domain, seed.topicId);
+    const allowedConcepts = list(seed.allowedConceptLevels);
+    const allowedDepths = list(seed.allowedQuestionDepths);
+    const expected =
+      seed.allowedConceptLevels.length * seed.allowedQuestionDepths.length * nPerCell;
+    return `
+You are an expert CS interviewer and rubric designer. Output must be valid JSON only.
+
+Create interview question BLUEPRINTS for a spoken-answer CS practice service.
+Return ONLY a JSON array. No markdown, no commentary.
+
+[Context]
+- Language: ko-KR
+- Domain: ${seed.domain}
+- Topic: ${topic?.name ?? seed.topicId}
+- Topic ID: ${seed.topicId}
+- Allowed concept levels: [${allowedConcepts}]
+- Allowed question depths: [${allowedDepths}]
+- Generate ${nPerCell} blueprints PER allowed (concept_level x question_depth) cell.
+- Total expected count = ${expected}
+
+[Definitions]
+- Concept Level: Basic(single concept), Intermediate(connects multiple), Advanced(abstract + judgement/trade-offs)
+- Question Depth: Low(what/definition), Mid(how/compare), High(why/judgement/design + trade-offs)
+
+[Output JSON schema for each blueprint item]
+{
+  "domain": string,
+  "topic_id": string,
+  "concept_level": "Basic"|"Intermediate"|"Advanced",
+  "question_depth": "Low"|"Mid"|"High",
+  "prompt": string,
+  "intent": string,
+  "must_include": string[],
+  "common_mistakes": string[]
+}
+
+[Hard constraints]
+- Output MUST be a JSON array.
+- prompt: 20~120 Korean characters, one sentence.
+- must_include: 3~5 concise phrases, no duplicates.
+- common_mistakes: 1~3 concise phrases.
+- High depth MUST ask for judgement/design or trade-offs.
+- Low depth MUST focus on definition/what (no design).
+- Avoid duplicates and near-duplicates across all items.
+- Do not include answers or explanations.
+
+Now generate the blueprints.
+`.trim();
   }
 }

@@ -108,7 +108,7 @@ function phrases(seed: TopicSeed): { include: string[]; mistakes: string[] } {
 }
 
 export class MockLlmClient implements LlmClient {
-  generateBlueprintBatch(prompt: string, seed: TopicSeed, nPerCell: number): Promise<Blueprint[]> {
+  generateBlueprintBatch(prompt: string, seed: TopicSeed, nPerCell: number): Promise<unknown> {
     const out: Blueprint[] = [];
     const { include, mistakes } = phrases(seed);
     for (const level of seed.allowedConceptLevels) {

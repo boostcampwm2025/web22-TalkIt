@@ -1,7 +1,10 @@
+import { Injectable } from '@nestjs/common';
+
 import { Blueprint } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
+@Injectable()
 export class Exporter {
   writeJsonl(version: string, domain: string, topicId: string, items: Blueprint[]): string {
     const outDir = path.resolve(process.cwd(), 'output', 'question-bank', version);

@@ -1,3 +1,5 @@
+import { Injectable } from '@nestjs/common';
+
 import { ConceptLevel, Domain, QuestionDepth } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -23,6 +25,7 @@ interface CurriculumRoot {
   domains: Record<string, Record<string, CurriculumTopic[]>>;
 }
 
+@Injectable()
 export class CurriculumRepository {
   private data: CurriculumRoot;
 
