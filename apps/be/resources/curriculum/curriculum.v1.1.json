@@ -1,0 +1,561 @@
+{
+  "version": "v1.1",
+  "language": "ko-KR",
+  "domains": {
+    "OS": {
+      "Process_Thread": [
+        {
+          "id": "os.pt.process_vs_thread",
+          "name": "Process vs Thread",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid", "High"]
+        },
+        {
+          "id": "os.pt.context_switching",
+          "name": "Context Switching",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "os.pt.cpu_scheduling",
+          "name": "CPU Scheduling (FCFS, RR, Priority, MLFQ)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Low", "Mid", "High"]
+        },
+        {
+          "id": "os.pt.ipc",
+          "name": "IPC (pipe, message queue, shared memory)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "os.pt.concurrency_model",
+          "name": "Threads & Concurrency Model",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "Synchronization": [
+        {
+          "id": "os.sync.race_condition",
+          "name": "Race Condition / Critical Section",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "os.sync.mutex_semaphore",
+          "name": "Mutex / Semaphore",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid", "High"]
+        },
+        {
+          "id": "os.sync.monitor_cv",
+          "name": "Monitor / Condition Variable",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "os.sync.deadlock",
+          "name": "Deadlock (conditions, prevention/avoidance/detection)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "os.sync.starvation_priority_inversion",
+          "name": "Starvation / Priority Inversion",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "Memory": [
+        {
+          "id": "os.mem.virtual_memory",
+          "name": "Virtual Memory",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "os.mem.paging_page_table",
+          "name": "Paging / Page Table",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "os.mem.tlb",
+          "name": "TLB",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "os.mem.page_fault_demand_paging",
+          "name": "Page Fault / Demand Paging",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "os.mem.page_replacement",
+          "name": "Page Replacement (LRU, FIFO, Clock)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "os.mem.segmentation",
+          "name": "Segmentation (and compare with paging)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "File_Storage": [
+        {
+          "id": "os.fs.inode_directory",
+          "name": "File System basics (inode, directory)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "os.fs.buffer_page_cache",
+          "name": "Buffer Cache / Page Cache",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "os.fs.journaling",
+          "name": "Journaling",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "os.fs.disk_scheduling",
+          "name": "Disk Scheduling (concept)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid"]
+        },
+        {
+          "id": "os.fs.mount_permissions",
+          "name": "Mount / Permissions basics",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        }
+      ],
+      "System": [
+        {
+          "id": "os.sys.syscall_mode",
+          "name": "System Call / User-Kernel mode",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "os.sys.interrupt_trap",
+          "name": "Interrupt / Trap",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Low", "Mid", "High"]
+        },
+        {
+          "id": "os.sys.boot_process",
+          "name": "Boot process (concept)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        }
+      ]
+    },
+
+    "Network": {
+      "Fundamentals": [
+        {
+          "id": "net.fund.layering",
+          "name": "OSI vs TCP/IP layering",
+          "recommended_concept_levels": ["Basic"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "net.fund.encapsulation_mtu",
+          "name": "Encapsulation / MTU",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "net.fund.latency_throughput",
+          "name": "Latency vs Throughput",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid", "High"]
+        }
+      ],
+      "Transport": [
+        {
+          "id": "net.tcpudp.tcp_vs_udp",
+          "name": "TCP vs UDP",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid", "High"]
+        },
+        {
+          "id": "net.tcpudp.handshake_teardown",
+          "name": "TCP 3-way handshake / 4-way teardown",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid"]
+        },
+        {
+          "id": "net.tcpudp.flow_vs_congestion",
+          "name": "Flow control vs Congestion control",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "net.tcpudp.retransmission_timeout",
+          "name": "Retransmission / Timeout (concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "net.tcpudp.congestion_control",
+          "name": "TCP Congestion Control (Slow Start, AIMD concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "IP_Routing": [
+        {
+          "id": "net.ip.subnetting",
+          "name": "IP addressing / Subnetting",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "net.ip.arp",
+          "name": "ARP",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "net.ip.nat",
+          "name": "NAT",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "net.ip.routing_basics",
+          "name": "Routing basics (static vs dynamic concept)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid"]
+        },
+        {
+          "id": "net.ip.icmp",
+          "name": "ICMP (ping/traceroute concept)",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        }
+      ],
+      "Application": [
+        {
+          "id": "net.app.dns_resolution",
+          "name": "DNS resolution flow",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "net.app.http_versions",
+          "name": "HTTP/1.1 vs HTTP/2 vs HTTP/3 (concept)",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "net.app.rest_idempotency",
+          "name": "REST basics & idempotency",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Low", "Mid", "High"]
+        },
+        {
+          "id": "net.app.cookies_sessions",
+          "name": "Cookies vs Sessions",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "net.app.cors",
+          "name": "CORS (concept + how it works)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "Security": [
+        {
+          "id": "net.sec.tls_handshake",
+          "name": "TLS handshake (concept)",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "net.sec.symmetric_asymmetric",
+          "name": "Symmetric vs Asymmetric crypto (concept)",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "net.sec.certificate_pki",
+          "name": "Certificate / PKI basics",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ]
+    },
+
+    "DB": {
+      "Modeling": [
+        {
+          "id": "db.model.normalization",
+          "name": "Normalization (1NF~3NF concept)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "db.model.pk_unique",
+          "name": "Primary key vs Unique key",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "db.model.relationships",
+          "name": "Relationships (1:1, 1:N, N:M)",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        }
+      ],
+      "Index": [
+        {
+          "id": "db.idx.btree",
+          "name": "B-Tree index (concept)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.idx.composite_leftmost",
+          "name": "Composite index / Leftmost prefix",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.idx.covering",
+          "name": "Covering index (concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.idx.tradeoff",
+          "name": "Index trade-off (read vs write, selectivity)",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.idx.query_plan_explain",
+          "name": "Query plan / EXPLAIN (concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "Query_Join": [
+        {
+          "id": "db.q.join_algorithms",
+          "name": "Join algorithms (Nested Loop, Hash Join concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.q.join_vs_subquery",
+          "name": "JOIN vs Subquery (concept)",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.q.aggregation_groupby",
+          "name": "Aggregation / Group By",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.q.pagination_offset_cursor",
+          "name": "Pagination (offset vs cursor concept)",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "Transaction_Concurrency": [
+        {
+          "id": "db.tx.acid",
+          "name": "ACID",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "db.tx.isolation_levels",
+          "name": "Isolation levels",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.tx.anomalies",
+          "name": "Anomalies (dirty/non-repeatable/phantom)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.tx.locking",
+          "name": "Locking (row/table lock concept)",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.tx.mvcc",
+          "name": "MVCC (concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "Storage_Replication": [
+        {
+          "id": "db.store.wal",
+          "name": "WAL (concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.store.replication_sync_async",
+          "name": "Replication (sync vs async)",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "db.store.read_replica_failover",
+          "name": "Read replica / failover (concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["High"]
+        },
+        {
+          "id": "db.store.partition_vs_sharding",
+          "name": "Partitioning vs Sharding (concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["High"]
+        }
+      ]
+    },
+
+    "Data_Structure": {
+      "Basics": [
+        {
+          "id": "ds.basic.array_vs_linked_list",
+          "name": "Array vs Linked List",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid", "High"]
+        },
+        {
+          "id": "ds.basic.stack_queue",
+          "name": "Stack / Queue",
+          "recommended_concept_levels": ["Basic"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "ds.basic.deque",
+          "name": "Deque",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid"]
+        }
+      ],
+      "Hash": [
+        {
+          "id": "ds.hash.basics",
+          "name": "Hash table basics",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "ds.hash.collision_handling",
+          "name": "Collision handling (chaining vs open addressing)",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "ds.hash.load_factor_rehash",
+          "name": "Load factor / rehash",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "ds.hash.hashmap_vs_treemap",
+          "name": "HashMap vs TreeMap (concept)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "Tree": [
+        {
+          "id": "ds.tree.binary_vs_bst",
+          "name": "Binary Tree vs BST",
+          "recommended_concept_levels": ["Basic", "Intermediate"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "ds.tree.balanced_trees",
+          "name": "Balanced trees (AVL/Red-Black concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "ds.tree.heap_priority_queue",
+          "name": "Heap / Priority Queue",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "ds.tree.trie",
+          "name": "Trie (concept/usage)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "Graph": [
+        {
+          "id": "ds.graph.representation",
+          "name": "Graph representation (adj list vs matrix)",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid"]
+        },
+        {
+          "id": "ds.graph.bfs_vs_dfs",
+          "name": "BFS vs DFS",
+          "recommended_concept_levels": ["Intermediate"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "ds.graph.dijkstra",
+          "name": "Shortest path (Dijkstra concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "ds.graph.topological_sort",
+          "name": "Topological sort (concept)",
+          "recommended_concept_levels": ["Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        },
+        {
+          "id": "ds.graph.union_find",
+          "name": "Union-Find (Disjoint Set)",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ],
+      "Complexity": [
+        {
+          "id": "ds.cx.big_o",
+          "name": "Big-O / time vs space trade-off",
+          "recommended_concept_levels": ["Basic"],
+          "recommended_question_depths": ["Low", "Mid"]
+        },
+        {
+          "id": "ds.cx.amortized_analysis",
+          "name": "Amortized analysis (concept)",
+          "recommended_concept_levels": ["Intermediate", "Advanced"],
+          "recommended_question_depths": ["Mid", "High"]
+        }
+      ]
+    }
+  }
+}
