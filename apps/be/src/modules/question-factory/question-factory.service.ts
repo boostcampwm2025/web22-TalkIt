@@ -35,76 +35,116 @@ export class QuestionFactoryService {
   async generate(req: GenerationRequest): Promise<GenerationResult> {
     const seed = req.seed;
     const cfg = loadQfConfig();
-    const effectiveN = Math.max(1, Math.ceil(req.nPerCell * cfg.overgenFactor));
-    const prompt = this.promptBuilder.buildBatchPrompt(seed, effectiveN);
-    const expected =
-      seed.allowedConceptLevels.length * seed.allowedQuestionDepths.length * effectiveN;
-    this.logger.log(
-      `qf_llm_request topic=${seed.topicId} expected_count=${expected} prompt_len=${prompt.length} n_per_cell=${effectiveN}`,
-    );
-    const raw = await this.llm.generateBlueprintBatch(prompt, seed, effectiveN);
-    let candidates: unknown[] = [];
-    let rawLen: number | undefined;
-    if (typeof raw === 'string') {
-      rawLen = raw.length;
-      try {
-        candidates = extractJsonArray(raw);
-      } catch (e) {
-        this.logger.error(
-          `qf_llm_parse_error topic=${seed.topicId} raw_len=${rawLen} reason=${(e as Error)?.message ?? e}`,
-        );
-        throw e;
-      }
-    } else if (Array.isArray(raw)) {
-      candidates = raw as unknown[];
-    } else if (raw && typeof raw === 'object' && 'output' in (raw as Record<string, unknown>)) {
-      const out = (raw as Record<string, unknown>)['output'];
-      if (typeof out === 'string') {
-        rawLen = out.length;
-        try {
-          candidates = extractJsonArray(out);
-        } catch (e) {
-          this.logger.error(
-            `qf_llm_parse_error topic=${seed.topicId} raw_len=${rawLen} reason=${(e as Error)?.message ?? e}`,
-          );
-          throw e;
-        }
-      } else {
-        candidates = Array.isArray(out) ? out : [];
-      }
-    }
-    this.logger.log(
-      `qf_llm_received topic=${seed.topicId} expected_count=${expected} received_count=${candidates.length} raw_len=${
-        rawLen ?? 'n/a'
-      }`,
-    );
-
     const dedup = new Deduplicator();
     const accepted: Blueprint[] = [];
     let rejectedCount = 0;
     let duplicateCount = 0;
+    let totalCandidates = 0;
 
-    for (const item of candidates) {
-      const parsed = parseBlueprint(item);
-      if (!parsed) {
-        rejectedCount++;
-        continue;
+    const expectedOverall =
+      seed.allowedConceptLevels.length * seed.allowedQuestionDepths.length * req.nPerCell;
+    this.logger.log(
+      `qf_batch_start topic=${seed.topicId} expected_overall=${expectedOverall} n_per_cell=${req.nPerCell} chunk=${cfg.chunkSize}`,
+    );
+
+    for (const level of seed.allowedConceptLevels) {
+      for (const depth of seed.allowedQuestionDepths) {
+        const target = req.nPerCell;
+        const chunkSize = Math.max(1, Math.min(cfg.chunkSize, target));
+        const maxCalls = Math.max(1, cfg.maxCallsPerCell);
+        let produced = 0;
+        let calls = 0;
+        while (produced < target && calls < maxCalls) {
+          const expectedChunk = Math.min(chunkSize, target - produced);
+          const prompt = this.promptBuilder.buildCellPrompt(seed, level, depth, expectedChunk);
+          this.logger.log(
+            `qf_cell_request topic=${seed.topicId} level=${level} depth=${depth} expected_chunk=${expectedChunk} prompt_len=${prompt.length}`,
+          );
+          const raw = await this.llm.generateBlueprintBatch(prompt, seed, expectedChunk);
+          let items: unknown[] = [];
+          let rawLen: number | undefined;
+          if (typeof raw === 'string') {
+            rawLen = raw.length;
+            try {
+              items = extractJsonArray(raw);
+            } catch (e) {
+              this.logger.error(
+                `qf_llm_parse_error topic=${seed.topicId} level=${level} depth=${depth} raw_len=${rawLen} reason=${(e as Error)?.message ?? e}`,
+              );
+              break; // break this cell on parse failure
+            }
+          } else if (Array.isArray(raw)) {
+            items = raw as unknown[];
+          } else if (
+            raw &&
+            typeof raw === 'object' &&
+            'output' in (raw as Record<string, unknown>)
+          ) {
+            const out = (raw as Record<string, unknown>)['output'];
+            if (typeof out === 'string') {
+              rawLen = out.length;
+              try {
+                items = extractJsonArray(out);
+              } catch (e) {
+                this.logger.error(
+                  `qf_llm_parse_error topic=${seed.topicId} level=${level} depth=${depth} raw_len=${rawLen} reason=${(e as Error)?.message ?? e}`,
+                );
+                break;
+              }
+            } else {
+              items = Array.isArray(out) ? out : [];
+            }
+          }
+          this.logger.log(
+            `qf_cell_received topic=${seed.topicId} level=${level} depth=${depth} expected_chunk=${expectedChunk} received_count=${items.length} raw_len=${rawLen ?? 'n/a'}`,
+          );
+          totalCandidates += items.length;
+          for (const item of items) {
+            if (produced >= target) break;
+            const parsed = parseBlueprint(item);
+            if (!parsed) {
+              rejectedCount++;
+              continue;
+            }
+            if (
+              parsed.concept_level !== level ||
+              parsed.question_depth !== depth ||
+              parsed.domain !== seed.domain ||
+              parsed.topic_id !== seed.topicId
+            ) {
+              rejectedCount++;
+              continue;
+            }
+            const vr = validateBlueprint(parsed);
+            if (!vr.ok) {
+              rejectedCount++;
+              continue;
+            }
+            if (dedup.isDuplicate(parsed)) {
+              duplicateCount++;
+              continue;
+            }
+            accepted.push(parsed);
+            produced++;
+          }
+          calls++;
+          if (calls >= maxCalls && produced < target) {
+            this.logger.warn(
+              `qf_cell_maxcalls topic=${seed.topicId} level=${level} depth=${depth} produced=${produced}/${target}`,
+            );
+          }
+        }
+        if (produced < target) {
+          this.logger.warn(
+            `qf_cell_incomplete topic=${seed.topicId} level=${level} depth=${depth} produced=${produced} target=${target}`,
+          );
+        }
       }
-      const vr = validateBlueprint(parsed);
-      if (!vr.ok) {
-        rejectedCount++;
-        continue;
-      }
-      if (dedup.isDuplicate(parsed)) {
-        duplicateCount++;
-        continue;
-      }
-      accepted.push(parsed);
     }
 
     const outPath = this.exporter.writeJsonl(req.version, seed.domain, seed.topicId, accepted);
     this.logger.log(
-      `qf_pipeline_stats topic=${seed.topicId} candidates=${candidates.length} accepted=${accepted.length} rejected=${rejectedCount} duplicate=${duplicateCount} output=${outPath}`,
+      `qf_pipeline_stats topic=${seed.topicId} candidates=${totalCandidates} accepted=${accepted.length} rejected=${rejectedCount} duplicate=${duplicateCount} output=${outPath}`,
     );
     return {
       acceptedCount: accepted.length,

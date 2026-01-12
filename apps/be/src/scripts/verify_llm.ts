@@ -16,7 +16,7 @@ async function main() {
   try {
     const qfs = app.get(QuestionFactoryService);
     const seed = qfs.buildSeed('OS', 'os.pt.process_vs_thread');
-    const result = await qfs.generate({ version: 'v1', nPerCell: 1, seed });
+    const result = await qfs.generate({ version: 'v1', nPerCell: 10, seed });
     console.log('LLM Generation Result:', result);
     console.log('Output path:', result.outputPath);
   } finally {
