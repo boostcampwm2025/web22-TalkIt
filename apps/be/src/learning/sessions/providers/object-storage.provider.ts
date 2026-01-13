@@ -1,12 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ObjectStorageProvider {
+  private readonly logger = new Logger(ObjectStorageProvider.name);
   private client: S3Client;
   private bucket: string;
 
@@ -47,5 +48,22 @@ export class ObjectStorageProvider {
     );
 
     return key;
+  }
+
+  // STT 파일 삭제
+  async deleteObject(key: string): Promise<void> {
+    try {
+      await this.client.send(
+        new DeleteObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `object 스토리지 파일 삭제 실패: ${key}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 }

@@ -21,6 +21,8 @@ export class SessionsRecordService {
   ): Promise<{
     sttText: string;
   }> {
+    let objectKey: string | null = null;
+
     try {
       console.log('[SessionsRecordService] 1. Starting record process');
 
@@ -62,7 +64,7 @@ export class SessionsRecordService {
        * - STT 서버가 직접 접근 가능한 위치
        */
       console.log('[SessionsRecordService] 4. Uploading to Object Storage');
-      const objectKey = await this.storageProvider.upload(buffer, contentType, filename);
+      objectKey = await this.storageProvider.upload(buffer, contentType, filename);
       console.log('[SessionsRecordService] Uploaded to storage:', objectKey);
 
       /**
@@ -87,6 +89,11 @@ export class SessionsRecordService {
     } catch (error) {
       console.error('[SessionsRecordService] ERROR in record process:', error);
       throw error;
+    } finally {
+      if (objectKey) {
+        console.log('[SessionsRecordService] 6. Deleting temp object:', objectKey);
+        await this.storageProvider.deleteObject(objectKey);
+      }
     }
   }
 }
