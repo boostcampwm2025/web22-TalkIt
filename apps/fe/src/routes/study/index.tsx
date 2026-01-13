@@ -1,25 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
+import { useProgressAnimation } from '@/features/study/lib/hooks/useProgressAnimation';
+import { useStartSession } from '@/features/study/lib/hooks/useStartSession';
+import {
+  QUESTION_DIFFICULTY,
+  QUESTION_TOPIC,
+  type QuestionDifficulty,
+  type QuestionTopic,
+} from '@/features/study/types/QuestionOptions';
 import { Link, createFileRoute } from '@tanstack/react-router';
 
 import { Cpu, Database, Flame, ListFilter, Mic, Share2, TrendingUp } from 'lucide-react';
-
-export const QUESTION_TOPIC = {
-  OS: 'OS',
-  NETWORK: 'NETWORK',
-  DATABASE: 'DATABASE',
-  STRUCTURE: 'STRUCTURE',
-} as const;
-
-export type QuestionTopic = (typeof QUESTION_TOPIC)[keyof typeof QUESTION_TOPIC];
-
-export const QUESTION_DIFFICULTY = {
-  EASY: 'EASY',
-  MEDIUM: 'MEDIUM',
-  HARD: 'HARD',
-} as const;
-
-export type QuestionDifficulty = (typeof QUESTION_DIFFICULTY)[keyof typeof QUESTION_DIFFICULTY];
 
 // 사용자 mock 데이터
 const MOCK_USER_DATA = {
@@ -89,65 +80,32 @@ const DIFFICULTIES = [
 ];
 
 const Learning = () => {
-  const [isLoading, setIsLoading] = useState(false);
-
-  // 학습 시작 API 호출 함수 (추후 별도의 코드로 분리 예정)
-  const handleStartLearning = async () => {
-    if (!selectedTopic) return;
-
-    setIsLoading(true);
-
-    try {
-      // 쿼리 파라미터 생성
-      const queryParams = new URLSearchParams({
-        topic: selectedTopic,
-        difficulty: selectedDifficulty,
-      }).toString();
-
-      const response = await fetch(`/api/learning/sessions?${queryParams}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('세션 생성에 실패했습니다.');
-      }
-
-      const data = await response.json();
-      console.log('생성된 세션 정보:', data);
-
-      // todo: 질문 데이터 응답을 받고 페이지 이동하는 로직 추가
-    } catch (error) {
-      console.error('Error starting session:', error);
-      alert('학습을 시작하는 도중 오류가 발생했습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const { profile, progression, studyStats } = MOCK_USER_DATA;
 
-  const calculatedPercent = Math.round(
-    (progression.currentXp / progression.requiredXpForNextLevel) * 100,
+  const { startSession, isLoading } = useStartSession();
+  const { progress, calculatedPercent } = useProgressAnimation(
+    progression.currentXp,
+    progression.requiredXpForNextLevel,
+    100,
   );
 
-  const remainingPercent = 100 - calculatedPercent;
-
-  const [progress, setProgress] = useState<number>(0);
   const [selectedTopic, setSelectedTopic] = useState<QuestionTopic | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<QuestionDifficulty>(
     QUESTION_DIFFICULTY.MEDIUM,
   );
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setProgress(calculatedPercent);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [calculatedPercent]);
+  // 학습 시작 API 호출 함수 (추후 별도의 코드로 분리 예정)
+  const handleStartClick = async () => {
+    if (!selectedTopic) return;
+    try {
+      const data = await startSession(selectedTopic, selectedDifficulty);
+      console.log('세션 생성 완료:', data);
+      alert(`세션 ID: ${data.sessionId}`);
+      // todo: 질문 데이터 응답을 받고 페이지 이동하는 로직 추가
+    } catch (e) {
+      alert('학습 시작 실패');
+    }
+  };
 
   return (
     <div className="flex min-h-screen justify-center bg-pale-blue p-8">
@@ -168,7 +126,7 @@ const Learning = () => {
               </h1>
               <p className="text-gray-500">
                 오늘도 CS 지식을 쌓아볼까요? 목표 달성까지
-                <span className="font-bold text-primary">{remainingPercent}%</span> 남았어요.
+                <span className="font-bold text-primary">{100 - calculatedPercent}%</span> 남았어요.
               </p>
             </div>
             <div className="flex items-center gap-2 rounded-full border border-gray bg-white px-4 py-2 shadow-sm">
@@ -307,7 +265,7 @@ const Learning = () => {
           </div>
 
           <button
-            onClick={handleStartLearning}
+            onClick={handleStartClick}
             disabled={isLoading}
             className={`z-10 flex items-center gap-2 rounded-lg px-6 py-3 font-medium text-white transition-colors ${isLoading ? 'cursor-not-allowed bg-gray-600' : 'bg-primary hover:bg-primary/80'} `}
           >
