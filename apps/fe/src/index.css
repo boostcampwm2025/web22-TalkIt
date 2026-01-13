@@ -25,3 +25,13 @@
   --color-diamond: #48cae4;
   --color-master: #1d3557;
 }
+
+@theme {
+  --spacing-sidebar-open: 280px;
+  --spacing-sidebar-close: 60px;
+}
+
+html {
+  color: var(--color-black);
+  background-color: var(--color-pale-blue);
+}
