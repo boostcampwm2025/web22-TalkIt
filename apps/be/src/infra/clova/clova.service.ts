@@ -1,4 +1,7 @@
 import { HttpException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+import { z } from 'zod';
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 type ThinkingEffort = 'none' | 'low' | 'medium' | 'high';
@@ -12,9 +15,15 @@ type ChatOptions = {
 
 @Injectable()
 export class ClovaService {
-  private readonly baseUrl = process.env.CLOVA_BASE_URL!;
-  private readonly model = process.env.CLOVA_MODEL ?? 'HCX-007';
-  private readonly apiKey = process.env.CLOVA_API_KEY!;
+  private readonly baseUrl: string;
+  private readonly model: string;
+  private readonly apiKey: string;
+
+  constructor(private readonly config: ConfigService) {
+    this.baseUrl = this.config.get<string>('CLOVA_BASE_URL') ?? 'https://clovastudio.ntruss.com';
+    this.model = this.config.get<string>('CLOVA_MODEL') ?? 'HCX-007';
+    this.apiKey = this.config.get<string>('CLOVA_API_KEY') ?? '';
+  }
 
   async chat(messages: ChatMessage[], options: ChatOptions = {}) {
     const url = `${this.baseUrl}/v3/chat-completions/${this.model}`;
@@ -40,16 +49,41 @@ export class ClovaService {
     });
 
     const contentType = res.headers.get('content-type') ?? '';
-    const rawText = await res.text(); // ✅ 먼저 text로 받기
+    const rawText = await res.text();
 
-    let json: any;
+    // Minimal schema for Clova chat-completions response
+    const usageSchema = z
+      .object({
+        outputTokens: z.number().optional(),
+        completionTokens: z.number().optional(),
+        totalTokens: z.number().optional(),
+        tokens: z.number().optional(),
+      })
+      .partial();
+
+    const messageSchema = z.object({
+      role: z.union([z.literal('system'), z.literal('user'), z.literal('assistant')]).optional(),
+      content: z.string().optional(),
+    });
+
+    const clovaSchema = z.object({
+      result: z
+        .object({
+          message: messageSchema.optional(),
+          usage: usageSchema.optional(),
+        })
+        .optional(),
+      usage: usageSchema.optional(),
+    });
+
+    let parsedJson: unknown;
     try {
-      json = JSON.parse(rawText);
+      parsedJson = JSON.parse(rawText);
     } catch (e) {
       throw new HttpException(
         {
           statusCode: res.status,
-          message: 'CLOVA response parse failed',
+          message: e instanceof Error ? e.message : 'CLOVA response parse failed',
           requestId,
           contentType,
           rawTextPreview: rawText.slice(0, 500),
@@ -57,6 +91,23 @@ export class ClovaService {
         res.ok ? 500 : res.status,
       );
     }
+
+    const safe = clovaSchema.safeParse(parsedJson);
+    if (!safe.success) {
+      throw new HttpException(
+        {
+          statusCode: res.status,
+          message: 'CLOVA response validation failed',
+          requestId,
+          contentType,
+          rawTextPreview: rawText.slice(0, 500),
+          issues: safe.error.issues,
+        },
+        res.ok ? 500 : res.status,
+      );
+    }
+
+    const json = safe.data;
 
     if (!res.ok) {
       throw new HttpException(
@@ -70,7 +121,7 @@ export class ClovaService {
       );
     }
 
-    const content = json?.result?.message?.content; // v3 Thinking 최종 답 :contentReference[oaicite:2]{index=2}
+    const content = json.result?.message?.content;
     return { requestId, content, raw: json };
   }
 }
