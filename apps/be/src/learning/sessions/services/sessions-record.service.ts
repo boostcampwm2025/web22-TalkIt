@@ -91,8 +91,16 @@ export class SessionsRecordService {
       throw error;
     } finally {
       if (objectKey) {
-        console.log('[SessionsRecordService] 6. Deleting temp object:', objectKey);
-        await this.storageProvider.deleteObject(objectKey);
+        try {
+          console.log('[SessionsRecordService] 6. Deleting temp object:', objectKey);
+          await this.storageProvider.deleteObject(objectKey);
+        } catch (cleanupError) {
+          console.error(
+            '[SessionsRecordService] Failed to delete temp object:',
+            objectKey,
+            cleanupError,
+          );
+        }
       }
     }
   }
