@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
+import { randomUUID } from 'crypto';
+
 @Injectable()
 export class ObjectStorageProvider {
   private client: S3Client;
@@ -21,10 +23,19 @@ export class ObjectStorageProvider {
     });
   }
 
-  // TODO : 스토리지 파일 업로드되는 디렉토리는 어떻게 관리할지 고민
-  // 일단 test 디렉토리로 고정
+  // 스토리지 파일 업로드는 어차피 음성파일을 저장하지 않으므로,
+  // 클로바 스피치(장문인식)을 위한 역할로 임시 저장 -> STT 변환 후 삭제
+  // key 저장 포맷은 temp/stt/{yyyy}/{mm}/{dd}/{uuid}-{filename}.wav
   async upload(buffer: Buffer, contentType: string, filename = 'audio.wav'): Promise<string> {
-    const key = `test/${Date.now()}-${filename}`;
+    const now = new Date();
+    const key = [
+      'temp',
+      'stt',
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+      `${randomUUID()}-${filename}`,
+    ].join('/');
 
     await this.client.send(
       new PutObjectCommand({
