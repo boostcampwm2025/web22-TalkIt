@@ -18,14 +18,22 @@
         "parser": "typescript",
         "plugins": ["@trivago/prettier-plugin-sort-imports"],
         "importOrder": ["^@nestjs", "^@", ".*"],
+        "importOrderSeparation": true,
+        "importOrderSortSpecifiers": true,
         "importOrderParserPlugins": ["typescript", "decorators-legacy"]
       }
     },
     {
-      "files": ["./apps/fe/**/*.ts", "./apps/fe/**/*.tsx"],
+      "files": ["./apps/fe/**/*.{js,jsx,ts,tsx,html,css}"],
       "options": {
+        "plugins": ["@trivago/prettier-plugin-sort-imports", "prettier-plugin-tailwindcss"],
         "importOrder": ["^react", "^@", ".*"],
-        "plugins": ["@trivago/prettier-plugin-sort-imports"]
+        "importOrderSeparation": true,
+        "importOrderSortSpecifiers": true,
+        
+        "importOrderParserPlugins": ["typescript", "jsx", "decorators-legacy"],
+
+        "tailwindStylesheet": "./apps/fe/src/index.css"
       }
     }
   ]
