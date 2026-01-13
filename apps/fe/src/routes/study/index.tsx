@@ -89,6 +89,44 @@ const DIFFICULTIES = [
 ];
 
 const Learning = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 학습 시작 API 호출 함수 (추후 별도의 코드로 분리 예정)
+  const handleStartLearning = async () => {
+    if (!selectedTopic) return;
+
+    setIsLoading(true);
+
+    try {
+      // 쿼리 파라미터 생성
+      const queryParams = new URLSearchParams({
+        topic: selectedTopic,
+        difficulty: selectedDifficulty,
+      }).toString();
+
+      const response = await fetch(`/api/learning/sessions?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('세션 생성에 실패했습니다.');
+      }
+
+      const data = await response.json();
+      console.log('생성된 세션 정보:', data);
+
+      // todo: 질문 데이터 응답을 받고 페이지 이동하는 로직 추가
+    } catch (error) {
+      console.error('Error starting session:', error);
+      alert('학습을 시작하는 도중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const { profile, progression, studyStats } = MOCK_USER_DATA;
 
   const calculatedPercent = Math.round(
@@ -268,9 +306,19 @@ const Learning = () => {
             </p>
           </div>
 
-          <button className="z-10 flex items-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-white transition-colors hover:bg-primary/80">
-            <Mic className="h-4 w-4" />
-            학습 시작하기
+          <button
+            onClick={handleStartLearning}
+            disabled={isLoading}
+            className={`z-10 flex items-center gap-2 rounded-lg px-6 py-3 font-medium text-white transition-colors ${isLoading ? 'cursor-not-allowed bg-gray-600' : 'bg-primary hover:bg-primary/80'} `}
+          >
+            {isLoading ? (
+              <span>질문 생성 중...</span>
+            ) : (
+              <>
+                <Mic className="h-4 w-4" />
+                학습 시작하기
+              </>
+            )}
           </button>
         </section>
       </div>
