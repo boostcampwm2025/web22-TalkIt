@@ -1,4 +1,13 @@
-import { Blueprint } from './types';
+import type { ConceptLevel, Domain, QuestionDepth } from './types';
+
+type BlueprintLike = {
+  domain: Domain;
+  topic_id: string;
+  concept_level: ConceptLevel;
+  question_depth: QuestionDepth;
+  prompt: string;
+  must_include: string[];
+};
 
 function normalizeText(s: string): string {
   return s
@@ -12,7 +21,7 @@ export class Deduplicator {
   private fpSet = new Set<string>();
   private promptsByGroup = new Map<string, string[]>();
 
-  private fingerprint(bp: Blueprint): string {
+  private fingerprint(bp: BlueprintLike): string {
     const mi = [...bp.must_include]
       .map((s) => normalizeText(s))
       .sort()
@@ -21,7 +30,7 @@ export class Deduplicator {
     return normalizeText(key);
   }
 
-  private groupKey(bp: Blueprint): string {
+  private groupKey(bp: BlueprintLike): string {
     return `${bp.domain}|${bp.topic_id}|${bp.concept_level}|${bp.question_depth}`;
   }
 
@@ -29,7 +38,7 @@ export class Deduplicator {
     return normalizeText(s);
   }
 
-  seed(bp: Blueprint): void {
+  seed(bp: BlueprintLike): void {
     // Record without duplicate checks (used to preload existing dataset)
     const fp = this.fingerprint(bp);
     this.fpSet.add(fp);
@@ -48,7 +57,7 @@ export class Deduplicator {
     return union.size === 0 ? 0 : inter.size / union.size;
   }
 
-  isDuplicate(bp: Blueprint): boolean {
+  isDuplicate(bp: BlueprintLike): boolean {
     const fp = this.fingerprint(bp);
     if (this.fpSet.has(fp)) return true;
 

@@ -30,7 +30,15 @@ export class CurriculumRepository {
   private data: CurriculumRoot;
 
   constructor() {
-    const filePath = path.resolve(process.cwd(), 'resources/curriculum/curriculum.v1.2.json');
+    const explicitPath = process.env.QF_CURRICULUM_PATH;
+    const version = process.env.QF_CURRICULUM_VERSION || 'v1.2';
+
+    const defaultPath = path.resolve(
+      process.cwd(),
+      'resources/curriculum',
+      `curriculum.${version}.json`,
+    );
+    const filePath = explicitPath ? path.resolve(process.cwd(), explicitPath) : defaultPath;
     const raw = fs.readFileSync(filePath, 'utf-8');
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== 'object') {

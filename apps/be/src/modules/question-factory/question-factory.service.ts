@@ -6,10 +6,16 @@ import { Deduplicator } from './deduplicator';
 import { Exporter } from './exporter';
 import type { LlmClient } from './llm.client';
 import { PromptBuilder } from './prompt.builder';
-import { parseBlueprint } from './schemas';
-import { Blueprint, GenerationRequest, GenerationResult, TopicSeed } from './types';
+import { parseBlueprint, parseTermBlueprint } from './schemas';
+import {
+  Blueprint,
+  GenerationRequest,
+  GenerationResult,
+  TermGenerationRequest,
+  TopicSeed,
+} from './types';
 import { extractJsonArray } from './utils/json-extractor';
-import { validateBlueprint } from './validator';
+import { validateBlueprint, validateTermBlueprint } from './validator';
 
 @Injectable()
 export class QuestionFactoryService {
@@ -41,8 +47,9 @@ export class QuestionFactoryService {
     let duplicateCount = 0;
     let totalCandidates = 0;
 
-    const expectedOverall =
-      seed.allowedConceptLevels.length * seed.allowedQuestionDepths.length * req.nPerCell;
+    const effectiveLevels = cfg.forceConceptLevels ?? seed.allowedConceptLevels;
+    const effectiveDepths = cfg.forceQuestionDepths ?? seed.allowedQuestionDepths;
+    const expectedOverall = effectiveLevels.length * effectiveDepths.length * req.nPerCell;
     this.logger.log(
       `qf_batch_start topic=${seed.topicId} expected_overall=${expectedOverall} n_per_cell=${req.nPerCell} chunk=${cfg.chunkSize}`,
     );
@@ -73,8 +80,8 @@ export class QuestionFactoryService {
       }
     }
 
-    for (const level of seed.allowedConceptLevels) {
-      for (const depth of seed.allowedQuestionDepths) {
+    for (const level of effectiveLevels) {
+      for (const depth of effectiveDepths) {
         const target = req.nPerCell;
         const chunkSize = Math.max(1, Math.min(cfg.chunkSize, target));
         const maxCalls = Math.max(1, cfg.maxCallsPerCell);
@@ -183,6 +190,177 @@ export class QuestionFactoryService {
       rejectedCount,
       duplicateCount,
       outputPath: outPath,
+    };
+  }
+
+  // Term mode: generate blueprints for a single term with fixed concept level
+  // Depth policy: Low only (documented)
+  async generateByTerm(req: TermGenerationRequest): Promise<GenerationResult> {
+    const cfg = loadQfConfig();
+    const dedup = new Deduplicator();
+    const accepted: any[] = [];
+    let rejectedCount = 0;
+    let duplicateCount = 0;
+    let totalCandidates = 0;
+    const rejectReasons: Record<string, number> = {};
+    const bump = (k: string) => {
+      rejectReasons[k] = (rejectReasons[k] ?? 0) + 1;
+    };
+
+    const level = req.conceptLevel;
+    // Depth policy: Low only for term mode (keeps costs low and definitions focused)
+    const depth: 'Low' = 'Low';
+    const seed: TopicSeed = {
+      domain: req.domain,
+      topicId: req.term,
+      allowedConceptLevels: [level],
+      allowedQuestionDepths: [depth],
+    };
+
+    const requested = req.count;
+    const overTarget = Math.max(requested, Math.ceil(requested * cfg.overgenFactor));
+    const chunkSize = Math.max(1, Math.min(cfg.chunkSize, overTarget));
+    const maxCalls = Math.max(1, cfg.maxCallsPerCell);
+    let produced = 0;
+    let calls = 0;
+    let requestedSoFar = 0;
+    this.logger.log(
+      `qf_term_overgen_start term=${req.term} requested=${requested} over_target=${overTarget} chunk=${chunkSize}`,
+    );
+    while (produced < requested && calls < maxCalls && requestedSoFar < overTarget) {
+      const expectedChunk = Math.min(chunkSize, overTarget - requestedSoFar);
+      const prompt = this.promptBuilder.buildTermCellPrompt(
+        req.domain,
+        req.term,
+        level,
+        depth,
+        expectedChunk,
+      );
+      this.logger.log(
+        `qf_term_request term=${req.term} level=${level} depth=${depth} expected_chunk=${expectedChunk} requested_so_far=${requestedSoFar}/${overTarget} prompt_len=${prompt.length}`,
+      );
+      const raw = await this.llm.generateBlueprintBatch(prompt, seed, expectedChunk);
+      requestedSoFar += expectedChunk;
+      let items: unknown[] = [];
+      let rawLen: number | undefined;
+      if (typeof raw === 'string') {
+        rawLen = raw.length;
+        try {
+          items = extractJsonArray(raw);
+        } catch (e) {
+          this.logger.error(
+            `qf_llm_parse_error term=${req.term} level=${level} depth=${depth} raw_len=${rawLen} reason=${(e as Error)?.message ?? e}`,
+          );
+          break;
+        }
+      } else if (Array.isArray(raw)) {
+        items = raw as unknown[];
+      } else if (raw && typeof raw === 'object' && 'output' in (raw as Record<string, unknown>)) {
+        const out = (raw as Record<string, unknown>)['output'];
+        if (typeof out === 'string') {
+          rawLen = out.length;
+          try {
+            items = extractJsonArray(out);
+          } catch (e) {
+            this.logger.error(
+              `qf_llm_parse_error term=${req.term} level=${level} depth=${depth} raw_len=${rawLen} reason=${(e as Error)?.message ?? e}`,
+            );
+            break;
+          }
+        } else {
+          items = Array.isArray(out) ? out : [];
+        }
+      }
+      this.logger.log(
+        `qf_term_received term=${req.term} level=${level} depth=${depth} expected_chunk=${expectedChunk} received_count=${items.length} raw_len=${rawLen ?? 'n/a'}`,
+      );
+      totalCandidates += items.length;
+      for (const item of items) {
+        if (produced >= requested) break;
+        const parsed = parseTermBlueprint(item);
+        if (!parsed) {
+          rejectedCount++;
+          bump('parse_fail');
+          continue;
+        }
+        // Field matches with normalization for topic_id
+        let mismatch = false;
+        if (parsed.concept_level !== level) {
+          bump('mismatch_concept_level');
+          mismatch = true;
+        }
+        if (parsed.question_depth !== depth) {
+          bump('mismatch_question_depth');
+          mismatch = true;
+        }
+        if (parsed.domain !== req.domain) {
+          bump('mismatch_domain');
+          mismatch = true;
+        }
+
+        // Accept exact concept word or legacy 'term:<concept>' (case-insensitive, trim)
+        const norm = (s: string) => (s || '').trim().toLowerCase();
+        const pid = norm(parsed.topic_id);
+        const wantWord = norm(req.term);
+        const wantLegacy = norm(`term:${req.term}`);
+        const topicOk = pid === wantWord || pid === wantLegacy;
+        if (!topicOk) {
+          bump('mismatch_topic_id');
+          mismatch = true;
+        }
+        if (mismatch) {
+          rejectedCount++;
+          continue;
+        }
+        const vr = validateTermBlueprint(parsed);
+        if (!vr.ok) {
+          rejectedCount++;
+          bump(`validator_${vr.reason ?? 'unknown'}`);
+          continue;
+        }
+        if (dedup.isDuplicate(parsed)) {
+          duplicateCount++;
+          continue;
+        }
+        // common_mistakes는 term 모드 산출물에서 제외
+        accepted.push({
+          domain: parsed.domain,
+          // Canonicalize topic_id in output to the concept word itself
+          topic_id: req.term,
+          concept_level: parsed.concept_level,
+          question_depth: parsed.question_depth,
+          prompt: parsed.prompt,
+          intent: parsed.intent,
+          must_include: parsed.must_include,
+        });
+        produced++;
+      }
+      calls++;
+      if (calls >= maxCalls && produced < requested) {
+        this.logger.warn(
+          `qf_term_maxcalls term=${req.term} level=${level} depth=${depth} produced=${produced}/${requested} requested_so_far=${requestedSoFar}/${overTarget}`,
+        );
+      }
+    }
+
+    const outPath = this.exporter.getTermOutPath(
+      req.version,
+      req.domain,
+      req.conceptLevel,
+      req.term,
+    );
+    const path = this.exporter.writeJsonlToPath(outPath, accepted, cfg.exportMode);
+    this.logger.log(
+      `qf_term_pipeline term=${req.term} candidates=${totalCandidates} accepted=${accepted.length} rejected=${rejectedCount} duplicate=${duplicateCount} output=${path} mode=${cfg.exportMode} reasons=${JSON.stringify(
+        rejectReasons,
+      )}`,
+    );
+    return {
+      acceptedCount: accepted.length,
+      rejectedCount,
+      duplicateCount,
+      outputPath: path,
+      outputPaths: [path],
     };
   }
 }

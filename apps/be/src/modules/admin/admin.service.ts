@@ -1,14 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-import type { GenerationResult } from '../question-factory/types';
+import type { EnqueueJobBody, GenerationResult } from '../question-factory/types';
 import { Queue } from 'bullmq';
 
-export interface EnqueueRequestBody {
-  domain: 'OS' | 'Network' | 'DB' | 'Data_Structure';
-  topicId: string;
-  version: string; // e.g., v1
-  nPerCell: number;
-}
+export type EnqueueRequestBody = EnqueueJobBody;
 
 export interface JobStatusResponse {
   id: string;
@@ -18,18 +14,17 @@ export interface JobStatusResponse {
 
 @Injectable()
 export class AdminService {
-  private readonly queue: Queue;
+  private readonly queue: Queue<EnqueueRequestBody>;
+  private readonly url: string;
 
-  constructor() {
+  constructor(private readonly config: ConfigService) {
     const opts = this.buildQueueOptions();
     this.queue = new Queue('question-gen', opts);
+    this.url = this.config.get<string>('REDIS_URL') || 'redis://127.0.0.1:6379';
   }
 
   private buildQueueOptions(): { connection: { host: string; port: number; password?: string } } {
-    /* eslint-disable turbo/no-undeclared-env-vars */
-    const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
-    /* eslint-enable turbo/no-undeclared-env-vars */
-    const u = new URL(url);
+    const u = new URL(this.url);
     const port = Number.parseInt(u.port || '6379', 10);
     const host = u.hostname || '127.0.0.1';
     const password = u.password || undefined;
@@ -48,6 +43,7 @@ export class AdminService {
   async getJobStatus(jobId: string): Promise<JobStatusResponse | null> {
     const job = await this.queue.getJob(jobId);
     if (!job) return null;
+
     const state = await job.getState();
     return {
       id: job.id as string,

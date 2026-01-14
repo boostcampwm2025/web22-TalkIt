@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { ClovaService } from '../../../infra/clova/clova.service';
 import type { LlmClient } from '../llm.client';
@@ -10,7 +11,7 @@ function clamp(n: number, min: number, max: number) {
 }
 
 function sleep(ms: number) {
-  return new Promise((res) => setTimeout(res, ms));
+  return new Promise<void>((res) => setTimeout(res, ms));
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -21,7 +22,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
       resolve(v);
     }).catch((e) => {
       clearTimeout(t);
-      reject(e);
+      reject(e instanceof Error ? e : new Error(String(e)));
     });
   });
 }
@@ -30,7 +31,10 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 export class RealClovaStudioClient implements LlmClient {
   private readonly logger = new Logger(RealClovaStudioClient.name);
 
-  constructor(private readonly clova: ClovaService) {}
+  constructor(
+    private readonly clova: ClovaService,
+    private readonly config: ConfigService,
+  ) {}
 
   async generateBlueprintBatch(
     prompt: string,
@@ -42,12 +46,10 @@ export class RealClovaStudioClient implements LlmClient {
     const expectedCount =
       seed.allowedConceptLevels.length * seed.allowedQuestionDepths.length * _nPerCell;
 
-    // Defaults and env overrides
-    /* eslint-disable turbo/no-undeclared-env-vars */
-    const maxTokensEnv = Number(process.env.LLM_MAX_TOKENS ?? '1500');
-    const temperatureEnv = Number(process.env.LLM_TEMPERATURE ?? '0.2');
-    const timeoutMsEnv = Number(process.env.LLM_TIMEOUT_MS ?? '45000');
-    /* eslint-enable turbo/no-undeclared-env-vars */
+    const maxTokensEnv = Number(this.config.get<string>('LLM_MAX_TOKENS') ?? '1500');
+    const temperatureEnv = Number(this.config.get<string>('LLM_TEMPERATURE') ?? '0.2');
+    const timeoutMsEnv = Number(this.config.get<string>('LLM_TIMEOUT_MS') ?? '45000');
+
     const maxTokens = clamp(Number.isFinite(maxTokensEnv) ? maxTokensEnv : 1500, 300, 2500);
     const temperature = Number.isFinite(temperatureEnv) ? temperatureEnv : 0.2;
     const timeoutMs = Number.isFinite(timeoutMsEnv) ? timeoutMsEnv : 45_000;
@@ -60,13 +62,15 @@ export class RealClovaStudioClient implements LlmClient {
       { role: 'user' as const, content: prompt },
     ];
 
-    // Retry with simple exponential backoff
+    // 단순 지수 백오프로 재시도
     const maxRetries = 2; // in addition to the first attempt
     let attempt = 0;
     let lastErr: unknown;
     let reqId: string | undefined;
     let content: string | undefined;
-    let raw: any;
+    type ClovaChat = Awaited<ReturnType<ClovaService['chat']>>;
+    type ClovaRaw = ClovaChat['raw'];
+    let raw: ClovaRaw | undefined;
 
     while (attempt <= maxRetries) {
       const attemptStart = Date.now();
@@ -81,17 +85,17 @@ export class RealClovaStudioClient implements LlmClient {
           timeoutMs,
         );
 
-        reqId = (res as any)?.requestId;
-        content = (res as any)?.content;
-        raw = (res as any)?.raw;
+        reqId = res.requestId;
+        content = res.content;
+        raw = res.raw;
 
         const elapsed = Date.now() - attemptStart;
-        const usage = (raw?.result?.usage ?? raw?.usage) || {};
+        const usage = raw?.result?.usage ?? raw?.usage;
         const tokens =
-          usage.outputTokens ??
-          usage.completionTokens ??
-          usage.totalTokens ??
-          usage.tokens ??
+          usage?.outputTokens ??
+          usage?.completionTokens ??
+          usage?.totalTokens ??
+          usage?.tokens ??
           undefined;
         this.logger.log(
           `clova_call_ok topic=${seed.topicId} req_id=${reqId ?? 'n/a'} expected_count=${expectedCount} prompt_len=${promptLen} tokens=${
@@ -131,16 +135,16 @@ export class RealClovaStudioClient implements LlmClient {
             }),
             timeoutMs,
           );
-          const repairContent = (repair as any)?.content as string | undefined;
-          const repairRaw = (repair as any)?.raw;
-          const repairReqId = (repair as any)?.requestId;
+          const repairContent = repair.content;
+          const repairRaw = repair.raw;
+          const repairReqId = repair.requestId;
           const repairElapsed = Date.now() - repairStart;
-          const rUsage = (repairRaw?.result?.usage ?? repairRaw?.usage) || {};
+          const rUsage = repairRaw?.result?.usage ?? repairRaw?.usage;
           const rTokens =
-            rUsage.outputTokens ??
-            rUsage.completionTokens ??
-            rUsage.totalTokens ??
-            rUsage.tokens ??
+            rUsage?.outputTokens ??
+            rUsage?.completionTokens ??
+            rUsage?.totalTokens ??
+            rUsage?.tokens ??
             undefined;
           this.logger.warn(
             `clova_repair topic=${seed.topicId} req_id=${repairReqId ?? 'n/a'} expected_count=${expectedCount} prompt_len=${promptLen} tokens=${
@@ -172,6 +176,12 @@ export class RealClovaStudioClient implements LlmClient {
     }
 
     // All retries exhausted
-    throw lastErr ?? new Error('clova_failed');
+    const toMessage = (e: unknown): string => {
+      if (e instanceof Error) return e.message;
+      if (typeof e === 'string') return e;
+      if (typeof e === 'number' || typeof e === 'boolean') return String(e);
+      return 'clova_failed';
+    };
+    throw lastErr instanceof Error ? lastErr : new Error(toMessage(lastErr));
   }
 }

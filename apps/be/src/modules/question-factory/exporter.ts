@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { Blueprint } from './types';
+import type { ConceptLevel, Domain, QuestionDepth } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -18,11 +18,60 @@ export class Exporter {
     return path.join(outDir, fileName);
   }
 
+  getTermOutPath(version: string, domain: string, conceptLevel: string, term: string): string {
+    const outDir = path.join(this.getOutDir(version), 'term');
+    fs.mkdirSync(outDir, { recursive: true });
+    const slug = this.slug(term);
+    const fileName = `${domain}__term__${conceptLevel}__${slug}.jsonl`;
+    return path.join(outDir, fileName);
+  }
+
+  writeJsonlToPath(outPath: string, items: any[], mode: 'overwrite' | 'append' | 'merge') {
+    if (mode === 'append') {
+      const fd = fs.openSync(outPath, 'a');
+      try {
+        for (const it of items) fs.writeSync(fd, JSON.stringify(it) + '\n');
+      } finally {
+        fs.closeSync(fd);
+      }
+      return outPath;
+    }
+    if (mode === 'merge' && fs.existsSync(outPath)) {
+      const existing = fs
+        .readFileSync(outPath, 'utf8')
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .map((l) => {
+          try {
+            return JSON.parse(l);
+          } catch {
+            return null as any;
+          }
+        })
+        .filter(Boolean);
+      const merged = this.mergeUnique(existing, items);
+      const fd = fs.openSync(outPath, 'w');
+      try {
+        for (const it of merged) fs.writeSync(fd, JSON.stringify(it) + '\n');
+      } finally {
+        fs.closeSync(fd);
+      }
+      return outPath;
+    }
+    const fd = fs.openSync(outPath, 'w');
+    try {
+      for (const it of items) fs.writeSync(fd, JSON.stringify(it) + '\n');
+    } finally {
+      fs.closeSync(fd);
+    }
+    return outPath;
+  }
+
   writeJsonl(
     version: string,
     domain: string,
     topicId: string,
-    items: Blueprint[],
+    items: any[],
     mode: 'overwrite' | 'append' | 'merge' = 'overwrite',
   ): string {
     const outPath = this.getOutPath(version, domain, topicId);
@@ -43,12 +92,12 @@ export class Exporter {
         .filter(Boolean)
         .map((l) => {
           try {
-            return JSON.parse(l) as Blueprint;
+            return JSON.parse(l);
           } catch {
             return null as any;
           }
         })
-        .filter(Boolean) as Blueprint[];
+        .filter(Boolean);
       const merged = this.mergeUnique(existing, items);
       const fd = fs.openSync(outPath, 'w');
       try {
@@ -68,7 +117,7 @@ export class Exporter {
     return outPath;
   }
 
-  private mergeUnique(a: Blueprint[], b: Blueprint[]): Blueprint[] {
+  private mergeUnique(a: any[], b: any[]): any[] {
     // Simple dedup: reuse fingerprint key similar to Deduplicator (without near-dup)
     const norm = (s: string) =>
       s
@@ -76,7 +125,13 @@ export class Exporter {
         .replace(/[\p{P}\p{S}]+/gu, ' ')
         .replace(/\s+/g, ' ')
         .trim();
-    const fp = (bp: Blueprint) =>
+    const fp = (bp: {
+      domain: Domain;
+      topic_id: string;
+      concept_level: ConceptLevel;
+      question_depth: QuestionDepth;
+      must_include: string[];
+    }) =>
       norm(
         `${bp.domain}|${bp.topic_id}|${bp.concept_level}|${bp.question_depth}|${[...bp.must_include]
           .map((x) => norm(x))
@@ -84,8 +139,8 @@ export class Exporter {
           .join(',')}`,
       );
     const seen = new Set<string>();
-    const out: Blueprint[] = [];
-    const push = (bp: Blueprint) => {
+    const out: any[] = [];
+    const push = (bp: any) => {
       const k = fp(bp);
       if (seen.has(k)) return;
       seen.add(k);
@@ -94,5 +149,14 @@ export class Exporter {
     for (const x of a) push(x);
     for (const x of b) push(x);
     return out;
+  }
+
+  private slug(s: string): string {
+    return s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s._-]+/g, '')
+      .replace(/\s+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
   }
 }

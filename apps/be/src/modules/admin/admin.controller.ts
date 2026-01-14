@@ -11,8 +11,26 @@ export class AdminController {
   async enqueue(
     @Body() body: EnqueueRequestBody,
   ): Promise<{ jobId: string | undefined } | { error: string }> {
-    if (!body || !body.domain || !body.topicId || !body.version || !body.nPerCell) {
-      return { error: 'invalid_body' };
+    // 토픽 모드와 용어 모드에 따른 유효성 검사
+    if (!body || !body.domain || !body.version) return { error: 'invalid_body' };
+
+    if (!('mode' in body) || body.mode === 'topic') {
+      // topic mode validation
+      const hasTopicId =
+        'topicId' in body && typeof body.topicId === 'string' && body.topicId.length > 0;
+      const hasNPerCell =
+        'nPerCell' in body && typeof body.nPerCell === 'number' && Number.isFinite(body.nPerCell);
+
+      if (!hasTopicId || !hasNPerCell) return { error: 'invalid_body' };
+    } else if (body.mode === 'term') {
+      const hasConcept = 'conceptLevel' in body && typeof body.conceptLevel === 'string';
+      const hasTerm = 'term' in body && typeof body.term === 'string' && body.term.length > 0;
+      const hasCount =
+        'count' in body && typeof body.count === 'number' && Number.isFinite(body.count);
+      if (!hasConcept) return { error: 'invalid_body' };
+
+      // term 또는 count 둘 중 하나는 반드시 있어야 함
+      if (!hasTerm && !hasCount) return { error: 'invalid_body' };
     }
     const res = await this.admin.enqueueBlueprintJob(body);
     return res;
