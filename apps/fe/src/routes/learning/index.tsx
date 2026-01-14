@@ -1,16 +1,16 @@
 import { useState } from 'react';
 
+import { QUESTION_DIFFICULTY_CONFIG, QUESTION_TOPIC_CONFIG } from '@/constants/question';
 import { useProgressAnimation } from '@/features/learning/lib/hooks/use-progress-animation';
 import { useStartSession } from '@/features/learning/lib/hooks/use-start-session';
 import {
   QUESTION_DIFFICULTY,
-  QUESTION_TOPIC,
   type QuestionDifficulty,
   type QuestionTopic,
 } from '@repo/shared/constants/learning';
 import { Link, createFileRoute } from '@tanstack/react-router';
 
-import { Cpu, Database, Flame, ListFilter, Mic, Share2, TrendingUp } from 'lucide-react';
+import { Flame, ListFilter, Mic, TrendingUp } from 'lucide-react';
 
 // 사용자 mock 데이터
 const MOCK_USER_DATA = {
@@ -37,48 +37,6 @@ const MOCK_USER_DATA = {
   remainingToken: 9,
 };
 
-const TOPICS = [
-  {
-    id: QUESTION_TOPIC.NETWORK,
-    icon: <Share2 className="h-6 w-6" />,
-    title: '네트워크',
-    desc: 'HTTP, TCP/IP, OSI 7계층 등',
-  },
-  {
-    id: QUESTION_TOPIC.OS,
-    icon: <Cpu className="h-6 w-6" />,
-    title: '운영체제',
-    desc: '프로세스, 스레드, 메모리 관리',
-  },
-  {
-    id: QUESTION_TOPIC.DATABASE,
-    icon: <Database className="h-6 w-6" />,
-    title: '데이터베이스',
-    desc: 'SQL, 트랜잭션, 인덱싱 등',
-  },
-  {
-    id: QUESTION_TOPIC.STRUCTURE,
-    icon: <Share2 className="h-6 w-6 rotate-90" />,
-    title: '자료구조',
-    desc: '스택, 큐, 트리, 그래프 등',
-  },
-];
-
-const DIFFICULTIES = [
-  {
-    value: QUESTION_DIFFICULTY.EASY,
-    label: '초급',
-  },
-  {
-    value: QUESTION_DIFFICULTY.MEDIUM,
-    label: '중급',
-  },
-  {
-    value: QUESTION_DIFFICULTY.HARD,
-    label: '고급',
-  },
-];
-
 const Learning = () => {
   const { profile, progression, studyStats } = MOCK_USER_DATA;
 
@@ -93,6 +51,9 @@ const Learning = () => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<QuestionDifficulty>(
     QUESTION_DIFFICULTY.MEDIUM,
   );
+
+  const topicOptions = Object.values(QUESTION_TOPIC_CONFIG);
+  const difficultyOptions = Object.values(QUESTION_DIFFICULTY_CONFIG);
 
   // 학습 시작 API 호출 함수 (추후 별도의 코드로 분리 예정)
   const handleStartClick = async () => {
@@ -188,7 +149,7 @@ const Learning = () => {
           </div>
 
           <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {TOPICS.map((topic) => {
+            {topicOptions.map((topic) => {
               const isSelected = selectedTopic === topic.id;
               return (
                 <div
@@ -203,10 +164,10 @@ const Learning = () => {
                   <div
                     className={`mb-3 text-black transition-colors group-hover:text-primary ${isSelected ? 'text-primary' : 'text-black'}`}
                   >
-                    {topic.icon}
+                    <topic.Icon className={`h-6 w-6`} />
                   </div>
-                  <h3 className="mb-1 text-lg font-bold">{topic.title}</h3>
-                  <p className="text-xs text-dark-gray">{topic.desc}</p>
+                  <h3 className="mb-1 text-lg font-bold">{topic.label}</h3>
+                  <p className="text-xs text-dark-gray">{topic.description}</p>
                 </div>
               );
             })}
@@ -217,7 +178,7 @@ const Learning = () => {
         <section className="mb-8 rounded-2xl border border-gray bg-white p-8 shadow-sm">
           <h3 className="mb-4 text-xl font-bold">난이도 설정</h3>
           <div className="flex w-full rounded-lg bg-gray p-1">
-            {DIFFICULTIES.map((diff) => (
+            {difficultyOptions.map((diff) => (
               <button
                 key={diff.value}
                 onClick={() => setSelectedDifficulty(diff.value)}
@@ -253,12 +214,12 @@ const Learning = () => {
             <p className="text-sm text-gray">
               선택하신{' '}
               <span className="font-bold text-primary">
-                {TOPICS.find((t) => t.id === selectedTopic)?.title}
+                {topicOptions.find((t) => t.id === selectedTopic)?.label}
               </span>{' '}
               주제 /
               <span className="font-bold text-primary">
                 {' '}
-                {DIFFICULTIES.find((d) => d.value === selectedDifficulty)?.label}
+                {difficultyOptions.find((d) => d.value === selectedDifficulty)?.label}
               </span>{' '}
               난이도로 질문을 생성합니다.
             </p>
