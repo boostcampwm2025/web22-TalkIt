@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { normalizeAudio } from '../../../common/audio/normalize-audio';
-import { SttService } from '../../../stt/stt.service';
+import { SttService } from '../../../stt/services/stt.service';
 import { RecordSessionAnswerDto } from '../dto/record-session-answer.dto';
 import { ObjectStorageProvider } from '../providers/object-storage.provider';
 import { SessionsRepository } from '../sessions.repository';
