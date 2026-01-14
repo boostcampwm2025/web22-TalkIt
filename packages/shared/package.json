@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./constants/study": "./constants/study.ts",
-    "./types/study": "./types/study.ts"
+    "./constants/learning": "./constants/learning.ts",
+    "./types/learning": "./types/learning.ts"
   },
   "scripts": {
     "lint": "eslint src/",

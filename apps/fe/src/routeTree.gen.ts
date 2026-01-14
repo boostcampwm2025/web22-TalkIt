@@ -7,7 +7,7 @@
 import { Route as rootRouteImport } from './routes/__root';
 import { Route as AboutRouteImport } from './routes/about';
 import { Route as IndexRouteImport } from './routes/index';
-import { Route as StudyQuestionRouteImport } from './routes/study/question';
+import { Route as LearningQuestionRouteImport } from './routes/learning/question';
 
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
@@ -19,40 +19,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any);
-const StudyQuestionRoute = StudyQuestionRouteImport.update({
-  id: '/study/question',
-  path: '/study/question',
+const LearningQuestionRoute = LearningQuestionRouteImport.update({
+  id: '/learning/question',
+  path: '/learning/question',
   getParentRoute: () => rootRouteImport,
 } as any);
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
   '/about': typeof AboutRoute;
-  '/study/question': typeof StudyQuestionRoute;
+  '/learning/question': typeof LearningQuestionRoute;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
   '/about': typeof AboutRoute;
-  '/study/question': typeof StudyQuestionRoute;
+  '/learning/question': typeof LearningQuestionRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   '/': typeof IndexRoute;
   '/about': typeof AboutRoute;
-  '/study/question': typeof StudyQuestionRoute;
+  '/learning/question': typeof LearningQuestionRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: '/' | '/about' | '/study/question';
+  fullPaths: '/' | '/about' | '/learning/question';
   fileRoutesByTo: FileRoutesByTo;
-  to: '/' | '/about' | '/study/question';
-  id: '__root__' | '/' | '/about' | '/study/question';
+  to: '/' | '/about' | '/learning/question';
+  id: '__root__' | '/' | '/about' | '/learning/question';
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   AboutRoute: typeof AboutRoute;
-  StudyQuestionRoute: typeof StudyQuestionRoute;
+  LearningQuestionRoute: typeof LearningQuestionRoute;
 }
 
 declare module '@tanstack/react-router' {
@@ -71,11 +71,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/study/question': {
-      id: '/study/question';
-      path: '/study/question';
-      fullPath: '/study/question';
-      preLoaderRoute: typeof StudyQuestionRouteImport;
+    '/learning/question': {
+      id: '/learning/question';
+      path: '/learning/question';
+      fullPath: '/learning/question';
+      preLoaderRoute: typeof LearningQuestionRouteImport;
       parentRoute: typeof rootRouteImport;
     };
   }
@@ -84,7 +84,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  StudyQuestionRoute: StudyQuestionRoute,
+  LearningQuestionRoute: LearningQuestionRoute,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

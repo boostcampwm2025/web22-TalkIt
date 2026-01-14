@@ -1,4 +1,4 @@
-import { type QuestionDifficulty, type QuestionTopic } from '@repo/shared/constants/study';
+import { type QuestionDifficulty, type QuestionTopic } from '@repo/shared/constants/learning';
 
 export const QUESTION_TOPIC_KR = {
   OS: '운영체제',

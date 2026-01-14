@@ -1,4 +1,4 @@
-import { type QuestionDifficulty, type QuestionTopic } from '../constants/study';
+import { type QuestionDifficulty, type QuestionTopic } from '../constants/learning';
 
 export type Question = {
   questionId: number;
@@ -11,5 +11,7 @@ export type Question = {
 
 export type CreateQuestionResponseDTO = {
   sessionId: number;
+  currentQuestionCount: number;
+  remainedCredit: number;
   question: Question;
 };

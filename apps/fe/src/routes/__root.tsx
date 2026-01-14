@@ -61,7 +61,7 @@ const RootLayout = () => {
                 <FileText size={20} />
                 <span>About</span>
               </Link>
-              <Link to="/study/question" className="mb-6 flex items-center gap-5">
+              <Link to="/learning/question" className="mb-6 flex items-center gap-5">
                 <FileText size={20} />
                 <span>Question</span>
               </Link>
