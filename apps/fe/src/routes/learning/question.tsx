@@ -1,14 +1,17 @@
 import { useEffect } from 'react';
 
 import { QUESTION_DIFFICULTY_KR, QUESTION_TOPIC_KR } from '@/constants/question';
-import { useVoiceRecorder } from '@/features/study/lib/hooks/use-voice-recorder';
-import useQuestion from '@/lib/stores/question';
+import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
+import useLearningSession from '@/lib/stores/learning-session';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
 import { ArrowLeft, Mic } from 'lucide-react';
 
 const QuestionPage = () => {
-  const question = useQuestion((state) => state.question);
+  const question = useLearningSession((state) => state.question);
+  const currentQuestionCount = useLearningSession((state) => state.currentQuestionCount);
+  const remainedCredit = useLearningSession((state) => state.remainedCredit);
+
   const navigate = useNavigate();
 
   const { isRecording, formattedTime, toggleRecording } = useVoiceRecorder({
@@ -25,27 +28,36 @@ const QuestionPage = () => {
 
   return (
     <div className="mx-auto max-w-250 p-10">
-      <Link to="/" className="flex items-center gap-3 transition-colors hover:text-slate-800">
-        <ArrowLeft size={20} />
-        <div className="flex flex-col">
-          <p className="text-base font-bold">{QUESTION_TOPIC_KR[question.topic]}</p>
-          <span className="text-xs text-dark-gray">
-            {QUESTION_DIFFICULTY_KR[question.difficulty]}
+      <div className="flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-3 transition-colors hover:text-slate-800">
+          <ArrowLeft size={20} />
+          <div className="flex flex-col">
+            <p className="text-base font-bold">{QUESTION_TOPIC_KR[question.topic]}</p>
+            <span className="text-xs text-dark-gray">
+              {QUESTION_DIFFICULTY_KR[question.difficulty]}
+            </span>
+          </div>
+        </Link>
+
+        <div className="flex items-center gap-1.5 text-sm">
+          <span className="text-dark-gray">질문 생성권</span>
+          <span className="rounded-md bg-primary/10 px-2 py-0.5 font-bold text-primary">
+            {remainedCredit}
           </span>
         </div>
-      </Link>
+      </div>
       <section className="mx-auto mt-8 max-w-150 space-y-4 text-center">
         <span className="inline-block rounded-full border border-primary/20 bg-gray px-3 py-1 text-sm font-bold text-primary">
-          질문 3 / 10
+          질문 {currentQuestionCount}
         </span>
-        <h3 className="text-4xl font-black break-keep">{question.content}</h3>
+        <h2 className="text-4xl font-black break-keep">{question.content}</h2>
         <div className="text-lg break-keep text-dark-gray">
-          <div className="flex flex-wrap justify-center gap-x-2 [&>span:not(:last-child)]:after:content-[',_']">
+          <div className="flex flex-wrap justify-center [&>span:not(:first-child)]:before:content-[',_']">
             {question.guide.map((keyword) => (
               <span key={keyword}>{keyword}</span>
             ))}
+            <p className="pl-2">위 키워드를 중심으로 답변해보세요.</p>
           </div>
-          <p>위 키워드를 중심으로 답변해보세요.</p>
         </div>
       </section>
       <section className="mt-10 flex flex-col items-center gap-4">
@@ -68,6 +80,6 @@ const QuestionPage = () => {
   );
 };
 
-export const Route = createFileRoute('/study/question')({
+export const Route = createFileRoute('/learning/question')({
   component: QuestionPage,
 });
