@@ -3,11 +3,7 @@ import { useState } from 'react';
 import { QUESTION_DIFFICULTY_CONFIG, QUESTION_TOPIC_CONFIG } from '@/constants/question';
 import { useProgressAnimation } from '@/features/learning/lib/hooks/use-progress-animation';
 import { useStartSession } from '@/features/learning/lib/hooks/use-start-session';
-import {
-  QUESTION_DIFFICULTY,
-  type QuestionDifficulty,
-  type QuestionTopic,
-} from '@repo/shared/constants/learning';
+import { type QuestionDifficulty, type QuestionTopic } from '@repo/shared/constants/learning';
 import { Link, createFileRoute } from '@tanstack/react-router';
 
 import { Flame, ListFilter, Mic, TrendingUp } from 'lucide-react';
@@ -48,16 +44,14 @@ const Learning = () => {
   );
 
   const [selectedTopic, setSelectedTopic] = useState<QuestionTopic | null>(null);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<QuestionDifficulty>(
-    QUESTION_DIFFICULTY.MEDIUM,
-  );
+  const [selectedDifficulty, setSelectedDifficulty] = useState<QuestionDifficulty | null>(null);
 
   const topicOptions = Object.values(QUESTION_TOPIC_CONFIG);
   const difficultyOptions = Object.values(QUESTION_DIFFICULTY_CONFIG);
 
   // 학습 시작 API 호출 함수 (추후 별도의 코드로 분리 예정)
   const handleStartClick = async () => {
-    if (!selectedTopic) return;
+    if (!selectedTopic || !selectedDifficulty) return;
     try {
       const data = await startSession(selectedTopic, selectedDifficulty);
       console.log('세션 생성 완료:', data);
@@ -175,7 +169,9 @@ const Learning = () => {
         </section>
 
         {/* 난이도 설정 */}
-        <section className="mb-8 rounded-2xl border border-gray bg-white p-8 shadow-sm">
+        <section
+          className={`mb-8 rounded-2xl border border-gray bg-white p-8 shadow-sm transition-all duration-700 ease-in-out ${selectedTopic !== null ? `translate-y-0 opacity-100` : `pointer-events-none translate-y-10 opacity-0`}`}
+        >
           <h3 className="mb-4 text-xl font-bold">난이도 설정</h3>
           <div className="flex w-full rounded-lg bg-gray p-1">
             {difficultyOptions.map((diff) => (
@@ -202,7 +198,7 @@ const Learning = () => {
 
         {/* 학습 시작 */}
         <section
-          className={`relative flex transform flex-col items-center justify-between overflow-hidden rounded-2xl bg-black p-8 text-white transition-all duration-700 ease-in-out md:flex-row ${selectedTopic !== null ? `translate-y-0 opacity-100` : `pointer-events-none translate-y-10 opacity-0`}`}
+          className={`relative flex transform flex-col items-center justify-between overflow-hidden rounded-2xl bg-black p-8 text-white transition-all duration-700 ease-in-out md:flex-row ${selectedTopic !== null && selectedDifficulty !== null ? `translate-y-0 opacity-100` : `pointer-events-none translate-y-10 opacity-0`}`}
         >
           <div className="pointer-events-none absolute top-0 left-0 h-full w-full bg-linear-to-r from-primary/20 to-transparent"></div>
 
