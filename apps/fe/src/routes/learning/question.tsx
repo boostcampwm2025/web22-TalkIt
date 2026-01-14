@@ -27,7 +27,7 @@ const QuestionPage = () => {
   if (!question) return null;
 
   return (
-    <div className="mx-auto max-w-250 p-10">
+    <div className="mx-auto max-w-250 p-6 sm:p-10">
       <div className="flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 transition-colors hover:text-slate-800">
           <ArrowLeft size={20} />
@@ -38,7 +38,6 @@ const QuestionPage = () => {
             </span>
           </div>
         </Link>
-
         <div className="flex items-center gap-1.5 text-sm">
           <span className="text-dark-gray">질문 생성권</span>
           <span className="rounded-md bg-primary/10 px-2 py-0.5 font-bold text-primary">
@@ -47,11 +46,11 @@ const QuestionPage = () => {
         </div>
       </div>
       <section className="mx-auto mt-8 max-w-150 space-y-4 text-center">
-        <span className="inline-block rounded-full border border-primary/20 bg-gray px-3 py-1 text-sm font-bold text-primary">
+        <span className="inline-block rounded-full border border-primary/20 bg-gray px-3 py-1 text-xs font-bold text-primary sm:text-sm">
           질문 {currentQuestionCount}
         </span>
-        <h2 className="text-4xl font-black break-keep">{question.content}</h2>
-        <div className="text-lg break-keep text-dark-gray">
+        <h2 className="text-2xl font-black break-keep sm:text-4xl">{question.content}</h2>
+        <div className="break-keep text-dark-gray sm:text-lg">
           <div className="flex flex-wrap justify-center [&>span:not(:first-child)]:before:content-[',_']">
             {question.guide.map((keyword) => (
               <span key={keyword}>{keyword}</span>
@@ -71,7 +70,7 @@ const QuestionPage = () => {
         >
           <Mic className="h-10 w-10 text-white" />
         </button>
-        <p className="text-2xl">
+        <p className="text-lg sm:text-2xl">
           <span className="text-dark-gray">남은 시간: </span>
           {formattedTime}
         </p>
