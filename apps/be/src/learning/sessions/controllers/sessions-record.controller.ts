@@ -8,15 +8,44 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { RecordSessionAnswerDto } from '../dto/record-session-answer.dto';
 import { SessionsRecordService } from '../services/sessions-record.service';
 
+@ApiTags('Learning - Sessions')
 @Controller('/api/learning/sessions')
 export class SessionsRecordController {
   constructor(private readonly sessionsRecordService: SessionsRecordService) {}
 
   @Post(':sessionId/record')
+  @ApiOperation({
+    summary: '세션 답변 녹음 제출',
+    description: '음성 파일(audioFile)과 답변 메타데이터를 업로드합니다.',
+  })
+  @ApiParam({
+    name: 'sessionId',
+    type: Number,
+    description: '답변을 기록할 세션 ID',
+    example: 1,
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        questionId: {
+          type: 'string',
+          example: '101',
+        },
+        audioFile: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['questionId', 'audioFile'],
+    },
+  })
   @UseInterceptors(FileInterceptor('audioFile'))
   async recordAnswer(
     @Param('sessionId') sessionId: string,
