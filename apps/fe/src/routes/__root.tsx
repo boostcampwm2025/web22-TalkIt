@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import useQuestion from '@/lib/stores/question';
-import type { CreateQuestionResponseDTO } from '@repo/shared/types/study';
+import useQuestion from '@/lib/stores/learning-session';
+import type { CreateQuestionResponseDTO } from '@repo/shared/types/learning';
 import { Link, Outlet, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 
@@ -9,6 +9,8 @@ import { FileText, Home, PanelLeft, PanelLeftClose } from 'lucide-react';
 
 const mockQuestionResponse: CreateQuestionResponseDTO = {
   sessionId: 1,
+  currentQuestionCount: 1,
+  remainedCredit: 5,
   question: {
     questionId: 101,
     content: '성능 최적화와 데이터 일관성 유지를 위한 격리 수준 선택 기준은?',
