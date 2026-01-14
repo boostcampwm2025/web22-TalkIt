@@ -7,12 +7,12 @@ import {
 
 import { Cpu, Database, type LucideIcon, Share2 } from 'lucide-react';
 
-interface TopicConfig {
+type TopicConfig = {
   id: QuestionTopic;
   label: string;
   description: string;
   Icon: LucideIcon;
-}
+};
 
 export const QUESTION_TOPIC_CONFIG: Record<QuestionTopic, TopicConfig> = {
   [QUESTION_TOPIC.NETWORK]: {
@@ -41,10 +41,10 @@ export const QUESTION_TOPIC_CONFIG: Record<QuestionTopic, TopicConfig> = {
   },
 };
 
-interface DifficultyConfig {
+type DifficultyConfig = {
   value: QuestionDifficulty;
   label: string;
-}
+};
 
 export const QUESTION_DIFFICULTY_CONFIG: Record<QuestionDifficulty, DifficultyConfig> = {
   [QUESTION_DIFFICULTY.EASY]: {
