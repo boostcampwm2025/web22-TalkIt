@@ -1,12 +1,13 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 
-import { SttService } from './stt.service';
+import { SttQuestionLoaderService } from './services/stt-question-loader.service';
+import { SttService } from './services/stt.service';
 import { ClovaSttProvider } from 'src/stt/providers/clova-stt.provider';
 
 @Module({
   imports: [HttpModule],
-  providers: [SttService, ClovaSttProvider],
+  providers: [SttService, ClovaSttProvider, SttQuestionLoaderService],
   exports: [SttService],
 })
 export class SttModule {}
