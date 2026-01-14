@@ -24,10 +24,7 @@ export class SessionsRepository {
     return this.prisma.session.findFirst({
       where: {
         userId,
-        status: 'IN_PROGRESS',
-        expiresAt: {
-          gt: new Date(),
-        },
+        status: 'ACTIVE',
       },
       orderBy: {
         startedAt: 'desc',
@@ -38,12 +35,13 @@ export class SessionsRepository {
   /**
    * 새 세션 생성
    */
-  async createSession(data: { userId: bigint; expiresAt: Date }) {
+  async createSession(data: { userId: bigint; category: string; difficulty: string }) {
     return this.prisma.session.create({
       data: {
         userId: data.userId,
-        status: 'IN_PROGRESS',
-        expiresAt: data.expiresAt,
+        status: 'ACTIVE',
+        category: data.category,
+        difficulty: data.difficulty,
       },
     });
   }
@@ -82,7 +80,6 @@ export class SessionsRepository {
     timeSpentSec: number;
     overallScore?: number;
     feedbackJson?: Prisma.InputJsonValue;
-    earnedCredit?: boolean;
   }) {
     return this.prisma.userAnswer.create({
       data: {
@@ -93,7 +90,6 @@ export class SessionsRepository {
         timeSpentSec: data.timeSpentSec,
         overallScore: data.overallScore ?? 0,
         feedbackJson: data.feedbackJson ?? {},
-        earnedCredit: data.earnedCredit ?? false,
       },
     });
   }
