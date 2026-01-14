@@ -3,38 +3,15 @@ import { useState } from 'react';
 import { QUESTION_DIFFICULTY_CONFIG, QUESTION_TOPIC_CONFIG } from '@/constants/question';
 import { useProgressAnimation } from '@/features/learning/lib/hooks/use-progress-animation';
 import { useStartSession } from '@/features/learning/lib/hooks/use-start-session';
+import { useUserStore } from '@/lib/stores/user-store';
 import { type QuestionDifficulty, type QuestionTopic } from '@repo/shared/constants/learning';
 import { Link, createFileRoute } from '@tanstack/react-router';
 
 import { Flame, ListFilter, Mic, TrendingUp } from 'lucide-react';
 
-// 사용자 mock 데이터
-const MOCK_USER_DATA = {
-  profile: {
-    nickname: '코딩하는토끼',
-    profileImage: 'https://s3.ap-northeast-2.amazonaws.com/talkit/profiles/user_123.png',
-    bio: '안녕하세요, 백엔드 마스터를 꿈꾸는 개발자입니다.',
-  },
-  progression: {
-    level: 12,
-    currentXp: 450,
-    requiredXpForNextLevel: 1200,
-    lp: 1422,
-  },
-  studyStats: {
-    solvedProblemCount: 128,
-    streak: 5,
-    totalStudyTime: 360,
-  },
-  social: {
-    followerCount: 42,
-    followingCount: 15,
-  },
-  remainingToken: 9,
-};
-
 const Learning = () => {
-  const { profile, progression, studyStats } = MOCK_USER_DATA;
+  const userInfo = useUserStore((state) => state.userInfo);
+  const { profile, progression, studyStats } = userInfo;
 
   const { startSession, isLoading } = useStartSession();
   const { progress, calculatedPercent } = useProgressAnimation(
