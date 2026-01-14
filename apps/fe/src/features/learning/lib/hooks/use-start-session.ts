@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import type { QuestionDifficulty, QuestionTopic } from '../../types/QuestionOptions';
+import type { QuestionDifficulty, QuestionTopic } from '@repo/shared/constants/learning';
 
 export const useStartSession = () => {
   const [isLoading, setIsLoading] = useState(false);

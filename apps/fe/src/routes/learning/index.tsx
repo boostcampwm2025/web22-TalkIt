@@ -1,13 +1,13 @@
 import { useState } from 'react';
 
-import { useProgressAnimation } from '@/features/study/lib/hooks/useProgressAnimation';
-import { useStartSession } from '@/features/study/lib/hooks/useStartSession';
+import { useProgressAnimation } from '@/features/learning/lib/hooks/use-progress-animation';
+import { useStartSession } from '@/features/learning/lib/hooks/use-start-session';
 import {
   QUESTION_DIFFICULTY,
   QUESTION_TOPIC,
   type QuestionDifficulty,
   type QuestionTopic,
-} from '@/features/study/types/QuestionOptions';
+} from '@repo/shared/constants/learning';
 import { Link, createFileRoute } from '@tanstack/react-router';
 
 import { Cpu, Database, Flame, ListFilter, Mic, Share2, TrendingUp } from 'lucide-react';
@@ -113,7 +113,7 @@ const Learning = () => {
         {/* 상단 헤더 */}
         <header className="space-y-2">
           <div className="mb-4 text-sm font-bold">
-            <Link to="/study" className="text-primary">
+            <Link to="/learning" className="text-primary">
               학습하기
             </Link>{' '}
             &gt;
@@ -284,6 +284,6 @@ const Learning = () => {
   );
 };
 
-export const Route = createFileRoute('/study/')({
+export const Route = createFileRoute('/learning/')({
   component: Learning,
 });
