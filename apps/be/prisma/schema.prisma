@@ -1,0 +1,38 @@
+// AGENT.md 기준 Prisma 스키마 (MySQL)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Domain {
+  OS
+  NETWORK
+  DB
+  DATA_STRUCTURE
+}
+
+enum Difficulty {
+  Basic
+  Intermediate
+  Advanced
+}
+
+model Question {
+  id           BigInt     @id @default(autoincrement())
+  domain       Domain
+  difficulty   Difficulty
+  topicId      String
+  content      String     @db.Text
+  contentHash  String     @db.Char(64)
+  mustInclude  Json
+  timeLimitSec Int        @default(180)
+  createdAt    DateTime   @default(now())
+
+  @@index([domain, difficulty])
+  @@index([domain, difficulty, topicId])
+  @@unique([domain, difficulty, topicId, contentHash], name: "domain_difficulty_topicId_contentHash")
+}
