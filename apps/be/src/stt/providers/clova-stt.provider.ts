@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import { SttBoostingBuilder } from '../builders/stt-boosting.builder';
+import { QuestionMeta } from '../types/question-meta.type';
 import axios from 'axios';
 
 @Injectable()
@@ -14,11 +16,27 @@ export class ClovaSttProvider {
     return `${cleanedBase}/${cleanedPath}`;
   }
 
-  async requestSTT(objectKey: string, language: string): Promise<string> {
+  async requestSTT(
+    objectKey: string,
+    language: string,
+    questionMeta: QuestionMeta,
+  ): Promise<string> {
+    const boostWords = SttBoostingBuilder.build(questionMeta);
+    console.log('[STT BOOST WORDS]', boostWords);
+
     const url = this.joinUrl(
       this.config.get<string>('CLOVA_SPEECH_INVOKE_URL') ?? '',
       'recognizer/object-storage',
     );
+    const boostings =
+      boostWords && boostWords.length > 0
+        ? [
+            {
+              words: boostWords.join(','),
+              weight: 1,
+            },
+          ]
+        : undefined;
 
     const response = await axios.post(
       url,
@@ -30,6 +48,7 @@ export class ClovaSttProvider {
         diarization: {
           enable: true, // 화자 인식
         },
+        ...(boostings && { boostings }),
       },
       {
         headers: {
@@ -66,6 +85,17 @@ export class ClovaSttProvider {
     } else {
       console.log('세그먼트(segments) 정보가 없거나 비어 있습니다. 화자 인식이 실패했을 가능성.');
     }
+
+    console.log('\n3. 응답바디 키워드 부스팅 정보:');
+    const boostings_response = response.data?.params?.boostings;
+    if (boostings_response && boostings_response.length > 0) {
+      boostings_response.forEach((b, idx) => {
+        console.log(`  #${idx + 1}: ${b.words}`);
+      });
+    } else {
+      console.log('  부스팅 없음');
+    }
+
     console.log('-----------------------------');
 
     return response.data.text;
