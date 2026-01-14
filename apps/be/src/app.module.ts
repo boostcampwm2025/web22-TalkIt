@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 
+import { QuestionProviderModule } from './modules/question-provider/question-provider.module';
+
 @Module({
-  imports: [],
+  imports: [QuestionProviderModule],
   controllers: [],
   providers: [],
 })
