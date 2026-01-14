@@ -66,8 +66,8 @@ const RootLayout = () => {
     <>
       <div className="flex h-screen">
         {/* 사이드바 컨테이너 */}
-        <div
-          className={`flex h-full shrink-0 flex-col overflow-hidden border-r border-gray bg-white text-dark-gray transition-all duration-300 ease-in-out ${isOpen ? 'w-sidebar-open' : 'w-sidebar-close'}`}
+        <aside
+          className={`hidden h-full shrink-0 flex-col overflow-hidden border-r border-gray bg-white text-dark-gray transition-all duration-300 ease-in-out md:flex ${isOpen ? 'w-sidebar-open' : 'w-sidebar-close'}`}
         >
           <div className={`flex items-center gap-4 px-6 ${!isOpen ? `flex-col pt-3` : 'py-6'}`}>
             <div className="flex flex-1 items-center gap-3 text-primary">
@@ -140,7 +140,32 @@ const RootLayout = () => {
               )}
             </div>
           </div>
-        </div>
+        </aside>
+
+        {/* 모바일 화면에서 아래 탭 바 */}
+        <nav className="fixed right-0 bottom-0 left-0 z-50 flex h-15 items-center justify-around border-t border-gray bg-white px-2 shadow-[0_-2px_10px_rgba(0,0,0,0.02)] md:hidden">
+          {NAV_ITEMS.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              activeProps={{ className: 'text-primary' }}
+              inactiveProps={{ className: 'text-dark-gray hover:text-dark-gray/70' }}
+              className="flex w-full flex-col items-center justify-center gap-1 py-1"
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon
+                    size={24}
+                    className={`transition-all ${isActive ? 'scale-105 stroke-[2.5px]' : ''}`}
+                  />
+                  <span className={`text-[10px] font-medium ${isActive ? 'font-bold' : ''}`}>
+                    {item.label}
+                  </span>
+                </>
+              )}
+            </Link>
+          ))}
+        </nav>
 
         {/* 메인 콘텐츠 */}
         <div className="flex min-w-0 flex-1 flex-col">
