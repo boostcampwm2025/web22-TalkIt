@@ -1,7 +1,16 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { ApiBadRequestResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
-import { CreateSessionDto } from '../dto/create-session.dto';
+import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
+import { zodSchemaToOpenAPI } from '@/common/utils/zod-to-openapi.util';
+
+import { type CreateSessionDto, CreateSessionSchema } from '../schemas/create-session.schema';
 import { SessionsService } from '../services/sessions.service';
 
 @ApiTags('Learning - Sessions')
@@ -13,6 +22,9 @@ export class SessionsController {
   @ApiOperation({
     summary: '학습 세션 생성 및 첫 질문 제공',
     description: '주제와 난이도를 선택하여 학습 세션을 생성하고 첫 질문을 반환합니다.',
+  })
+  @ApiBody({
+    schema: zodSchemaToOpenAPI(CreateSessionSchema),
   })
   @ApiResponse({
     status: 200,
@@ -36,8 +48,11 @@ export class SessionsController {
   @ApiBadRequestResponse({
     description: '잘못된 요청 (Enum 값 오류 또는 필수 값 누락)',
   })
-  async createSession(@Body() dto: CreateSessionDto) {
-    const userId = BigInt(1); // TODO: 추후 연동 후 수정 일단 하드코딩
+  async createSession(
+    @Body(new ZodValidationPipe(CreateSessionSchema))
+    dto: CreateSessionDto,
+  ) {
+    const userId = 1; // TODO: 추후 인증 연동
     return this.sessionsService.createSession(userId, dto);
   }
 }
