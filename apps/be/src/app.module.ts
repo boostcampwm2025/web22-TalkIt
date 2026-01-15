@@ -5,6 +5,9 @@ import { DatabaseModule } from './infra/database/database.module';
 import { SessionsModule } from './learning/sessions/sessions.module';
 import { SttModule } from './stt/stt.module';
 
+import { QuestionProviderModule } from './modules/question-provider/question-provider.module';
+
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -13,6 +16,7 @@ import { SttModule } from './stt/stt.module';
     DatabaseModule,
     SessionsModule,
     SttModule,
+    QuestionProviderModule,
   ],
   controllers: [],
   providers: [],
