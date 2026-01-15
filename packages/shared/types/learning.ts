@@ -15,3 +15,7 @@ export type CreateQuestionResponseDTO = {
   remainedCredit: number;
   question: Question;
 };
+
+export type SubmitRecordResponseDTO = {
+  sttText: string;
+};

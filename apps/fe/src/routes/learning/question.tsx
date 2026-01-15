@@ -1,21 +1,50 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
+import { submitRecordApi } from '@/apis/learning-api';
 import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constants/question';
+import PulsingMicButton from '@/features/learning/components/pulsing-mic-button';
 import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
 import useLearningSession from '@/lib/stores/learning-session';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
-import { ArrowLeft, Mic } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 const QuestionPage = () => {
+  const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
   const currentQuestionCount = useLearningSession((state) => state.currentQuestionCount);
   const remainedCredit = useLearningSession((state) => state.remainedCredit);
 
+  const [answer, setAnswer] = useState<string>('');
+  const [isRecordSubmitting, setIsRecordSubmitting] = useState(false);
+
   const navigate = useNavigate();
 
-  const { isRecording, formattedTime, toggleRecording } = useVoiceRecorder({
+  const handleSubmitRecord = async (audioBlob: Blob) => {
+    if (!sessionId || !question) return;
+
+    try {
+      setIsRecordSubmitting(true);
+      const extension = audioBlob.type.split('/')[1]?.split(';')[0] || 'webm';
+      const audioFile = new File([audioBlob], `answer.${extension}`, { type: audioBlob.type });
+      const { sttText } = await submitRecordApi({
+        sessionId,
+        questionId: question.questionId,
+        audioFile,
+      });
+
+      setAnswer(sttText);
+    } catch (error) {
+      console.error('녹음 제출 실패:', error);
+      // TODO: 에러 토스트 표시 또는 재시도 UI
+    } finally {
+      setIsRecordSubmitting(false);
+    }
+  };
+
+  const { stream, isRecording, formattedTime, toggleRecording } = useVoiceRecorder({
     timeLimit: question?.timeLimit ?? 300,
+    onRecordFinish: handleSubmitRecord,
   });
 
   useEffect(() => {
@@ -53,7 +82,7 @@ const QuestionPage = () => {
         </span>
         <h2 className="text-2xl font-black break-keep sm:text-4xl">{question.content}</h2>
         <div className="break-keep text-dark-gray sm:text-lg">
-          <div className="flex flex-wrap justify-center [&>span:not(:first-child)]:before:content-[',_']">
+          <div className="flex flex-wrap justify-center [&>span:not(:first-child)]:after:content-[',_']">
             {question.guide.map((keyword) => (
               <span key={keyword}>{keyword}</span>
             ))}
@@ -61,21 +90,28 @@ const QuestionPage = () => {
           </div>
         </div>
       </section>
-      <section className="mt-10 flex flex-col items-center gap-4">
-        <button
-          onClick={toggleRecording}
-          className={`flex h-20 w-20 items-center justify-center rounded-full shadow-md transition-all ${
-            isRecording
-              ? 'bg-red-500 shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40'
-              : 'bg-primary shadow-primary/30 hover:shadow-lg hover:shadow-primary/40'
-          }`}
-        >
-          <Mic className="h-10 w-10 text-white" />
-        </button>
+      <section className="mt-6 flex flex-col items-center gap-6">
+        <h3 className="sr-only">음성 답변</h3>
+        <PulsingMicButton isRecording={isRecording} stream={stream} onToggle={toggleRecording} />
         <p className="text-lg sm:text-2xl">
           <span className="text-dark-gray">남은 시간: </span>
           {formattedTime}
         </p>
+      </section>
+      <section className="relative mt-6 overflow-hidden rounded-2xl border border-gray bg-white p-8 after:absolute after:top-0 after:left-0 after:h-full after:w-1 after:bg-primary">
+        <h3 className="sr-only">음성 인식 결과</h3>
+        <p className="text-xl font-bold">나의 답변</p>
+        <div className="mt-4 rounded-md">
+          {isRecordSubmitting ? (
+            <p className="text-center text-dark-gray">음성 인식 중...</p>
+          ) : answer ? (
+            <p>{answer}</p>
+          ) : (
+            <p className="text-center text-dark-gray">
+              녹음을 제출하면 인식된 텍스트가 여기에 표시됩니다.
+            </p>
+          )}
+        </div>
       </section>
     </div>
   );
