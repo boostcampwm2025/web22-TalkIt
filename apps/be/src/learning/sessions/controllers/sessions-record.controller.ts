@@ -10,7 +10,13 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
-import { RecordSessionAnswerDto } from '../dto/record-session-answer.dto';
+import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
+import { zodSchemaToOpenAPI } from '@/common/utils/zod-to-openapi.util';
+
+import {
+  type RecordSessionAnswerDto,
+  RecordSessionAnswerSchema,
+} from '../schemas/record-session-answer.schema';
 import { SessionsRecordService } from '../services/sessions-record.service';
 
 @ApiTags('Learning - Sessions')
@@ -26,7 +32,6 @@ export class SessionsRecordController {
   @ApiParam({
     name: 'sessionId',
     type: Number,
-    description: '답변을 기록할 세션 ID',
     example: 1,
   })
   @ApiConsumes('multipart/form-data')
@@ -34,10 +39,7 @@ export class SessionsRecordController {
     schema: {
       type: 'object',
       properties: {
-        questionId: {
-          type: 'string',
-          example: '101',
-        },
+        ...zodSchemaToOpenAPI(RecordSessionAnswerSchema).properties,
         audioFile: {
           type: 'string',
           format: 'binary',
@@ -49,19 +51,10 @@ export class SessionsRecordController {
   @UseInterceptors(FileInterceptor('audioFile'))
   async recordAnswer(
     @Param('sessionId') sessionId: string,
-    @Body() dto: RecordSessionAnswerDto,
+    @Body(new ZodValidationPipe(RecordSessionAnswerSchema))
+    dto: RecordSessionAnswerDto,
     @UploadedFile() audioFile?: Express.Multer.File,
   ) {
-    // 디버깅용 -> 추후 삭제
-    console.log('컨트롤러 진입');
-    console.log({
-      sessionId,
-      dto,
-      audioFileExists: !!audioFile,
-      audioFileSize: audioFile?.size,
-      audioFileType: audioFile?.mimetype,
-    });
-
     if (!audioFile) {
       throw new BadRequestException({
         code: 'AUDIO_FILE_REQUIRED',
