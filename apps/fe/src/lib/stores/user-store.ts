@@ -2,7 +2,7 @@ import type { UserInfoResponseDto } from '@repo/shared/types/user';
 
 import { create } from 'zustand';
 
-const MOCK_USER_DATA: UserInfoResponseDto = {
+const mockUserData: UserInfoResponseDto = {
   profile: {
     nickname: '코딩하는토끼',
     profileImage: 'https://s3.ap-northeast-2.amazonaws.com/talkit/profiles/user_123.png',
@@ -26,7 +26,8 @@ const MOCK_USER_DATA: UserInfoResponseDto = {
   remainingCredit: 9,
 };
 
-// const INITIAL_USER_DATA: UserInfoResponseDto = {
+// todo: 추후 mock 데이터 제거 후 아래 null로 초기 상태값 세팅하도록 변경하면 됩니다.
+// const initialUserData: UserInfoResponseDto = {
 //   profile: null,
 //   progression: null,
 //   studyStats: null,
@@ -40,8 +41,9 @@ type UserState = {
   updateCredit: (amount: number) => void;
 };
 
+// 사용자 정보 상태 전역 상태 store
 export const useUserStore = create<UserState>((set) => ({
-  userInfo: MOCK_USER_DATA,
+  userInfo: mockUserData,
 
   setUserInfo: (info) => set({ userInfo: info }),
 
