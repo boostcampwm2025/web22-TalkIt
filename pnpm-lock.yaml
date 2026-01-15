@@ -189,6 +189,9 @@ importers:
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.0)
+      pretendard:
+        specifier: ^1.3.9
+        version: 1.3.9
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -7582,6 +7585,9 @@ packages:
       }
     engines: { node: '>= 0.8.0' }
 
+  pretendard@1.3.9:
+    resolution: {integrity: sha512-PaQAADyLY5v4kYFwkpSJHbSSYIkiriY/1xXw75TKoZ9UQQqeU+tvP05yTdZAWibiIYoo8ZKtRv8PM7w0IaywSw==}
+
   prettier-linter-helpers@1.0.0:
     resolution:
       {
@@ -14229,6 +14235,8 @@ snapshots:
       source-map-js: 1.2.1
 
   prelude-ls@1.2.1: {}
+
+  pretendard@1.3.9: {}
 
   prettier-linter-helpers@1.0.0:
     dependencies:
