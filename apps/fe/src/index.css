@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-
 @theme {
   --color-primary: #137fec;
   --color-black: #111418;
@@ -28,10 +27,29 @@
 
 @theme {
   --spacing-sidebar-open: 280px;
-  --spacing-sidebar-close: 60px;
+  --spacing-sidebar-close: 72px;
 }
 
 html {
   color: var(--color-black);
   background-color: var(--color-pale-blue);
+}
+
+body {
+  font-family:
+    'Pretendard Variable',
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    Roboto,
+    'Helvetica Neue',
+    'Segoe UI',
+    'Apple SD Gothic Neo',
+    'Noto Sans KR',
+    'Malgun Gothic',
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Segoe UI Symbol',
+    sans-serif;
 }
