@@ -6,8 +6,6 @@ import { QuestionProviderService } from '@/modules/question-provider/application
 import { SessionsRepository } from '../sessions.repository';
 import { GuideBuilderService } from './guide-builder.service';
 
-
-
 @Injectable()
 export class SessionsService {
   constructor(
@@ -20,11 +18,12 @@ export class SessionsService {
     /**
      * 이미 진행 중인 세션 체크
      */
-    const activeSession = await this.sessionsRepository.findActiveSessionByUserId(userId);
+    // NOTE: 로그인 기능 추가하고 주석 해제
+    // const activeSession = await this.sessionsRepository.findActiveSessionByUserId(userId);
 
-    if (activeSession) {
-      throw new BadRequestException('이미 진행 중인 학습 세션이 있습니다.');
-    }
+    // if (activeSession) {
+    //   throw new BadRequestException('이미 진행 중인 학습 세션이 있습니다.');
+    // }
 
     /**
      * 첫 질문 조회 (mock)
