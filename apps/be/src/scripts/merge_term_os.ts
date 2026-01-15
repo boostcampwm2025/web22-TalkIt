@@ -33,7 +33,7 @@ function isBlueprintLike(obj: any): obj is {
 
 async function main() {
   const version = process.env.QF_VERSION || 'v2';
-  const domain = (process.env.QF_MERGE_DOMAIN || 'OS') as Domain;
+  const domain = (process.env.QF_MERGE_DOMAIN || 'Network') as Domain;
   const baseDir = path.resolve(process.cwd(), 'output', 'question-bank', version);
   const termDir = path.join(baseDir, 'term');
   const outPath =

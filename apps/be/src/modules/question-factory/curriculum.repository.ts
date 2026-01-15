@@ -39,12 +39,26 @@ export class CurriculumRepository {
       `curriculum.${version}.json`,
     );
     const filePath = explicitPath ? path.resolve(process.cwd(), explicitPath) : defaultPath;
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== 'object') {
-      throw new Error('invalid_curriculum_format');
-    }
-    this.data = parsed as CurriculumRoot;
+
+    // TEMP: curriculum file usage is paused; bypass file read
+    // const raw = fs.readFileSync(filePath, 'utf-8');
+    // const parsed = JSON.parse(raw) as unknown;
+    // if (!parsed || typeof parsed !== 'object') {
+    //   throw new Error('invalid_curriculum_format');
+    // }
+    // this.data = parsed as CurriculumRoot;
+
+    // Fallback minimal dataset to keep app running
+    this.data = {
+      version: 'stub',
+      language: 'ko',
+      defaults: {
+        recommended_time_limit_sec: 60,
+        default_n_per_cell: 1,
+        prompt_language: 'ko',
+      },
+      domains: {},
+    };
   }
 
   getDefaults() {

@@ -18,9 +18,10 @@ export class AdminService {
   private readonly url: string;
 
   constructor(private readonly config: ConfigService) {
+    // Initialize URL before building queue options
+    this.url = this.config.get<string>('REDIS_URL') || 'redis://127.0.0.1:6379';
     const opts = this.buildQueueOptions();
     this.queue = new Queue('question-gen', opts);
-    this.url = this.config.get<string>('REDIS_URL') || 'redis://127.0.0.1:6379';
   }
 
   private buildQueueOptions(): { connection: { host: string; port: number; password?: string } } {
