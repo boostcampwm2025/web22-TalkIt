@@ -188,7 +188,10 @@ importers:
         version: 1.147.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@tanstack/react-router-devtools':
         specifier: ^1.149.0
-        version: 1.149.3(@tanstack/react-router@1.149.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@tanstack/router-core@1.149.3)(csstype@3.2.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 1.149.0(@tanstack/react-router@1.147.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@tanstack/router-core@1.147.1)(csstype@3.2.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      axios:
+        specifier: ^1.13.2
+        version: 1.13.2
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.0)
