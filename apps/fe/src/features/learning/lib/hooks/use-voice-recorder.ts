@@ -4,9 +4,11 @@ import { useTimer } from './use-timer';
 
 type UseVoiceRecorderProps = {
   timeLimit: number;
+  onRecordFinish?: (audioBlob: Blob) => void;
 };
 
 type UseVoiceRecorderReturn = {
+  stream: MediaStream | null;
   isRecording: boolean;
   remainingTime: number;
   formattedTime: string;
@@ -14,9 +16,13 @@ type UseVoiceRecorderReturn = {
   toggleRecording: () => void;
 };
 
-export const useVoiceRecorder = ({ timeLimit }: UseVoiceRecorderProps): UseVoiceRecorderReturn => {
+export const useVoiceRecorder = ({
+  timeLimit,
+  onRecordFinish,
+}: UseVoiceRecorderProps): UseVoiceRecorderReturn => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -36,8 +42,10 @@ export const useVoiceRecorder = ({ timeLimit }: UseVoiceRecorderProps): UseVoice
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setStream(mediaStream);
+
+      const mediaRecorder = new MediaRecorder(mediaStream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -52,7 +60,10 @@ export const useVoiceRecorder = ({ timeLimit }: UseVoiceRecorderProps): UseVoice
           type: mediaRecorderRef.current?.mimeType || 'audio/webm',
         });
         setAudioBlob(blob);
-        stream.getTracks().forEach((track) => track.stop());
+        onRecordFinish?.(blob);
+
+        mediaStream.getTracks().forEach((track) => track.stop());
+        setStream(null);
       };
 
       mediaRecorder.start();
@@ -80,6 +91,7 @@ export const useVoiceRecorder = ({ timeLimit }: UseVoiceRecorderProps): UseVoice
   }, []);
 
   return {
+    stream,
     isRecording,
     remainingTime,
     formattedTime,
