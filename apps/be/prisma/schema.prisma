@@ -8,7 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Domain {
+enum Category {
   OS
   NETWORK
   DB
@@ -16,14 +16,14 @@ enum Domain {
 }
 
 enum Difficulty {
-  Basic
-  Intermediate
-  Advanced
+  EAZY
+  MEDIUM
+  HARD
 }
 
 model Question {
   id           BigInt     @id @default(autoincrement())
-  domain       Domain
+  category     Category
   difficulty   Difficulty
   topicId      String
   content      String     @db.Text
@@ -32,7 +32,7 @@ model Question {
   timeLimitSec Int        @default(180)
   createdAt    DateTime   @default(now())
 
-  @@index([domain, difficulty])
-  @@index([domain, difficulty, topicId])
-  @@unique([domain, difficulty, topicId, contentHash], name: "domain_difficulty_topicId_contentHash")
+  @@index([category, difficulty])
+  @@index([category, difficulty, topicId])
+  @@unique([category, difficulty, topicId, contentHash], name: "category_difficulty_topicId_contentHash")
 }

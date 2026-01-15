@@ -32,7 +32,7 @@ async function main() {
   const cache = new QuestionPoolCacheRedis(redis);
 
   const domains = ['OS', 'NETWORK', 'DB', 'DATA_STRUCTURE'] as const;
-  const diffs = ['Basic', 'Intermediate', 'Advanced'] as const;
+  const diffs = ['EAZY', 'MEDIUM', 'HARD'] as const;
 
   // 기존 키 정리: 각 조합의 qpool 키를 명시적으로 삭제 후 재생성
   const keysToDel: string[] = [];
@@ -47,12 +47,11 @@ async function main() {
   for (const d of domains) {
     for (const k of diffs) {
       const rows = await (prisma as any).question.findMany({
-        where: { domain: d, difficulty: k },
+        where: { category: d, difficulty: k },
         select: { id: true },
       });
       const ids = rows.map((r: any) => BigInt(r.id));
       const added = await cache.seedPool(d as any, k as any, ids);
-
       console.log(`qpool:${d}:${k} size+=${added} (total ${ids.length})`);
     }
   }

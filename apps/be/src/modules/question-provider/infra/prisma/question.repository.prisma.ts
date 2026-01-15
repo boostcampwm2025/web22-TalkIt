@@ -18,7 +18,7 @@ export class QuestionRepositoryPrisma implements QuestionRepositoryPort {
     if (!row) return null;
     return {
       id: BigInt(row.id),
-      domain: row.domain as Domain,
+      domain: row.category as Domain,
       difficulty: row.difficulty as Difficulty,
       topicId: row.topicId,
       content: row.content,
@@ -30,7 +30,7 @@ export class QuestionRepositoryPrisma implements QuestionRepositoryPort {
 
   async findIdsByDomainDifficulty(domain: Domain, difficulty: Difficulty): Promise<bigint[]> {
     const rows = await (this.prisma as any).question.findMany({
-      where: { domain, difficulty },
+      where: { category: domain, difficulty },
       select: { id: true },
     });
     return rows.map((r: any) => BigInt(r.id));

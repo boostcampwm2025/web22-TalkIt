@@ -96,7 +96,7 @@ curl -X POST http://localhost:3000/questions/pick \
 {
   "questionId": "123",
   "domain": "OS",
-  "difficulty": "Advanced",
+  "difficulty": "HARD",
   "topicId": "Buffer Cache",
   "content": "...",
   "mustInclude": ["..."],
@@ -104,7 +104,7 @@ curl -X POST http://localhost:3000/questions/pick \
 }
 ```
 
-503(Service Unavailable)이면 Redis 풀 미워밍 또는 Redis 연결 문제 가능성이 큽니다.
+503(Service Unavailable)이면 해당 조합의 qpool이 비었거나(데이터 없음) Redis 연결/워밍업 문제일 수 있습니다.
 
 ## 7. 유효성 검사(ValidationPipe)
 

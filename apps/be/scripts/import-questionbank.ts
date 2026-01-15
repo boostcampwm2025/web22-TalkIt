@@ -29,11 +29,12 @@ function parseArgs() {
   return res;
 }
 
-function mapDifficulty(val: string): 'Basic' | 'Intermediate' | 'Advanced' | null {
+// DB 저장용 난이도 매핑: Basic/Intermediate/Advanced -> EAZY/MEDIUM/HARD
+function mapDifficulty(val: string): 'EAZY' | 'MEDIUM' | 'HARD' | null {
   if (!val) return null;
-  if (/^basic$/i.test(val)) return 'Basic';
-  if (/^intermediate$/i.test(val)) return 'Intermediate';
-  if (/^advanced$/i.test(val)) return 'Advanced';
+  if (/^basic$/i.test(val)) return 'EAZY';
+  if (/^intermediate$/i.test(val)) return 'MEDIUM';
+  if (/^advanced$/i.test(val)) return 'HARD';
   return null;
 }
 
@@ -103,13 +104,13 @@ async function main() {
     for (const item of batch) {
       try {
         const unique = {
-          domain: item.domain,
+          category: item.category,
           difficulty: item.difficulty,
           topicId: item.topicId,
           contentHash: item.contentHash,
         };
         const res = await (prisma as any).question.upsert({
-          where: { domain_difficulty_topicId_contentHash: unique },
+          where: { category_difficulty_topicId_contentHash: unique },
           create: {
             ...unique,
             content: item.content,
@@ -145,7 +146,8 @@ async function main() {
         continue;
       }
       const contentHash = createHash('sha256').update(content, 'utf8').digest('hex');
-      batch.push({ domain, difficulty, topicId, content, contentHash, mustInclude });
+      // DB 필드명은 category
+      batch.push({ category: domain, difficulty, topicId, content, contentHash, mustInclude });
       if (batch.length >= BATCH_SIZE) await flush();
     } catch (e) {
       failed++;

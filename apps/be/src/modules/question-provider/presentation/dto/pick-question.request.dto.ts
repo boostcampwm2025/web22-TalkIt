@@ -9,9 +9,9 @@ export enum Domain {
 }
 
 export enum Difficulty {
-  Basic = 'Basic',
-  Intermediate = 'Intermediate',
-  Advanced = 'Advanced',
+  EAZY = 'EAZY',
+  MEDIUM = 'MEDIUM',
+  HARD = 'HARD',
 }
 
 // 클라이언트에서 질문을 요청할 때 사용하는 DTO
