@@ -24,8 +24,6 @@ export class ObjectStorageProvider {
     });
   }
 
-  // 스토리지 파일 업로드는 어차피 음성파일을 저장하지 않으므로,
-  // 클로바 스피치(장문인식)을 위한 역할로 임시 저장 -> STT 변환 후 삭제
   // key 저장 포맷은 temp/stt/{yyyy}/{mm}/{dd}/{uuid}-{filename}.wav
   async upload(buffer: Buffer, contentType: string, filename = 'audio.wav'): Promise<string> {
     const now = new Date();
@@ -51,6 +49,7 @@ export class ObjectStorageProvider {
   }
 
   // STT 파일 삭제
+  // 스토리지 파일 업로드는 어차피 음성파일을 저장하지 않으므로, STT 변환 후 삭제
   async deleteObject(key: string): Promise<void> {
     try {
       await this.client.send(
