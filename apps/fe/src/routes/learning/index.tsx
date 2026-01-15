@@ -152,7 +152,7 @@ const LearningPage = () => {
         {/* 주제 선택 */}
         <section>
           <div className="mb-4 flex items-center gap-2 md:mb-6">
-            <ListFilter className="h-5 w-5 text-primary" />
+            <ListFilter className="h-5 w-5 text-primary" aria-hidden="true" />
             <h2 className="text-lg font-bold md:text-xl">학습 주제 선택 (Learning Path)</h2>
           </div>
 
@@ -162,7 +162,7 @@ const LearningPage = () => {
               return (
                 <li key={topic.id} className="min-w-55 md:min-w-0">
                   <label
-                    className={`group block h-full cursor-pointer rounded-xl border-2 p-4 transition-all active:scale-95 md:active:scale-100 ${
+                    className={`group block h-full cursor-pointer rounded-xl border-2 p-4 transition-all outline-none focus-within:bg-white active:scale-95 md:active:scale-100 ${
                       isSelected
                         ? 'border-primary bg-white shadow-md'
                         : 'border-transparent bg-transparent hover:border-gray hover:bg-white'
@@ -193,7 +193,8 @@ const LearningPage = () => {
 
         {/* 난이도 설정 */}
         <section
-          className={`rounded-2xl border border-gray bg-white p-5 shadow-sm transition-all duration-700 ease-in-out md:p-8 ${selectedTopic !== null ? `translate-y-0 opacity-100` : `pointer-events-none translate-y-10 opacity-0`}`}
+          className={`rounded-2xl border border-gray bg-white p-5 shadow-sm transition-all duration-700 ease-in-out md:p-8 ${selectedTopic !== null ? `visible translate-y-0 opacity-100` : `pointer-events-none invisible translate-y-10 opacity-0`}`}
+          aria-hidden={selectedTopic === null}
         >
           <h2 className="mb-4 text-lg font-bold md:text-xl">난이도 설정</h2>
 
@@ -203,7 +204,7 @@ const LearningPage = () => {
               return (
                 <li key={diff.value} className="flex-1">
                   <label
-                    className={`flex cursor-pointer items-center justify-center rounded-md py-3 text-sm transition-all active:scale-95 md:py-2 md:active:scale-100 ${
+                    className={`flex cursor-pointer items-center justify-center rounded-md py-3 text-sm transition-all outline-none focus-within:bg-white active:scale-95 md:py-2 md:active:scale-100 ${
                       isSelected
                         ? 'bg-white font-bold text-black shadow-sm'
                         : 'font-medium text-dark-gray hover:text-black'
@@ -234,7 +235,8 @@ const LearningPage = () => {
 
         {/* 학습 시작 버튼 섹션 */}
         <section
-          className={`relative flex transform flex-col items-center justify-between overflow-hidden rounded-2xl bg-black p-6 text-white transition-all duration-700 ease-in-out md:flex-row md:p-8 ${selectedTopic !== null && selectedDifficulty !== null ? `translate-y-0 opacity-100` : `pointer-events-none translate-y-10 opacity-0`}`}
+          className={`relative flex transform flex-col items-center justify-between overflow-hidden rounded-2xl bg-black p-6 text-white transition-all duration-700 ease-in-out md:flex-row md:p-8 ${selectedTopic !== null && selectedDifficulty !== null ? `visible translate-y-0 opacity-100` : `pointer-events-none invisible translate-y-10 opacity-0`}`}
+          aria-hidden={!selectedTopic || !selectedDifficulty}
         >
           <div className="pointer-events-none absolute top-0 left-0 h-full w-full bg-linear-to-r from-primary/20 to-transparent"></div>
 
@@ -244,15 +246,14 @@ const LearningPage = () => {
             </span>
             <p className="mb-1 text-lg font-bold md:text-xl">오늘의 AI 튜터가 준비되었습니다.</p>
             <p className="text-sm text-gray">
-              선택하신{' '}
-              <span className="font-bold text-primary">
+              선택하신
+              <span className="mx-1 font-bold text-primary">
                 {topicOptions.find((t) => t.id === selectedTopic)?.label}
-              </span>{' '}
+              </span>
               주제 /
-              <span className="font-bold text-primary">
-                {' '}
+              <span className="mx-1 font-bold text-primary">
                 {difficultyOptions.find((d) => d.value === selectedDifficulty)?.label}
-              </span>{' '}
+              </span>
               난이도
             </p>
           </div>
