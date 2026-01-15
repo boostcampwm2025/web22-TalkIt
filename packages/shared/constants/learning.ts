@@ -1,8 +1,8 @@
 export const QUESTION_CATEGORY = {
   OS: 'OS',
   NETWORK: 'NETWORK',
-  DATABASE: 'DATABASE',
-  STRUCTURE: 'STRUCTURE',
+  DATABASE: 'DB',
+  STRUCTURE: 'DATA_STRUCTURE',
 } as const;
 
 export type QuestionCategory = (typeof QUESTION_CATEGORY)[keyof typeof QUESTION_CATEGORY];

@@ -3,7 +3,7 @@ import { type QuestionDifficulty, type QuestionCategory } from '../constants/lea
 export type Question = {
   questionId: number;
   content: string;
-  guide: Array<string>;
+  guide: string;
   category: QuestionCategory;
   difficulty: QuestionDifficulty;
   timeLimit: number; // seconds
