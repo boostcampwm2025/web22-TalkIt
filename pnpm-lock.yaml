@@ -182,7 +182,7 @@ importers:
         version: 1.149.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@tanstack/react-router-devtools':
         specifier: ^1.149.0
-        version: 1.149.0(@tanstack/react-router@1.147.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@tanstack/router-core@1.147.1)(csstype@3.2.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 1.149.3(@tanstack/react-router@1.149.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@tanstack/router-core@1.149.3)(csstype@3.2.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       axios:
         specifier: ^1.13.2
         version: 1.13.2
@@ -7343,7 +7343,7 @@ snapshots:
       '@tanstack/router-generator': 1.149.3
       '@tanstack/router-utils': 1.143.11
       '@tanstack/virtual-file-routes': 1.145.4
-      babel-dead-code-elimination: 1.0.12
+      babel-dead-code-elimination: 1.0.11
       chokidar: 3.6.0
       unplugin: 2.3.11
       zod: 3.25.76
