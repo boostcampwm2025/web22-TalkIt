@@ -6,7 +6,7 @@ export enum Domain {
 }
 
 export enum Difficulty {
-  EASY = 'EASY',
+  EAZY = 'EAZY',
   MEDIUM = 'MEDIUM',
   HARD = 'HARD',
 }
