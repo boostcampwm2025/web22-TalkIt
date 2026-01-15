@@ -1,10 +1,10 @@
 import { useState } from 'react';
 
-import { QUESTION_DIFFICULTY_CONFIG, QUESTION_TOPIC_CONFIG } from '@/constants/question';
+import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constants/question';
 import { useProgressAnimation } from '@/features/learning/lib/hooks/use-progress-animation';
 import { useStartSession } from '@/features/learning/lib/hooks/use-start-session';
 import { useUserStore } from '@/lib/stores/user-store';
-import { type QuestionDifficulty, type QuestionTopic } from '@repo/shared/constants/learning';
+import { type QuestionCategory, type QuestionDifficulty } from '@repo/shared/constants/learning';
 import { Link, createFileRoute } from '@tanstack/react-router';
 
 import { Flame, ListFilter, Mic, TrendingUp } from 'lucide-react';
@@ -22,10 +22,10 @@ const LearningPage = () => {
     100,
   );
 
-  const [selectedTopic, setSelectedTopic] = useState<QuestionTopic | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<QuestionCategory | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<QuestionDifficulty | null>(null);
 
-  const topicOptions = Object.values(QUESTION_TOPIC_CONFIG);
+  const topicOptions = Object.values(QUESTION_CATEGORY_CONFIG);
   const difficultyOptions = Object.values(QUESTION_DIFFICULTY_CONFIG);
 
   const handleStartClick = async () => {

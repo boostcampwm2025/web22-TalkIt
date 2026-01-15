@@ -1,40 +1,40 @@
 import {
+  QUESTION_CATEGORY,
   QUESTION_DIFFICULTY,
-  QUESTION_TOPIC,
+  type QuestionCategory,
   type QuestionDifficulty,
-  type QuestionTopic,
 } from '@repo/shared/constants/learning';
 
 import { Cpu, Database, type LucideIcon, Share2 } from 'lucide-react';
 
 type TopicConfig = {
-  id: QuestionTopic;
+  id: QuestionCategory;
   label: string;
   description: string;
   Icon: LucideIcon;
 };
 
-export const QUESTION_TOPIC_CONFIG: Record<QuestionTopic, TopicConfig> = {
-  [QUESTION_TOPIC.NETWORK]: {
-    id: QUESTION_TOPIC.NETWORK,
+export const QUESTION_CATEGORY_CONFIG: Record<QuestionCategory, TopicConfig> = {
+  [QUESTION_CATEGORY.NETWORK]: {
+    id: QUESTION_CATEGORY.NETWORK,
     label: '네트워크',
     description: 'HTTP, TCP/IP, OSI 7계층 등',
     Icon: Share2,
   },
-  [QUESTION_TOPIC.OS]: {
-    id: QUESTION_TOPIC.OS,
+  [QUESTION_CATEGORY.OS]: {
+    id: QUESTION_CATEGORY.OS,
     label: '운영체제',
     description: '프로세스, 스레드, 메모리 관리',
     Icon: Cpu,
   },
-  [QUESTION_TOPIC.DATABASE]: {
-    id: QUESTION_TOPIC.DATABASE,
+  [QUESTION_CATEGORY.DATABASE]: {
+    id: QUESTION_CATEGORY.DATABASE,
     label: '데이터베이스',
     description: 'SQL, 트랜잭션, 인덱싱 등',
     Icon: Database,
   },
-  [QUESTION_TOPIC.STRUCTURE]: {
-    id: QUESTION_TOPIC.STRUCTURE,
+  [QUESTION_CATEGORY.STRUCTURE]: {
+    id: QUESTION_CATEGORY.STRUCTURE,
     label: '자료구조',
     description: '스택, 큐, 트리, 그래프 등',
     Icon: Share2,

@@ -21,7 +21,7 @@ const mockQuestionResponse: CreateQuestionResponseDTO = {
       'Concurrency',
       'Isolation Level Tuning',
     ],
-    topic: 'DATABASE',
+    category: 'DATABASE',
     difficulty: 'MEDIUM',
     timeLimit: 300,
   },
