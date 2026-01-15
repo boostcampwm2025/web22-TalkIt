@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
-import { CreateSessionDto } from '../dto/create-session.dto';
+import { CreateSessionDto } from '@/learning/sessions/schemas/create-session.schema';
+
 import { SessionsRepository } from '../sessions.repository';
 import { QuestionMockService } from './question-mock.service';
 
@@ -11,7 +12,7 @@ export class SessionsService {
     private readonly questionService: QuestionMockService,
   ) {}
 
-  async createSession(userId: bigint, dto: CreateSessionDto) {
+  async createSession(userId: number, dto: CreateSessionDto) {
     /**
      * 이미 진행 중인 세션 체크
      */
@@ -43,7 +44,7 @@ export class SessionsService {
      * 응답 (bigint → string/number 변환)
      */
     return {
-      sessionId: session.id.toString(),
+      sessionId: session.id,
       currentQuestionCount: 1,
       remainedCredit: 20,
       question: {
