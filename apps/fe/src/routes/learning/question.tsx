@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { submitRecordApi } from '@/apis/learning-api';
-import { QUESTION_DIFFICULTY_KR, QUESTION_TOPIC_KR } from '@/constants/question';
+import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constants/question';
 import PulsingMicButton from '@/features/learning/components/pulsing-mic-button';
 import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
 import useLearningSession from '@/lib/stores/learning-session';
@@ -49,7 +49,7 @@ const QuestionPage = () => {
 
   useEffect(() => {
     if (!question) {
-      navigate({ to: '/' });
+      navigate({ to: '/learning' });
     }
   }, [question, navigate]);
 
@@ -58,12 +58,17 @@ const QuestionPage = () => {
   return (
     <div className="mx-auto max-w-250 p-6 sm:p-10">
       <div className="flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-3 transition-colors hover:text-slate-800">
+        <Link
+          to="/learning"
+          className="flex items-center gap-3 transition-colors hover:text-slate-800"
+        >
           <ArrowLeft size={20} />
           <div className="flex flex-col">
-            <p className="text-base font-bold">{QUESTION_TOPIC_KR[question.topic]}</p>
+            <p className="text-base font-bold">
+              {QUESTION_CATEGORY_CONFIG[question.category].label}
+            </p>
             <span className="text-xs text-dark-gray">
-              {QUESTION_DIFFICULTY_KR[question.difficulty]}
+              {QUESTION_DIFFICULTY_CONFIG[question.difficulty].label}
             </span>
           </div>
         </Link>
@@ -81,9 +86,8 @@ const QuestionPage = () => {
         <h2 className="text-2xl font-black break-keep sm:text-4xl">{question.content}</h2>
         <div className="break-keep text-dark-gray sm:text-lg">
           <div className="flex flex-wrap justify-center [&>span:not(:first-child)]:after:content-[',_']">
-            {question.guide.map((keyword) => (
-              <span key={keyword}>{keyword}</span>
-            ))}
+            <span>{question.guide}</span>
+
             <p className="pl-2">위 키워드를 중심으로 답변해보세요.</p>
           </div>
         </div>

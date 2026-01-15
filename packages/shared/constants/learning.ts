@@ -1,11 +1,11 @@
-export const QUESTION_TOPIC = {
+export const QUESTION_CATEGORY = {
   OS: 'OS',
   NETWORK: 'NETWORK',
-  DATABASE: 'DATABASE',
-  STRUCTURE: 'STRUCTURE',
+  DATABASE: 'DB',
+  STRUCTURE: 'DATA_STRUCTURE',
 } as const;
 
-export type QuestionTopic = (typeof QUESTION_TOPIC)[keyof typeof QUESTION_TOPIC];
+export type QuestionCategory = (typeof QUESTION_CATEGORY)[keyof typeof QUESTION_CATEGORY];
 
 export const QUESTION_DIFFICULTY = {
   EASY: 'EASY',

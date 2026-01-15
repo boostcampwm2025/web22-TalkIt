@@ -1,10 +1,10 @@
-import { type QuestionDifficulty, type QuestionTopic } from '../constants/learning';
+import { type QuestionDifficulty, type QuestionCategory } from '../constants/learning';
 
 export type Question = {
   questionId: number;
   content: string;
-  guide: Array<string>;
-  topic: QuestionTopic;
+  guide: string;
+  category: QuestionCategory;
   difficulty: QuestionDifficulty;
   timeLimit: number; // seconds
 };
