@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Category {
+  OS
+  NETWORK
+  DB
+  DATA_STRUCTURE
+}
+
+enum Difficulty {
+  EAZY
+  MEDIUM
+  HARD
+}
+
+// =====================================================
+// 1. 사용자 및 인증 (User & Auth)
+// =====================================================
+
+model User {
+  id              Int      @id @default(autoincrement())
+  email           String?  @unique
+  nickname        String   @db.VarChar(50)
+  bio             String?  @db.VarChar(200)
+  profileImageUrl String?  @map("profile_image_url") @db.VarChar(500)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  oauthAccounts UserOAuth[]
+  creditHistory UserCredit[]
+  stats         UserStats?
+  sessions      Session[]
+  answers       UserAnswer[]
+  badges        UserBadge[]
+
+  @@map("users")
+}
+
+model UserOAuth {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  provider       String   @db.VarChar(20)
+  providerUserId String   @map("provider_user_id") @db.VarChar(255)
+  passwordHash   String?  @map("password_hash") @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("user_oauth")
+}
+
+model UserCredit {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  amount    Int
+  reason    String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_credits")
+}
+
+model UserStats {
+  userId               Int      @id @map("user_id")
+  level                Int      @default(1)
+  currentXp            Int      @default(0) @map("current_xp")
+  streakDays           Int      @default(0) @map("streak_days")
+  totalStudyTimeSec    Int      @default(0) @map("total_study_time_sec")
+  totalSolvedQuestions Int      @default(0) @map("total_solved_questions")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_stats")
+}
+
+// =====================================================
+// 2. 학습 콘텐츠 (Content)
+// =====================================================
+
+model Question {
+  id           Int     @id @default(autoincrement())
+  category     Category
+  difficulty   Difficulty
+  topicId      String
+  content      String     @db.Text
+  contentHash  String     @db.Char(64)
+  mustInclude  Json
+  timeLimitSec Int        @default(180)
+  createdAt    DateTime   @default(now())
+
+  rubricItems  QuestionRubricItem[]
+  answers      UserAnswer[]
+
+  @@index([category, difficulty])
+  @@index([category, difficulty, topicId])
+  @@unique([category, difficulty, topicId, contentHash], name: "category_difficulty_topicId_contentHash")
+}
+
+model QuestionRubricItem {
+  id           Int    @id @default(autoincrement())
+  questionId   Int    @map("question_id")
+  keywordsText String @map("keywords_text") @db.Text
+  weight       Float  @db.Float
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@map("question_rubric_items")
+}
+
+// =====================================================
+// 3. 세션 (Session)
+// =====================================================
+
+model Session {
+  id                   Int      @id @default(autoincrement())
+  userId               Int      @map("user_id")
+  status               String   @db.VarChar(20)
+  totalScore           Int      @default(0) @map("total_score")
+  totalTimeSec         Int      @default(0) @map("total_time_sec")
+  gainedXp             Int      @default(0) @map("gained_xp")
+  currentQuestionCount Int      @default(0) @map("current_question_count")
+  category             String   @db.VarChar(50)
+  difficulty           String   @db.VarChar(20)
+  startedAt            DateTime @default(now()) @map("started_at")
+  completedAt          DateTime? @map("completed_at")
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers UserAnswer[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("sessions")
+}
+
+// =====================================================
+// 4. 학습 기록 (Activity)
+// =====================================================
+
+model UserAnswer {
+  id           Int      @id @default(autoincrement()) @map("answer_id")
+  userId       Int      @map("user_id")
+  questionId   Int      @map("question_id")
+  sessionId    Int      @map("session_id")
+  answerText   String   @map("answer_text") @db.Text
+  timeSpentSec Int      @map("time_spent_sec")
+  overallScore Int      @map("overall_score")
+  feedbackJson Json     @map("feedback_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  session  Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([questionId])
+  @@index([sessionId])
+  @@map("user_answers")
+}
+
+// =====================================================
+// 5. 게이미피케이션 (Gamification)
+// =====================================================
+
+model Badge {
+  id          Int    @id @default(autoincrement())
+  name        String @db.VarChar(100)
+  description String @db.VarChar(255)
+  condition   String @db.VarChar(255)
+  rewardXp    Int    @map("reward_xp")
+  iconUrl     String @map("icon_url") @db.VarChar(500)
+  color       String @db.VarChar(20)
+
+  userBadges UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  badgeId   Int      @map("badge_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+  @@map("user_badges")
+}
+
+model Xp {
+  level      Int @id
+  requiredXp Int @map("required_xp")
+
+  @@map("xp")
+}
+
