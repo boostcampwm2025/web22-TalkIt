@@ -1,9 +1,9 @@
-import { Difficulty, Domain } from '../../presentation/dto/pick-question.request.dto';
+import { Difficulty, Domain } from '@/common/enums/learning.enum';
 
 // Redis 접근 포트: 질문 풀 관리용 SET 조작
 export interface QuestionPoolCachePort {
-  getRandomId(domain: Domain, difficulty: Difficulty): Promise<bigint | null>;
-  seedPool(domain: Domain, difficulty: Difficulty, ids: bigint[]): Promise<number>;
+  getRandomId(domain: Domain, difficulty: Difficulty): Promise<number | null>;
+  seedPool(domain: Domain, difficulty: Difficulty, ids: number[]): Promise<number>;
   clearAllPools(): Promise<void>;
 }
 

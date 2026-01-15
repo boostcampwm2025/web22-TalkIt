@@ -1,11 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 
+import { Difficulty, Domain } from '@/common/enums/learning.enum';
+
 import { PickOptions } from '../domain/strategy/question-pick-strategy';
 import { QUESTION_PICK_STRATEGY } from '../domain/strategy/question-pick-strategy';
 import type { QuestionPickStrategy } from '../domain/strategy/question-pick-strategy';
 import { QUESTION_REPOSITORY } from '../infra/ports/question.repository';
 import type { QuestionRepositoryPort } from '../infra/ports/question.repository';
-import { Difficulty, Domain } from '../presentation/dto/pick-question.request.dto';
 
 // 핵심 서비스: 전략을 통해 ID 선택 → DB 조회 → DTO로 반환하는 응집 로직
 @Injectable()

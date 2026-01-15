@@ -1,13 +1,10 @@
-import { LearningCategory } from '@/common/enums/learning-category.enum';
-import { LearningDifficulty } from '@/common/enums/learning-difficulty.enum';
+import { Difficulty, Domain } from '@/common/enums/learning.enum';
 
 import { z } from 'zod';
 
 export const CreateSessionSchema = z.object({
-  category: z.enum(Object.values(LearningCategory) as [LearningCategory, ...LearningCategory[]]),
-  difficulty: z.enum(
-    Object.values(LearningDifficulty) as [LearningDifficulty, ...LearningDifficulty[]],
-  ),
+  category: z.enum(Object.values(Domain) as [Domain, ...Domain[]]),
+  difficulty: z.enum(Object.values(Difficulty) as [Difficulty, ...Difficulty[]]),
 });
 
 export type CreateSessionDto = z.infer<typeof CreateSessionSchema>;

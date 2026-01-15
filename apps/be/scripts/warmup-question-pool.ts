@@ -50,7 +50,7 @@ async function main() {
         where: { category: d, difficulty: k },
         select: { id: true },
       });
-      const ids = rows.map((r: any) => BigInt(r.id));
+      const ids = rows.map((r: any) => r.id);
       const added = await cache.seedPool(d as any, k as any, ids);
       console.log(`qpool:${d}:${k} size+=${added} (total ${ids.length})`);
     }

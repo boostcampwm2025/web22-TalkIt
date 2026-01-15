@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import { Difficulty, Domain } from '../../presentation/dto/pick-question.request.dto';
+import { Difficulty, Domain } from '@/common/enums/learning.enum';
+
 import { QuestionPoolCachePort } from '../ports/question-pool.cache';
 import { REDIS_CLIENT } from './redis.provider';
 
@@ -13,7 +14,7 @@ export class QuestionPoolCacheRedis implements QuestionPoolCachePort {
     return `qpool:${domain}:${difficulty}`;
   }
 
-  async getRandomId(domain: Domain, difficulty: Difficulty): Promise<bigint | null> {
+  async getRandomId(domain: Domain, difficulty: Difficulty): Promise<number | null> {
     const key = this.key(domain, difficulty);
     // 호환 처리: ioredis는 `srandmember`, node-redis v4는 `sRandMember`
     let idStr: string | null = null;
@@ -25,13 +26,13 @@ export class QuestionPoolCacheRedis implements QuestionPoolCachePort {
     }
     if (!idStr) return null;
     try {
-      return BigInt(idStr);
+      return Number(idStr);
     } catch {
       return null;
     }
   }
 
-  async seedPool(domain: Domain, difficulty: Difficulty, ids: bigint[]): Promise<number> {
+  async seedPool(domain: Domain, difficulty: Difficulty, ids: number[]): Promise<number> {
     const key = this.key(domain, difficulty);
     if (!ids.length) return 0;
     const members = ids.map((b) => b.toString());
