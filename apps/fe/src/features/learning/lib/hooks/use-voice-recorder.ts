@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useTimer } from './use-timer';
+
 type UseVoiceRecorderProps = {
   timeLimit: number;
 };
@@ -14,15 +16,23 @@ type UseVoiceRecorderReturn = {
 
 export const useVoiceRecorder = ({ timeLimit }: UseVoiceRecorderProps): UseVoiceRecorderReturn => {
   const [isRecording, setIsRecording] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(timeLimit);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef<number | null>(null);
 
-  const formattedTime = `${String(Math.floor(remainingTime / 60)).padStart(2, '0')}:${String(remainingTime % 60).padStart(2, '0')}`;
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  }, []);
+
+  const { remainingTime, formattedTime } = useTimer({
+    timeLimit,
+    isActive: isRecording,
+    onTimeEnd: stopRecording,
+  });
 
   const startRecording = async () => {
     try {
@@ -53,18 +63,6 @@ export const useVoiceRecorder = ({ timeLimit }: UseVoiceRecorderProps): UseVoice
     }
   };
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-    setIsRecording(false);
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
   const toggleRecording = () => {
     if (isRecording) {
       stopRecording();
@@ -74,35 +72,8 @@ export const useVoiceRecorder = ({ timeLimit }: UseVoiceRecorderProps): UseVoice
   };
 
   useEffect(() => {
-    if (isRecording) {
-      startTimeRef.current = Date.now();
-
-      timerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current!) / 1000);
-        const remaining = timeLimit - elapsed;
-        setRemainingTime(remaining > 0 ? remaining : 0);
-
-        if (remaining <= 0) {
-          stopRecording();
-        }
-      }, 100);
-
-      return () => {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-        startTimeRef.current = null;
-      };
-    }
-  }, [isRecording, stopRecording, timeLimit]);
-
-  useEffect(() => {
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      if (mediaRecorderRef.current) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
     };
