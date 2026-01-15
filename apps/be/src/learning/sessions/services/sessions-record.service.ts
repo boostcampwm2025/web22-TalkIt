@@ -27,15 +27,10 @@ export class SessionsRecordService {
       console.log('[SessionsRecordService] 1. Starting record process');
 
       /**
-       * 타입 변환: number → bigint (데이터베이스 타입)
-       */
-      const sessionIdBigInt = BigInt(sessionId);
-
-      /**
        * 세션 존재 확인
        */
       console.log('[SessionsRecordService] 2. Checking session existence:', sessionId);
-      const session = await this.sessionsRepository.findById(sessionIdBigInt);
+      const session = await this.sessionsRepository.findById(sessionId);
 
       if (!session) {
         console.error('[SessionsRecordService] Session not found:', sessionId);
