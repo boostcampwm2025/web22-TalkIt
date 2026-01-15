@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { QUESTION_DIFFICULTY_KR, QUESTION_TOPIC_KR } from '@/constants/question';
+import { QUESTION_DIFFICULTY_CONFIG, QUESTION_TOPIC_CONFIG } from '@/constants/question';
 import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
 import useLearningSession from '@/lib/stores/learning-session';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -32,9 +32,9 @@ const QuestionPage = () => {
         <Link to="/" className="flex items-center gap-3 transition-colors hover:text-slate-800">
           <ArrowLeft size={20} />
           <div className="flex flex-col">
-            <p className="text-base font-bold">{QUESTION_TOPIC_KR[question.topic]}</p>
+            <p className="text-base font-bold">{QUESTION_TOPIC_CONFIG[question.topic].label}</p>
             <span className="text-xs text-dark-gray">
-              {QUESTION_DIFFICULTY_KR[question.difficulty]}
+              {QUESTION_DIFFICULTY_CONFIG[question.difficulty].label}
             </span>
           </div>
         </Link>
