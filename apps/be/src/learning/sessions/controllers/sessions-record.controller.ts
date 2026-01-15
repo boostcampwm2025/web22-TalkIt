@@ -10,14 +10,13 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
-import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
-import { zodSchemaToOpenAPI } from '@/common/utils/zod-to-openapi.util';
-
 import {
   type RecordSessionAnswerDto,
   RecordSessionAnswerSchema,
 } from '../schemas/record-session-answer.schema';
 import { SessionsRecordService } from '../services/sessions-record.service';
+import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
+import { zodSchemaToOpenAPI } from 'src/common/utils/zod-to-openapi.util';
 
 @ApiTags('Learning - Sessions')
 @Controller('/api/learning/sessions')

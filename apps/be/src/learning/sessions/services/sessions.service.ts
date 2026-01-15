@@ -1,16 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { CreateSessionDto } from '@/learning/sessions/schemas/create-session.schema';
+import { QuestionProviderService } from '@/modules/question-provider/application/question-provider.service';
 
 import { SessionsRepository } from '../sessions.repository';
 import { GuideBuilderService } from './guide-builder.service';
-import { QuestionMockService } from './question-mock.service';
 
 @Injectable()
 export class SessionsService {
   constructor(
     private readonly sessionsRepository: SessionsRepository,
-    private readonly questionService: QuestionMockService,
+    private readonly questionService: QuestionProviderService,
     private readonly guideBuilder: GuideBuilderService,
   ) {}
 
@@ -27,7 +27,7 @@ export class SessionsService {
     /**
      * 첫 질문 조회 (mock)
      */
-    const question = await this.questionService.getFirstQuestion(dto.category, dto.difficulty);
+    const question = await this.questionService.pickOne(dto.category, dto.difficulty);
 
     if (!question) {
       throw new BadRequestException('선택한 주제와 난이도에 해당하는 질문이 존재하지 않습니다.');
@@ -48,9 +48,6 @@ export class SessionsService {
       difficulty: dto.difficulty,
     });
 
-    /**
-     * 응답 (bigint → string/number 변환)
-     */
     return {
       sessionId: session.id,
       currentQuestionCount: 1,
@@ -59,7 +56,7 @@ export class SessionsService {
         questionId: question.questionId,
         content: question.content,
         guide,
-        category: question.domain ?? question.category,
+        category: question.domain,
         difficulty: question.difficulty,
         timeLimit: question.timeLimitSec,
       },
