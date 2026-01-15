@@ -3,6 +3,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateSessionDto } from '@/learning/sessions/schemas/create-session.schema';
 
 import { SessionsRepository } from '../sessions.repository';
+import { GuideBuilderService } from './guide-builder.service';
 import { QuestionMockService } from './question-mock.service';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class SessionsService {
   constructor(
     private readonly sessionsRepository: SessionsRepository,
     private readonly questionService: QuestionMockService,
+    private readonly guideBuilder: GuideBuilderService,
   ) {}
 
   async createSession(userId: number, dto: CreateSessionDto) {
@@ -32,6 +34,12 @@ export class SessionsService {
     }
 
     /**
+     * mustInclude 키워드를 기반으로
+     * 사용자에게 제공할 답변 가이드를 생성
+     */
+    const guide = this.guideBuilder.build(question.mustInclude);
+
+    /**
      * 세션 생성 (Repository 타입과 정확히 일치)
      */
     const session = await this.sessionsRepository.createSession({
@@ -48,12 +56,12 @@ export class SessionsService {
       currentQuestionCount: 1,
       remainedCredit: 20,
       question: {
-        questionId: question.questionId.toString(),
+        questionId: question.questionId,
         content: question.content,
-        guide: question.guide,
-        category: question.category,
+        guide,
+        category: question.domain ?? question.category,
         difficulty: question.difficulty,
-        timeLimit: question.timeLimit,
+        timeLimit: question.timeLimitSec,
       },
     };
   }
