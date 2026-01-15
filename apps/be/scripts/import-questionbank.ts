@@ -2,11 +2,13 @@
  * JSONL 질문은행을 DB로 import하는 스크립트 (Prisma)
  * 예:
  *  - local 파일: ts-node scripts/import-questionbank.ts -source local -path ./resource/os_terms_questions.jsonl
+ *  - local 디렉토리: ts-node scripts/import-questionbank.ts -source local -path ./resource
  *  - object: ts-node scripts/import-questionbank.ts -source object
  */
 import { PrismaService } from '../src/modules/question-provider/infra/prisma/prisma.service';
 import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
+import { createReadStream, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import * as readline from 'node:readline';
 import { Readable } from 'node:stream';
 
@@ -80,84 +82,109 @@ async function main() {
   const prisma = new PrismaService();
   await prisma.$connect?.();
 
-  let stream: Readable;
+  async function importFromStream(stream: Readable) {
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+    let line = 0;
+    let inserted = 0;
+    let updated = 0;
+    let failed = 0;
+    const batch: any[] = [];
+    const BATCH_SIZE = 1000;
+
+    async function flush() {
+      if (!batch.length) return;
+      for (const item of batch) {
+        try {
+          const unique = {
+            category: item.category,
+            difficulty: item.difficulty,
+            topicId: item.topicId,
+            contentHash: item.contentHash,
+          };
+          const res = await (prisma as any).question.upsert({
+            where: { category_difficulty_topicId_contentHash: unique },
+            create: {
+              ...unique,
+              content: item.content,
+              mustInclude: item.mustInclude,
+              timeLimitSec: 180,
+            },
+            update: { content: item.content, mustInclude: item.mustInclude },
+          });
+          if (res?.createdAt === res?.updatedAt || !res?.updatedAt) inserted++;
+          else updated++;
+        } catch (e) {
+          failed++;
+          console.warn('upsert failed:', (e as any)?.message);
+        }
+      }
+      batch.length = 0;
+    }
+
+    for await (const raw of rl) {
+      line++;
+      const s = String(raw).trim();
+      if (!s) continue;
+      try {
+        const j = JSON.parse(s);
+        const domain = mapDomain(j.domain);
+        const difficulty = mapDifficulty(j.concept_level);
+        const topicId = j.topic_id as string;
+        const content = j.prompt as string;
+        const mustInclude = Array.isArray(j.must_include) ? j.must_include : [];
+        if (!domain || !difficulty || !topicId || !content) {
+          failed++;
+          continue;
+        }
+        const contentHash = createHash('sha256').update(content, 'utf8').digest('hex');
+        // DB 필드명은 category
+        batch.push({ category: domain, difficulty, topicId, content, contentHash, mustInclude });
+        if (batch.length >= BATCH_SIZE) await flush();
+      } catch (e) {
+        failed++;
+        console.warn('parse failed at line', line, (e as any)?.message);
+      }
+    }
+    await flush();
+    return { line, inserted, updated, failed };
+  }
+
+  let total = { line: 0, inserted: 0, updated: 0, failed: 0 };
   if (source === 'local') {
     if (!filePath) {
       console.error('local source requires -path');
       process.exit(1);
     }
-    stream = createReadStream(filePath);
+    const stat = statSync(filePath);
+    if (stat.isDirectory()) {
+      const files = readdirSync(filePath)
+        .filter((f) => f.toLowerCase().endsWith('.jsonl'))
+        .map((f) => join(filePath, f))
+        .sort();
+      if (!files.length) {
+        console.error('No .jsonl files in directory:', filePath);
+        process.exit(1);
+      }
+      for (const f of files) {
+        console.log('Importing', f);
+        const res = await importFromStream(createReadStream(f));
+        total.line += res.line;
+        total.inserted += res.inserted;
+        total.updated += res.updated;
+        total.failed += res.failed;
+      }
+    } else {
+      const res = await importFromStream(createReadStream(filePath));
+      total = res;
+    }
   } else {
-    stream = await getObjectStream();
+    const stream = await getObjectStream();
+    total = await importFromStream(stream);
   }
 
-  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-  let line = 0;
-  let inserted = 0;
-  let updated = 0;
-  let failed = 0;
-  const batch: any[] = [];
-  const BATCH_SIZE = 1000;
-
-  async function flush() {
-    if (!batch.length) return;
-    for (const item of batch) {
-      try {
-        const unique = {
-          category: item.category,
-          difficulty: item.difficulty,
-          topicId: item.topicId,
-          contentHash: item.contentHash,
-        };
-        const res = await (prisma as any).question.upsert({
-          where: { category_difficulty_topicId_contentHash: unique },
-          create: {
-            ...unique,
-            content: item.content,
-            mustInclude: item.mustInclude,
-            timeLimitSec: 180,
-          },
-          update: { content: item.content, mustInclude: item.mustInclude },
-        });
-        if (res?.createdAt === res?.updatedAt || !res?.updatedAt) inserted++;
-        else updated++;
-      } catch (e) {
-        failed++;
-
-        console.warn('upsert failed:', (e as any)?.message);
-      }
-    }
-    batch.length = 0;
-  }
-
-  for await (const raw of rl) {
-    line++;
-    const s = String(raw).trim();
-    if (!s) continue;
-    try {
-      const j = JSON.parse(s);
-      const domain = mapDomain(j.domain);
-      const difficulty = mapDifficulty(j.concept_level);
-      const topicId = j.topic_id as string;
-      const content = j.prompt as string;
-      const mustInclude = Array.isArray(j.must_include) ? j.must_include : [];
-      if (!domain || !difficulty || !topicId || !content) {
-        failed++;
-        continue;
-      }
-      const contentHash = createHash('sha256').update(content, 'utf8').digest('hex');
-      // DB 필드명은 category
-      batch.push({ category: domain, difficulty, topicId, content, contentHash, mustInclude });
-      if (batch.length >= BATCH_SIZE) await flush();
-    } catch (e) {
-      failed++;
-
-      console.warn('parse failed at line', line, (e as any)?.message);
-    }
-  }
-  await flush();
-
-  console.log(`lines=${line} inserted=${inserted} updated=${updated} failed=${failed}`);
+  console.log(
+    `lines=${total.line} inserted=${total.inserted} updated=${total.updated} failed=${total.failed}`,
+  );
   await prisma.$disconnect?.();
 }
 
