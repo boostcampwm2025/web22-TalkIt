@@ -11,7 +11,7 @@ export class SessionsRepository {
   /**
    * 세션 ID로 세션 조회
    */
-  async findById(id: bigint) {
+  async findById(id: number) {
     return this.prisma.session.findUnique({
       where: { id },
     });
@@ -20,7 +20,7 @@ export class SessionsRepository {
   /**
    * 사용자 ID로 진행 중인 세션 조회
    */
-  async findActiveSessionByUserId(userId: bigint) {
+  async findActiveSessionByUserId(userId: number) {
     return this.prisma.session.findFirst({
       where: {
         userId,
@@ -35,7 +35,7 @@ export class SessionsRepository {
   /**
    * 새 세션 생성
    */
-  async createSession(data: { userId: bigint; category: string; difficulty: string }) {
+  async createSession(data: { userId: number; category: string; difficulty: string }) {
     return this.prisma.session.create({
       data: {
         userId: data.userId,
@@ -49,7 +49,7 @@ export class SessionsRepository {
   /**
    * 세션 업데이트
    */
-  async updateSession(id: bigint, data: Prisma.SessionUpdateInput) {
+  async updateSession(id: number, data: Prisma.SessionUpdateInput) {
     return this.prisma.session.update({
       where: { id },
       data,
@@ -59,7 +59,7 @@ export class SessionsRepository {
   /**
    * 세션 완료 처리
    */
-  async completeSession(id: bigint) {
+  async completeSession(id: number) {
     return this.prisma.session.update({
       where: { id },
       data: {
@@ -73,9 +73,9 @@ export class SessionsRepository {
    * 사용자 답변 저장
    */
   async saveAnswer(data: {
-    sessionId: bigint;
-    userId: bigint;
-    questionId: bigint;
+    sessionId: number;
+    userId: number;
+    questionId: number;
     answerText: string;
     timeSpentSec: number;
     overallScore?: number;
@@ -97,7 +97,7 @@ export class SessionsRepository {
   /**
    * 세션의 모든 답변 조회
    */
-  async findAnswersBySessionId(sessionId: bigint) {
+  async findAnswersBySessionId(sessionId: number) {
     return this.prisma.userAnswer.findMany({
       where: { sessionId },
       include: {
@@ -119,7 +119,7 @@ export class SessionsRepository {
   /**
    * 답변 ID로 답변 조회
    */
-  async findAnswerById(id: bigint) {
+  async findAnswerById(id: number) {
     return this.prisma.userAnswer.findUnique({
       where: { id },
       include: {
@@ -132,7 +132,7 @@ export class SessionsRepository {
   /**
    * 답변 업데이트
    */
-  async updateAnswer(id: bigint, data: Prisma.UserAnswerUpdateInput) {
+  async updateAnswer(id: number, data: Prisma.UserAnswerUpdateInput) {
     return this.prisma.userAnswer.update({
       where: { id },
       data,
