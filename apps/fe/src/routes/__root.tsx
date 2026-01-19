@@ -1,4 +1,5 @@
 import { SideBar, SideBarMobile } from '@/components/SideBar';
+import GlobalModal from '@/components/global-modal';
 import { Outlet, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 
@@ -18,6 +19,7 @@ const RootLayout = () => {
           </main>
         </div>
       </div>
+      <GlobalModal />
 
       <TanStackRouterDevtools />
     </>
