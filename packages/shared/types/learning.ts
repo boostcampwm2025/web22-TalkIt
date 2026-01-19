@@ -19,3 +19,11 @@ export type CreateQuestionResponseDTO = {
 export type SubmitRecordResponseDTO = {
   sttText: string;
 };
+
+export type FinishSessionResponseDTO = {
+  currentXp: number;
+  requiredXp: number;
+  level: number;
+  gainedXp: number;
+  question: string[];
+};
