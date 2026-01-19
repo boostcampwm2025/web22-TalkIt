@@ -32,7 +32,7 @@ async function main() {
   const cache = new QuestionPoolCacheRedis(redis);
 
   const domains = ['OS', 'NETWORK', 'DB', 'DATA_STRUCTURE'] as const;
-  const diffs = ['EAZY', 'MEDIUM', 'HARD'] as const;
+  const diffs = ['EASY', 'MEDIUM', 'HARD'] as const;
 
   // 기존 키 정리: 각 조합의 qpool 키를 명시적으로 삭제 후 재생성
   const keysToDel: string[] = [];

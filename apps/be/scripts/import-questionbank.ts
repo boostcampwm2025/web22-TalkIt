@@ -31,10 +31,11 @@ function parseArgs() {
   return res;
 }
 
-// DB 저장용 난이도 매핑: Basic/Intermediate/Advanced -> EAZY/MEDIUM/HARD
-function mapDifficulty(val: string): 'EAZY' | 'MEDIUM' | 'HARD' | null {
+// 난이도 표준화: 입력이 EAZY/EASY/MEDIUM/HARD 또는 Basic/Intermediate/Advanced 모두 허용
+function mapDifficulty(val: string): 'EASY' | 'MEDIUM' | 'HARD' | null {
   if (!val) return null;
-  if (/^basic$/i.test(val)) return 'EAZY';
+  const v = String(val).trim();
+  if (/^basic$/i.test(val)) return 'EASY';
   if (/^intermediate$/i.test(val)) return 'MEDIUM';
   if (/^advanced$/i.test(val)) return 'HARD';
   return null;
