@@ -15,7 +15,7 @@ enum Category {
 }
 
 enum Difficulty {
-  EAZY
+  EASY
   MEDIUM
   HARD
 }
