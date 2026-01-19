@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 
 import { submitRecordApi } from '@/apis/learning-api';
+import { DUMMY_RESULT_DATA } from '@/constants/learning';
 import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constants/question';
 import PulsingMicButton from '@/features/learning/components/pulsing-mic-button';
 import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
+import { useModal } from '@/lib/hooks/use-modal';
 import useLearningSession from '@/lib/stores/learning-session';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
@@ -46,6 +48,15 @@ const QuestionPage = () => {
     timeLimit: question?.timeLimit ?? 300,
     onRecordFinish: handleSubmitRecord,
   });
+
+  const { open } = useModal();
+
+  const handleFinishSession = () => {
+    // Todo: 세션 종료 API 호출하고 response 데이터를 받고 모달창을 열도록 지시
+
+    // open('키값', 데이터) 호출
+    open('REWARD', DUMMY_RESULT_DATA);
+  };
 
   useEffect(() => {
     if (!question) {
@@ -114,6 +125,16 @@ const QuestionPage = () => {
             </p>
           )}
         </div>
+      </section>
+
+      <section className="mt-10 flex justify-end">
+        <button
+          type="button"
+          onClick={handleFinishSession}
+          className="rounded-lg bg-red-500 px-6 py-3 font-bold text-white transition-colors hover:bg-red-600"
+        >
+          학습 종료 (테스트용)
+        </button>
       </section>
     </div>
   );
