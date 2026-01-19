@@ -1,5 +1,6 @@
 export type QuestionMeta = {
-  prompt: string;
-  intent: string;
-  must_include: string[];
+  questionId: number;
+  content: string;
+  topicId: string;
+  mustInclude: string[];
 };
