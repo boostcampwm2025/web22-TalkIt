@@ -120,44 +120,11 @@ export class SessionsService {
     const guide = this.guideBuilder.build(question.mustInclude);
 
     /**
-     * 6. 세션 진행 + 크레딧 차감 (트랜잭션 권장)
-     */
-    await this.sessionsRepository.transaction(async (tx) => {
-      // 질문 개수 증가
-      await tx.session.update({
-        where: { id: session.id },
-        data: {
-          currentQuestionCount: {
-            increment: 1,
-          },
-        },
-      });
-
-      /**
-       * TODO: 크레딧 차감 처리
-       *
-       * - UserCredit ledger에 차감 row 추가 (amount: -1)
-       * - reason: 'SESSION_QUESTION'
-       *
-       * - 반드시 세션 진행(currentQuestionCount 증가)과
-       *   동일 트랜잭션으로 처리할 것
-       *
-       * - 트랜잭션 내부에서:
-       *   1) 현재 유저 총 크레딧 재조회 (SUM)
-       *   2) 크레딧 부족 시 rollback
-       *
-       * - 중복 요청(빠른 연속 호출) 방어 필요
-       *   - idempotency key 또는
-       *   - (sessionId, questionIndex) 기준 중복 차감 방지
-       */
-    });
-
-    /**
-     * 7. 응답 반환
+     * 6. 응답 반환
      */
     return {
-      currentQuestionCount: session.currentQuestionCount + 1,
-      remainedCredit: 20, //TODO 크레딧 차감, 예시 : remainedCredit - 1,
+      currentQuestionCount: session.currentQuestionCount,
+      remainedCredit: 20,
       question: {
         questionId: question.questionId,
         content: question.content,
