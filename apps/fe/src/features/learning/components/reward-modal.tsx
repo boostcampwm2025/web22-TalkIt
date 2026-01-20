@@ -1,7 +1,7 @@
 import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
 
 import LevelRing from './level-ring';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 type RewardModalContentProps = {
   data: FinishSessionResponseDTO;

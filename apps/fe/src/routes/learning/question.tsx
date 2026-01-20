@@ -4,21 +4,28 @@ import { submitRecordApi } from '@/apis/learning-api';
 import { DUMMY_RESULT_DATA } from '@/constants/learning';
 import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constants/question';
 import PulsingMicButton from '@/features/learning/components/pulsing-mic-button';
+import RewardModalContent from '@/features/learning/components/reward-modal';
 import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
-import { useModal } from '@/lib/hooks/use-modal';
 import useLearningSession from '@/lib/stores/learning-session';
+import * as Dialog from '@radix-ui/react-dialog';
+import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
 import { ArrowLeft } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 
 const QuestionPage = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
   const currentQuestionCount = useLearningSession((state) => state.currentQuestionCount);
   const remainedCredit = useLearningSession((state) => state.remainedCredit);
+  const resetQuestion = useLearningSession((state) => state.resetQuestion);
 
   const [answer, setAnswer] = useState<string>('');
   const [isRecordSubmitting, setIsRecordSubmitting] = useState(false);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<FinishSessionResponseDTO | null>(null);
 
   const navigate = useNavigate();
 
@@ -49,13 +56,19 @@ const QuestionPage = () => {
     onRecordFinish: handleSubmitRecord,
   });
 
-  const { open } = useModal();
-
   const handleFinishSession = () => {
-    // Todo: 세션 종료 API 호출하고 response 데이터를 받고 모달창을 열도록 지시
+    // 1. API 호출 후 데이터 수신 (지금은 더미 사용)
+    const resultData = DUMMY_RESULT_DATA;
 
-    // open('키값', 데이터) 호출
-    open('REWARD', DUMMY_RESULT_DATA);
+    // 2. 지역 상태 업데이트 -> 모달 열림
+    setModalData(resultData);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false); // 모달 닫기
+    resetQuestion(); // 세션 상태 초기화
+    navigate({ to: '/learning' }); // 페이지 이동
   };
 
   useEffect(() => {
@@ -136,6 +149,34 @@ const QuestionPage = () => {
           학습 종료 (테스트용)
         </button>
       </section>
+
+      <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <AnimatePresence>
+          {isModalOpen && modalData && (
+            <Dialog.Portal forceMount>
+              {/* 배경 (Backdrop) */}
+              <Dialog.Overlay asChild>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-9999 bg-black/40 backdrop-blur-sm"
+                />
+              </Dialog.Overlay>
+
+              {/* 모달 컨텐츠 */}
+              <div className="fixed inset-0 z-10000 flex items-center justify-center">
+                <Dialog.Content asChild onPointerDownOutside={(e) => e.preventDefault()}>
+                  <RewardModalContent
+                    data={modalData}
+                    onClose={handleModalClose} // 닫기 버튼 누르면 실행될 핸들러 연결
+                  />
+                </Dialog.Content>
+              </div>
+            </Dialog.Portal>
+          )}
+        </AnimatePresence>
+      </Dialog.Root>
     </div>
   );
 };
