@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
-    "@react-three/cannon": "^6.6.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
+    "@react-three/rapier": "^2.2.0",
     "@repo/shared": "workspace:^",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.147.3",
