@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
+import { NormalizeService } from '@/normalize/normalize.service';
+
 import { normalizeAudio } from '../../../common/audio/normalize-audio';
 import { SttService } from '../../../stt/services/stt.service';
 import { ObjectStorageProvider } from '../providers/object-storage.provider';
@@ -12,6 +14,7 @@ export class SessionsRecordService {
     private readonly sessionsRepository: SessionsRepository,
     private readonly storageProvider: ObjectStorageProvider,
     private readonly sttService: SttService,
+    private readonly normalizeService: NormalizeService,
   ) {}
 
   async record(
@@ -75,11 +78,24 @@ export class SessionsRecordService {
       console.log('[SessionsRecordService] STT result:', sttResult);
 
       /**
-       * 응답 반환
+       * stt -> 정규화 로직
+       */
+      console.log('[NormalizeService] Normalizing STT text for draft');
+      const normalizeResult = await this.normalizeService.normalizeForDraft(sttResult.text);
+      console.log(
+        `[NormalizeService] Normalize completed | rawLength=${normalizeResult.rawText.length}, preLength=${normalizeResult.preNormalizedText.length}, draftLength=${normalizeResult.draftText.length}`,
+      );
+
+      /**
+       * 응답 반환 -> 일단 최종 변환만 작성
+       * 필요시 응답 변환
+       * preNormalizedText: 음차만 변경
+       * rawText: 기존 stt 텍스트
        */
       console.log('[SessionsRecordService] 7. Record process completed successfully');
       return {
-        sttText: sttResult.text,
+        sttText: normalizeResult.draftText,
+        //sttText: normalizeResult.preNormalizedText,
       };
     } catch (error) {
       console.error('[SessionsRecordService] ERROR in record process:', error);
