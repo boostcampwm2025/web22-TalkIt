@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
     "@react-three/cannon": "^6.6.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
@@ -19,8 +20,8 @@
     "@tanstack/react-router-devtools": "^1.149.0",
     "@types/three": "^0.182.0",
     "axios": "^1.13.2",
-    "framer-motion": "^12.27.0",
     "lucide-react": "^0.562.0",
+    "motion": "^12.27.1",
     "pretendard": "^1.3.9",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
