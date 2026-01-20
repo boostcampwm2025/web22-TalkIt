@@ -3,6 +3,7 @@ import { forwardRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
 
+import FallingBooksScene from './falling-book-scene';
 import LevelRing from './level-ring';
 import { motion } from 'motion/react';
 
@@ -116,6 +117,9 @@ const RewardModalContent = forwardRef<HTMLDivElement, RewardModalContentProps>(
 
         {/* 오른쪽 섹션: 시각 자료 (figure 사용) */}
         <figure className="relative flex flex-[0.8] flex-col bg-linear-to-br from-gray to-pale-blue">
+          <div className="absolute inset-0 h-full w-full">
+            <FallingBooksScene questions={question || []} />
+          </div>
           {/* 3D 책 쌓기 캔버스 부분에 대한 캡션 */}
           <figcaption className="pointer-events-none absolute bottom-10 z-10 w-full text-center">
             <p className="mb-2 text-[10px] font-extrabold tracking-[0.2em] text-dark-gray">
