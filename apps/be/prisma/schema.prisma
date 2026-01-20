@@ -180,22 +180,19 @@ model Session {
 // =====================================================
 
 model UserAnswer {
-  id        Int @id @default(autoincrement())
-
-  userId    Int
-  sessionId Int
-
-  questionId      Int?
-  extraQuestionId Int?
-
-  answerText   String   @db.Text
-  timeSpentSec Int
-  overallScore Int
-  feedbackJson Json
-  createdAt    DateTime @default(now())
+  id           Int      @id @default(autoincrement()) @map("answer_id")
+  userId       Int      @map("user_id")
+  questionId   Int      @map("question_id")
+  sessionId    Int      @map("session_id")
+  answerText   String   @map("answer_text") @db.Text
+  timeSpentSec Int      @map("time_spent_sec")
+  overallScore Int?     @map("overall_score")
+  feedbackJson Json?    @map("feedback_json")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   session  Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  assessmentJob AssessmentJob?
 
   question Question? @relation(fields: [questionId], references: [id])
 
@@ -211,6 +208,34 @@ model UserAnswer {
 }
 
 
+
+// =====================================================
+// 6. 평가 잡 (Assessment Jobs)
+// =====================================================
+
+enum AssessmentStatus {
+  QUEUED
+  EVALUATING
+  FEEDBACKING
+  REWARDING
+  DONE
+  FAILED
+  FAILED_EVALUATION
+  FAILED_FEEDBACK
+}
+
+model AssessmentJob {
+  id         Int               @id @default(autoincrement()) @map("job_id")
+  answerId   Int               @unique @map("answer_id")
+  status     AssessmentStatus
+  startedAt  DateTime?         @map("started_at")
+  finishedAt DateTime?         @map("finished_at")
+  error      String?           @db.Text
+
+  answer UserAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  @@map("assessment_jobs")
+}
 
 // =====================================================
 // 5. 게이미피케이션 (Gamification)
@@ -251,4 +276,3 @@ model Xp {
 
   @@map("xp")
 }
-
