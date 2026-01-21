@@ -1,5 +1,8 @@
 import type { QuestionCategory, QuestionDifficulty } from '@repo/shared/constants/learning';
-import type { CreateQuestionResponseDTO } from '@repo/shared/types/learning';
+import type {
+  CreateQuestionResponseDTO,
+  FinishSessionResponseDTO,
+} from '@repo/shared/types/learning';
 import type { SubmitRecordResponseDTO } from '@repo/shared/types/learning';
 
 import axiosInstance from './http';
@@ -8,6 +11,10 @@ type SubmitRecordParams = {
   sessionId: number;
   questionId: number;
   audioFile: File;
+};
+
+type FinishSessionParams = {
+  sessionId: number;
 };
 
 // 세션 생성 API
@@ -41,4 +48,16 @@ export const submitRecordApi = async ({
   });
 
   return response.data;
+};
+
+/**
+ * 학습 세션 종료
+ */
+export const finishSessionApi = async ({
+  sessionId,
+}: FinishSessionParams): Promise<FinishSessionResponseDTO> => {
+  const { data } = await axiosInstance.post<FinishSessionResponseDTO>(
+    `/learning/sessions/${sessionId}/finish`,
+  );
+  return data;
 };
