@@ -42,3 +42,16 @@ export type FinishSessionResponseDTO = {
   difficulty: QuestionDifficulty;
   questions: QuestionArchiveItem[];
 };
+
+export type GetFeedbackResponseDTO = {
+  answerId: number;
+  question: string;
+  answer: string;
+  overallScore: number;
+  strengths: Array<string>;
+  weaknesses: Array<string>;
+  suggestions: Array<string>;
+  followUpQuestions: Array<string>;
+  xp: number;
+  remainingToken: number;
+};
