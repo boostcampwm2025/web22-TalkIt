@@ -3,7 +3,8 @@ import { ANSWER_PHASE, useAnswerFlow } from '@/features/learning/lib/contexts/an
 const AnswerSection = () => {
   const { phase, sttText } = useAnswerFlow();
 
-  const isLoading = phase === ANSWER_PHASE.STT_LOADING;
+  const isSttLoading = phase === ANSWER_PHASE.STT_LOADING;
+
   const hasAnswer = sttText !== null;
 
   return (
@@ -11,7 +12,7 @@ const AnswerSection = () => {
       <h3 className="sr-only">음성 인식 결과</h3>
       <p className="text-xl font-bold">나의 답변</p>
       <div className="mt-4 rounded-md">
-        {isLoading ? (
+        {isSttLoading ? (
           <p className="text-center text-dark-gray">음성 인식 중...</p>
         ) : hasAnswer ? (
           <p>{sttText}</p>
