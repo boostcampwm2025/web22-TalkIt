@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 
-import { getFeedbackApi, submitAssessApi, submitRecordApi } from '@/apis/learning-api';
+import { submitAssessApi, submitRecordApi } from '@/apis/learning-api';
 import AnswerSection from '@/features/learning/components/answer-section';
 import FeedbackSection from '@/features/learning/components/feedback-section';
 import QuestionContent from '@/features/learning/components/question-content';
@@ -13,7 +13,21 @@ import {
 } from '@/features/learning/lib/contexts/answer-flow-context';
 import { useAssessmentStream } from '@/features/learning/lib/hooks/use-assessment-stream';
 import useLearningSession from '@/lib/stores/learning-session';
+import type { GetFeedbackResponseDTO } from '@repo/shared/types/learning';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+
+const mockFeedbackResponse: GetFeedbackResponseDTO = {
+  answerId: 555,
+  question: '프로세스의 정의를 설명하세요',
+  answer: '나의 답변 뭐시기 저시기',
+  overallScore: 72,
+  strengths: ['개념 요약이 빠르다', '예시를 들려는 시도가 있다'],
+  weaknesses: ['UDP의 연결성 설명이 틀렸다', '핵심 비교(TCP) 부재'],
+  suggestions: ['UDP는 connectionless임을 명확히 하세요', 'TCP와 비교해 설명해보세요'],
+  followUpQuestions: ['UDP에서 신뢰성이 필요하면 어떻게 보완하나요?'],
+  xp: 150,
+  remainingToken: 9,
+};
 
 const QuestionPageContent = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
@@ -21,8 +35,8 @@ const QuestionPageContent = () => {
   const setRemainedCredit = useLearningSession((state) => state.setRemainedCredit);
 
   const {
-    phase,
     setPhase,
+    sttText,
     setSttText,
     setFeedback,
     setAssessmentStatus,
@@ -33,26 +47,23 @@ const QuestionPageContent = () => {
 
   const navigate = useNavigate();
 
-  const handleFeedbackDone = async () => {
+  const handleFeedbackDone = useCallback(async () => {
     if (!answerId) return;
 
     try {
-      const feedback = await getFeedbackApi(answerId);
+      const feedback = mockFeedbackResponse; // TODO: 실제 API로 변경
       setFeedback(feedback);
       setRemainedCredit(feedback.remainingToken);
       setPhase(ANSWER_PHASE.FEEDBACK_DONE);
     } catch (error) {
       console.error('피드백 조회 실패:', error);
     }
-  };
+  }, [answerId, setFeedback, setPhase, setRemainedCredit]);
 
   useAssessmentStream({
     answerId,
     onStatusChange: setAssessmentStatus,
     onDone: handleFeedbackDone,
-    onError: (error) => {
-      console.error('SSE 오류:', error);
-    },
   });
 
   const handleRecordingComplete = async (audioBlob: Blob) => {
@@ -71,7 +82,15 @@ const QuestionPageContent = () => {
 
       setSttText(sttText);
       setPhase(ANSWER_PHASE.STT_DONE);
+    } catch (error) {
+      console.error('녹음 제출 실패:', error);
+    }
+  };
 
+  const handleSubmitForAssessment = async () => {
+    if (!sessionId || !question || !sttText) return;
+
+    try {
       setPhase(ANSWER_PHASE.FEEDBACK_LOADING);
       const { answerId: newAnswerId } = await submitAssessApi({
         sessionId,
@@ -82,7 +101,7 @@ const QuestionPageContent = () => {
 
       setAnswerId(newAnswerId);
     } catch (error) {
-      console.error('녹음 제출 실패:', error);
+      console.error('평가 제출 실패:', error);
     }
   };
 
@@ -100,7 +119,8 @@ const QuestionPageContent = () => {
       <QuestionContent />
       <VoiceRecorderSection onRecordingComplete={handleRecordingComplete} />
       <AnswerSection />
-      {phase === ANSWER_PHASE.FEEDBACK_DONE && <FeedbackSection />}
+      <button onClick={handleSubmitForAssessment}>답변 제출</button>
+      <FeedbackSection />
     </div>
   );
 };
