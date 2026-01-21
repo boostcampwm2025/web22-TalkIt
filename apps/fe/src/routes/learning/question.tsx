@@ -5,6 +5,7 @@ import { DUMMY_RESULT_DATA } from '@/constants/learning';
 import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constants/question';
 import PulsingMicButton from '@/features/learning/components/pulsing-mic-button';
 import RewardModalContent from '@/features/learning/components/reward-modal';
+import { useFinishSession } from '@/features/learning/lib/hooks/use-finish-session';
 import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
 import useLearningSession from '@/lib/stores/learning-session';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -56,11 +57,33 @@ const QuestionPage = () => {
     onRecordFinish: handleSubmitRecord,
   });
 
-  const handleFinishSession = () => {
-    // 1. API 호출 후 데이터 수신 (지금은 더미 사용)
+  // Note: 실제 세션 종료 API 백엔드에서 구현되면 주석 처리된 부분 해제
+  // eslint-disable-next-line no-empty-pattern
+  const {} = useFinishSession();
+
+  const handleFinishSession = async () => {
+    // if (!sessionId) {
+    //   console.error('Session ID is missing');
+    //   return;
+    // }
+
+    // try {
+    //   // 1. 실제 API 호출
+    //   const resultData = await finishSession(sessionId);
+
+    //   // 2. 응답 데이터로 모달 상태 업데이트
+    //   setModalData(resultData);
+    //   setIsModalOpen(true);
+    // } catch (error) {
+    //   // TODO: 에러 처리 (예: 토스트 메시지)
+    //   console.error('세션 종료 중 오류 발생:', error);
+    // }
+
+    // Note: 실제 세션 종료 API 백엔드에서 구현되면 아래 코드 삭제
+    // API 호출 후 데이터 수신 (지금은 더미 사용)
     const resultData = DUMMY_RESULT_DATA;
 
-    // 2. 지역 상태 업데이트 -> 모달 열림
+    // 지역 상태 업데이트 -> 모달 열림
     setModalData(resultData);
     setIsModalOpen(true);
   };
