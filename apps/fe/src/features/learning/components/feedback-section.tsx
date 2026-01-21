@@ -1,9 +1,33 @@
-import { useAnswerFlow } from '@/features/learning/lib/contexts/answer-flow-context';
+import { ANSWER_PHASE, useAnswerFlow } from '@/features/learning/lib/contexts/answer-flow-context';
+import { ASSESSMENT_STATUS } from '@repo/shared/constants/learning';
 
-import { Bot, CircleCheck, Lightbulb, TriangleAlert } from 'lucide-react';
+import { Bot, CircleCheck, Lightbulb, Loader2, TriangleAlert } from 'lucide-react';
+
+const ASSESSMENT_STATUS_MESSAGE: Record<string, string> = {
+  [ASSESSMENT_STATUS.QUEUED]: '평가 대기 중...',
+  [ASSESSMENT_STATUS.EVALUATING]: '답변을 평가하고 있습니다...',
+  [ASSESSMENT_STATUS.FEEDBACKING]: '피드백을 생성하고 있습니다...',
+  [ASSESSMENT_STATUS.REWARDING]: '보상을 계산하고 있습니다...',
+};
 
 const FeedbackSection = () => {
-  const { feedback } = useAnswerFlow();
+  const { feedback, phase, assessmentStatus } = useAnswerFlow();
+
+  const isFeedbackLoading = phase === ANSWER_PHASE.FEEDBACK_LOADING;
+
+  const getStatusMessage = () => {
+    if (!assessmentStatus) return '평가를 시작하고 있습니다...';
+    return ASSESSMENT_STATUS_MESSAGE[assessmentStatus] || '처리 중...';
+  };
+
+  if (isFeedbackLoading) {
+    return (
+      <div className="mt-6 flex flex-col items-center gap-3 rounded-lg bg-primary/5 p-4">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <p className="text-sm font-medium text-primary">{getStatusMessage()}</p>
+      </div>
+    );
+  }
 
   if (!feedback) return null;
 
