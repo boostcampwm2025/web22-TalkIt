@@ -137,6 +137,8 @@ const RewardModalContent = forwardRef<HTMLDivElement, RewardModalContentProps>(
                 startPercent={startPercent}
                 endPercent={endPercent}
                 isLevelUp={isLevelUp}
+                currentXp={currentXp}
+                requiredXp={requiredXpForNextLevel}
               />
             </div>
             <div>

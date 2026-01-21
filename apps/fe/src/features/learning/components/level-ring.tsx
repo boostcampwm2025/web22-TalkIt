@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import * as Tooltip from '@radix-ui/react-tooltip';
+
 import { animate, motion, useMotionValue, useTransform } from 'motion/react';
 
 type LevelRingProps = {
@@ -7,9 +9,18 @@ type LevelRingProps = {
   startPercent: number;
   endPercent: number;
   isLevelUp: boolean;
+  currentXp: number;
+  requiredXp: number;
 };
 
-const LevelRing = ({ level, startPercent, endPercent, isLevelUp }: LevelRingProps) => {
+const LevelRing = ({
+  level,
+  startPercent,
+  endPercent,
+  isLevelUp,
+  currentXp,
+  requiredXp,
+}: LevelRingProps) => {
   const radius = 45;
   const circumference = 2 * Math.PI * radius;
   const strokeWidth = 8;
@@ -56,56 +67,77 @@ const LevelRing = ({ level, startPercent, endPercent, isLevelUp }: LevelRingProp
     playAnimation();
   }, [startPercent, endPercent, isLevelUp, level, progress]);
   return (
-    <div className="relative flex h-32 w-32 items-center justify-center">
-      {/* SVG 캔버스: -90도 회전하여 12시 방향부터 시작 */}
-      <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
-        {/* 레벨 링 progress bar의 배경 트랙 */}
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          className="stroke-medium-gray"
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
+    <Tooltip.Provider delayDuration={200}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <div className="group relative flex h-32 w-32 items-center justify-center rounded-full">
+            {/* SVG 캔버스: -90도 회전하여 12시 방향부터 시작 */}
+            <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
+              {/* 레벨 링 progress bar의 배경 트랙 */}
+              <circle
+                cx="50"
+                cy="50"
+                r={radius}
+                className="stroke-medium-gray"
+                strokeWidth={strokeWidth}
+                fill="none"
+              />
 
-        {/* 진행 바 */}
-        <motion.circle
-          cx="50"
-          cy="50"
-          r={radius}
-          className="stroke-primary"
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeLinecap="round"
-          style={{
-            strokeDasharray: circumference,
-            strokeDashoffset,
-          }}
-        />
-      </svg>
+              {/* 진행 바 */}
+              <motion.circle
+                cx="50"
+                cy="50"
+                r={radius}
+                className="stroke-primary group-hover:brightness-75"
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeLinecap="round"
+                style={{
+                  strokeDasharray: circumference,
+                  strokeDashoffset,
+                }}
+              />
+            </svg>
 
-      <div className="absolute flex flex-col items-center text-center">
-        {showLevelUpText ? (
-          <motion.div
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1.2, opacity: 1 }}
-            className="flex flex-col items-center"
+            <div className="absolute flex flex-col items-center text-center">
+              {showLevelUpText ? (
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1.2, opacity: 1 }}
+                  className="flex flex-col items-center"
+                >
+                  <span className="text-sm font-black text-light-green drop-shadow-md">
+                    LEVEL
+                    <br />
+                    UP!
+                  </span>
+                </motion.div>
+              ) : (
+                <>
+                  <span className="text-[10px] font-bold text-dark-gray">LEVEL</span>
+                  <span className="text-3xl font-black text-black">{displayLevel}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            className="data-[state=delayed-open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=delayed-open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=delayed-open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 z-10000 rounded-xl bg-black/90 px-4 py-2 text-xs font-bold text-white shadow-xl backdrop-blur-sm select-none"
+            side="bottom"
+            sideOffset={15}
           >
-            <span className="text-sm font-black text-light-green drop-shadow-md">
-              LEVEL
-              <br />
-              UP!
-            </span>
-          </motion.div>
-        ) : (
-          <>
-            <span className="text-[10px] font-bold text-dark-gray">LEVEL</span>
-            <span className="text-3xl font-black text-black">{displayLevel}</span>
-          </>
-        )}
-      </div>
-    </div>
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-[10px] font-medium text-gray-300">XP Progress</span>
+              <span className="font-mono text-sm">
+                {currentXp} <span className="text-dark-gray-500">/</span> {requiredXp}
+              </span>
+            </div>
+            <Tooltip.Arrow className="fill-black/90" width={12} height={6} />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
   );
 };
 
