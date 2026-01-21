@@ -14,12 +14,50 @@ type RewardModalContentProps = {
 
 const RewardModalContent = forwardRef<HTMLDivElement, RewardModalContentProps>(
   ({ data, onClose, ...props }, ref) => {
-    const { currentXp, requiredXp, level, gainedXp, difficulty, questions } = data;
+    const {
+      currentXp,
+      requiredXpForNextLevel,
+      prevRequiredXpForNextLevel,
+      level,
+      gainedXp,
+      difficulty,
+      questions,
+    } = data;
 
     // 세부 XP 합산
     const totalGainedXp = useMemo(() => {
       return gainedXp.baseXp + (gainedXp.difficultyBonus || 0) + (gainedXp.deepDiveBonus || 0);
     }, [gainedXp]);
+
+    // 레벨업 여부 및 퍼센트 계산
+    const { startPercent, endPercent, isLevelUp } = useMemo(() => {
+      // 학습 이전 경험치 (이번 획득분을 뺀 값)
+      const rawPrevXp = currentXp - totalGainedXp;
+
+      if (rawPrevXp < 0) {
+        // [레벨업 발생 케이스]
+        // rawPrevXp가 음수라는 것은 이전 레벨에서 그만큼 부족했다는 뜻
+        const xpNeededToFinishPrevLevel = Math.abs(rawPrevXp);
+
+        // 이전 레벨에서의 시작점 = (이전레벨총량 - 부족했던양)
+        // prevRequiredXp를 사용하여 정확한 비율 계산 가능
+        // 예: prevReq 1500, 부족 300 => 시작점 1200 => 80%
+        const prevLevelStartXp = prevRequiredXpForNextLevel - xpNeededToFinishPrevLevel;
+
+        const start = (prevLevelStartXp / prevRequiredXpForNextLevel) * 100;
+        const end = (currentXp / requiredXpForNextLevel) * 100;
+
+        return { isLevelUp: true, startPercent: start, endPercent: end };
+      }
+
+      // [일반 케이스]
+      const start = (rawPrevXp / requiredXpForNextLevel) * 100;
+      const end = (currentXp / requiredXpForNextLevel) * 100;
+
+      return { isLevelUp: false, startPercent: start, endPercent: end };
+    }, [currentXp, requiredXpForNextLevel, prevRequiredXpForNextLevel, totalGainedXp]);
+
+    const remainXp = requiredXpForNextLevel - currentXp;
 
     // 리포트의 세션 평균 점수를 위한 계산
     const averageScore = useMemo(() => {
@@ -27,13 +65,6 @@ const RewardModalContent = forwardRef<HTMLDivElement, RewardModalContentProps>(
       const sum = questions.reduce((acc, q) => acc + (q.score || 0), 0);
       return Math.round(sum / questions.length);
     }, [questions]);
-
-    // 경험치 바에 사용될 XP 값들
-    const remainXp = requiredXp - currentXp;
-    const prevXp = currentXp - totalGainedXp;
-
-    const prevPercent = Math.max(0, (prevXp / requiredXp) * 100);
-    const targetPercent = Math.min(100, (currentXp / requiredXp) * 100);
 
     // XP 히스토리 렌더링을 위한 객체
     // todo: 추후 constants로 분리 같은 수정 필요
@@ -101,7 +132,12 @@ const RewardModalContent = forwardRef<HTMLDivElement, RewardModalContentProps>(
             className="mt-3 flex items-center gap-8 rounded-2xl bg-gray p-6"
           >
             <div className="shrink-0">
-              <LevelRing level={level} percent={targetPercent} prevPercent={prevPercent} />
+              <LevelRing
+                level={level}
+                startPercent={startPercent}
+                endPercent={endPercent}
+                isLevelUp={isLevelUp}
+              />
             </div>
             <div>
               <p className="text-4xl font-black text-primary">+{totalGainedXp} XP</p>
