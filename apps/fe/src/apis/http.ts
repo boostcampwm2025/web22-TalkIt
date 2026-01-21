@@ -1,10 +1,10 @@
+import { ENV } from '@/constants/env';
+
 import axios, { type AxiosInstance } from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
 const axiosInstance: AxiosInstance = axios.create({
-  baseURL: BASE_URL,
-  timeout: 30000, // 타임아웃 30초 (개발하면서 적절하게 수정)
+  baseURL: ENV.API_URL,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
