@@ -9,6 +9,7 @@ type LearningSessionState = Nullable<CreateQuestionResponseDTO>;
 type LearningSessionActions = {
   setQuestion: (state: CreateQuestionResponseDTO) => void;
   resetQuestion: () => void;
+  setRemainedCredit: (credit: number) => void;
 };
 type LearningSessionStore = LearningSessionState & LearningSessionActions;
 
@@ -25,6 +26,7 @@ const useLearningSession = create<LearningSessionStore>()(
       ...initialLearningSessionState,
       setQuestion: (state: CreateQuestionResponseDTO) => set(() => ({ ...state })),
       resetQuestion: () => set(() => ({ ...initialLearningSessionState })),
+      setRemainedCredit: (credit: number) => set(() => ({ remainedCredit: credit })),
     }),
     {
       name: 'question-storage',

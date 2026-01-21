@@ -5,15 +5,32 @@ import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constant
 import PulsingMicButton from '@/features/learning/components/pulsing-mic-button';
 import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
 import useLearningSession from '@/lib/stores/learning-session';
+import type { GetFeedbackResponseDTO } from '@repo/shared/types/learning';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Bot, CircleCheck, Lightbulb, TriangleAlert } from 'lucide-react';
+
+const mockFeedback: GetFeedbackResponseDTO = {
+  answerId: 555,
+  question: '프로세스의 정의를 설명하세요',
+  answer: '나의 답변 뭐시기 저시기',
+  overallScore: 72,
+  strengths: ['개념 요약이 빠르다', '예시를 들려는 시도가 있다'],
+  weaknesses: ['UDP의 연결성 설명이 틀렸다', '핵심 비교(TCP) 부재'],
+  suggestions: ['UDP는 connectionless임을 명확히 하세요', 'TCP와 비교해 설명해보세요'],
+  followUpQuestions: ['UDP에서 신뢰성이 필요하면 어떻게 보완하나요?'],
+  xp: 150,
+  remainingToken: 9,
+};
 
 const QuestionPage = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
   const currentQuestionCount = useLearningSession((state) => state.currentQuestionCount);
   const remainedCredit = useLearningSession((state) => state.remainedCredit);
+  const setRemainedCredit = useLearningSession((state) => state.setRemainedCredit);
+
+  const [feedback, setFeedback] = useState<GetFeedbackResponseDTO | null>(null);
 
   const [answer, setAnswer] = useState<string>('');
   const [isRecordSubmitting, setIsRecordSubmitting] = useState(false);
@@ -34,6 +51,8 @@ const QuestionPage = () => {
       });
 
       setAnswer(sttText);
+
+      handleMockApiResponse(); // TODO: 실제 API 연동 후 삭제
     } catch (error) {
       console.error('녹음 제출 실패:', error);
       // TODO: 에러 토스트 표시 또는 재시도 UI
@@ -47,6 +66,11 @@ const QuestionPage = () => {
     onRecordFinish: handleSubmitRecord,
   });
 
+  const handleMockApiResponse = () => {
+    setRemainedCredit(mockFeedback.remainingToken);
+    setFeedback(mockFeedback);
+  };
+
   useEffect(() => {
     if (!question) {
       navigate({ to: '/learning' });
@@ -56,7 +80,7 @@ const QuestionPage = () => {
   if (!question) return null;
 
   return (
-    <div className="mx-auto max-w-250 p-6 sm:p-10">
+    <div className="mx-auto max-w-250 space-y-6 p-6 sm:p-10">
       <div className="flex items-center justify-between">
         <Link
           to="/learning"
@@ -79,7 +103,7 @@ const QuestionPage = () => {
           </span>
         </div>
       </div>
-      <section className="mx-auto mt-8 max-w-150 space-y-4 text-center">
+      <section className="mx-auto max-w-150 space-y-4 text-center">
         <span className="inline-block rounded-full border border-primary/20 bg-gray px-3 py-1 text-xs font-bold text-primary sm:text-sm">
           질문 {currentQuestionCount}
         </span>
@@ -92,15 +116,17 @@ const QuestionPage = () => {
           </div>
         </div>
       </section>
-      <section className="mt-6 flex flex-col items-center gap-6">
-        <h3 className="sr-only">음성 답변</h3>
-        <PulsingMicButton isRecording={isRecording} stream={stream} onToggle={toggleRecording} />
-        <p className="text-lg sm:text-2xl">
-          <span className="text-dark-gray">남은 시간: </span>
-          {formattedTime}
-        </p>
-      </section>
-      <section className="relative mt-6 overflow-hidden rounded-2xl border border-gray bg-white p-8 after:absolute after:top-0 after:left-0 after:h-full after:w-1 after:bg-primary">
+      {!answer && (
+        <section className="flex flex-col items-center gap-6">
+          <h3 className="sr-only">음성 답변</h3>
+          <PulsingMicButton isRecording={isRecording} stream={stream} onToggle={toggleRecording} />
+          <p className="text-lg sm:text-2xl">
+            <span className="text-dark-gray">남은 시간: </span>
+            {formattedTime}
+          </p>
+        </section>
+      )}
+      <section className="relative overflow-hidden rounded-2xl border border-gray bg-white p-8 shadow-sm after:absolute after:top-0 after:left-0 after:h-full after:w-1 after:bg-primary">
         <h3 className="sr-only">음성 인식 결과</h3>
         <p className="text-xl font-bold">나의 답변</p>
         <div className="mt-4 rounded-md">
@@ -115,6 +141,55 @@ const QuestionPage = () => {
           )}
         </div>
       </section>
+      {feedback && (
+        <section className="space-y-4">
+          <h3 className="flex items-center gap-3 text-xl font-bold">
+            <Bot className="h-10 w-10 rounded-lg bg-linear-to-br from-violet-500 to-indigo-600 p-2 text-white shadow-md" />
+            AI 피드백
+          </h3>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-4 rounded-2xl border border-[#22C55E] bg-[#F0FDF4]/50 p-6">
+              <p className="flex items-center gap-2 text-lg font-bold text-[#14532D]">
+                <CircleCheck className="h-5 w-5 text-[#16A34A]" />
+                정확한 개념 설명
+              </p>
+              <ul className="flex list-disc flex-col gap-2 pl-5 text-dark-green marker:text-[#22C55E]">
+                {feedback.strengths.map((strength, index) => (
+                  <li className="text-sm" key={index}>
+                    {strength}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="space-y-4 rounded-2xl border border-[#F97316] bg-[#FFF7ED]/50 p-6">
+              <p className="flex items-center gap-2 text-lg font-bold text-[#7C2D12]">
+                <TriangleAlert className="h-5 w-5 text-[#EA580C]" />
+                보완하면 좋을 점
+              </p>
+              <ul className="flex list-disc flex-col gap-2 pl-5 text-[#9A3412] marker:text-[#F97316]">
+                {feedback.weaknesses.map((strength, index) => (
+                  <li className="text-sm" key={index}>
+                    {strength}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="space-y-4 rounded-2xl border border-[#A855F7] bg-[#FAF5FF] p-6">
+            <p className="flex items-center gap-2 text-lg font-bold text-[#9333EA]">
+              <Lightbulb className="h-5 w-5 text-[#9333EA]" />
+              도움이 될 팁
+            </p>
+            <ul className="flex list-disc flex-col gap-2 pl-5 text-[#6B21A8] marker:text-[#b064ee]">
+              {feedback.suggestions.map((strength, index) => (
+                <li className="text-sm" key={index}>
+                  {strength}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
     </div>
   );
 };
