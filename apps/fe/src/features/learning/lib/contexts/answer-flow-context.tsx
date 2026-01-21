@@ -1,4 +1,4 @@
-import { type ReactNode, createContext, useContext, useState } from 'react';
+import { type ReactNode, createContext, useCallback, useContext, useState } from 'react';
 
 import type { AssessmentStatus } from '@repo/shared/constants/learning';
 import type { GetFeedbackResponseDTO } from '@repo/shared/types/learning';
@@ -53,33 +53,33 @@ type AnswerFlowProviderProps = {
 export const AnswerFlowProvider = ({ children }: AnswerFlowProviderProps) => {
   const [state, setState] = useState<AnswerFlowState>(initialState);
 
-  const setPhase = (phase: AnswerPhase) => {
+  const setPhase = useCallback((phase: AnswerPhase) => {
     setState((prev) => ({ ...prev, phase }));
-  };
+  }, []);
 
-  const setSttText = (text: string) => {
+  const setSttText = useCallback((text: string) => {
     setState((prev) => ({ ...prev, sttText: text }));
-  };
+  }, []);
 
-  const setFeedback = (feedback: GetFeedbackResponseDTO) => {
+  const setFeedback = useCallback((feedback: GetFeedbackResponseDTO) => {
     setState((prev) => ({ ...prev, feedback }));
-  };
+  }, []);
 
-  const setAssessmentStatus = (status: AssessmentStatus) => {
+  const setAssessmentStatus = useCallback((status: AssessmentStatus) => {
     setState((prev) => ({ ...prev, assessmentStatus: status }));
-  };
+  }, []);
 
-  const setAnswerId = (id: number) => {
+  const setAnswerId = useCallback((id: number) => {
     setState((prev) => ({ ...prev, answerId: id }));
-  };
+  }, []);
 
-  const setRecordingTime = (time: number) => {
+  const setRecordingTime = useCallback((time: number) => {
     setState((prev) => ({ ...prev, recordingTime: time }));
-  };
+  }, []);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setState(initialState);
-  };
+  }, []);
 
   return (
     <AnswerFlowContext.Provider
