@@ -24,6 +24,16 @@ export type FinishSessionResponseDTO = {
   currentXp: number;
   requiredXp: number;
   level: number;
-  gainedXp: number;
-  question: string[];
+  gainedXp: {
+    baseXp: number;
+    difficultyBonus: number | null;
+    deepDiveBonus: number | null;
+  };
+  category: QuestionCategory;
+  difficulty: QuestionDifficulty;
+  questions: {
+    content: string;
+    type: 'NORMAL' | 'TAIL';
+    score: number;
+  }[];
 };
