@@ -3,6 +3,7 @@ import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { AssessmentStatus } from '@prisma/client';
 
 import { AssessmentRepository } from '../assessment.repository';
+import { EvaluationOrchestratorService } from '../evaluation/application/evaluation-orchestrator.service';
 import { AssessmentPubSub } from '../pubsub/assessment.pubsub';
 import { JobsOptions, Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
@@ -18,6 +19,7 @@ export class AssessmentWorker implements OnModuleDestroy {
   constructor(
     private readonly repo: AssessmentRepository,
     private readonly pubsub: AssessmentPubSub,
+    private readonly orchestrator: EvaluationOrchestratorService,
     @Inject(ASSESS_QUEUE) private readonly queue: Queue,
     @Inject(ASSESS_REDIS) private readonly redis: IORedis,
   ) {
@@ -71,20 +73,12 @@ export class AssessmentWorker implements OnModuleDestroy {
       });
       await this.publish(job.id, answerId, AssessmentStatus.EVALUATING);
 
-      const answer = await this.repo.getAnswerWithRelations(answerId);
-      const score = Math.min(100, Math.max(0, Math.floor((answer?.answerText?.length ?? 0) / 5)));
-      await this.repo.setAnswerScore(answerId, score);
+      const { issues } = await this.orchestrator.evaluate(answerId);
 
       await this.repo.updateAssessmentJob(job.id, { status: AssessmentStatus.FEEDBACKING });
       await this.publish(job.id, answerId, AssessmentStatus.FEEDBACKING);
 
-      const feedback = {
-        summary: '핵심 키워드 커버리지 평가입니다.',
-        positives: score > 50 ? ['핵심 개념들이 비교적 잘 포함됨'] : [],
-        improvements: score < 80 ? ['예시와 비교분석을 추가하면 좋습니다.'] : [],
-        score,
-      };
-      await this.repo.setAnswerFeedback(answerId, feedback as any);
+      await this.orchestrator.buildFeedback(answerId, issues);
 
       await this.repo.updateAssessmentJob(job.id, { status: AssessmentStatus.REWARDING });
       await this.publish(job.id, answerId, AssessmentStatus.REWARDING);
