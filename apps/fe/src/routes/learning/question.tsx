@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { submitRecordApi } from '@/apis/learning-api';
 import { DUMMY_RESULT_DATA } from '@/constants/learning';
@@ -21,15 +21,24 @@ const QuestionPage = () => {
   const currentQuestionCount = useLearningSession((state) => state.currentQuestionCount);
   const remainedCredit = useLearningSession((state) => state.remainedCredit);
   const resetQuestion = useLearningSession((state) => state.resetQuestion);
+  const lastQuestionRef = useRef(question);
+  if (question) {
+    lastQuestionRef.current = question;
+  }
+  const activeQuestion = question || lastQuestionRef.current;
 
   const [answer, setAnswer] = useState<string>('');
   const [isRecordSubmitting, setIsRecordSubmitting] = useState(false);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalData, setModalData] = useState<FinishSessionResponseDTO | null>(null);
 
   const navigate = useNavigate();
-
+  // activeQuestion이 없다면(스토어도 비었고 && 캐시된 것도 없음 == 새로고침/비정상 접근) 메인으로 이동
+  useEffect(() => {
+    if (!activeQuestion) {
+      navigate({ to: '/learning', replace: true });
+    }
+  }, [activeQuestion, navigate]);
   const handleSubmitRecord = async (audioBlob: Blob) => {
     if (!sessionId || !question) return;
 
@@ -86,21 +95,16 @@ const QuestionPage = () => {
     // 지역 상태 업데이트 -> 모달 열림
     setModalData(resultData);
     setIsModalOpen(true);
+
+    resetQuestion();
   };
 
   const handleModalClose = () => {
     setIsModalOpen(false); // 모달 닫기
-    resetQuestion(); // 세션 상태 초기화
     navigate({ to: '/learning' }); // 페이지 이동
   };
 
-  useEffect(() => {
-    if (!question) {
-      navigate({ to: '/learning' });
-    }
-  }, [question, navigate]);
-
-  if (!question) return null;
+  if (!activeQuestion) return null;
 
   return (
     <div className="mx-auto max-w-250 p-6 sm:p-10">
@@ -112,10 +116,10 @@ const QuestionPage = () => {
           <ArrowLeft size={20} />
           <div className="flex flex-col">
             <p className="text-base font-bold">
-              {QUESTION_CATEGORY_CONFIG[question.category].label}
+              {QUESTION_CATEGORY_CONFIG[activeQuestion.category].label}
             </p>
             <span className="text-xs text-dark-gray">
-              {QUESTION_DIFFICULTY_CONFIG[question.difficulty].label}
+              {QUESTION_DIFFICULTY_CONFIG[activeQuestion.difficulty].label}
             </span>
           </div>
         </Link>
@@ -130,10 +134,10 @@ const QuestionPage = () => {
         <span className="inline-block rounded-full border border-primary/20 bg-gray px-3 py-1 text-xs font-bold text-primary sm:text-sm">
           질문 {currentQuestionCount}
         </span>
-        <h2 className="text-2xl font-black break-keep sm:text-4xl">{question.content}</h2>
+        <h2 className="text-2xl font-black break-keep sm:text-4xl">{activeQuestion.content}</h2>
         <div className="break-keep text-dark-gray sm:text-lg">
           <div className="flex flex-wrap justify-center [&>span:not(:first-child)]:after:content-[',_']">
-            <span>{question.guide}</span>
+            <span>{activeQuestion.guide}</span>
 
             <p className="pl-2">위 키워드를 중심으로 답변해보세요.</p>
           </div>
