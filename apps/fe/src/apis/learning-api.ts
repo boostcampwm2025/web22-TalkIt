@@ -1,9 +1,13 @@
 import type { QuestionCategory, QuestionDifficulty } from '@repo/shared/constants/learning';
 import type {
+  AssessRequestDTO,
+  AssessResponseDTO,
+  AssessmentSnapshotDTO,
   CreateQuestionResponseDTO,
   FinishSessionResponseDTO,
+  GetFeedbackResponseDTO,
+  SubmitRecordResponseDTO,
 } from '@repo/shared/types/learning';
-import type { SubmitRecordResponseDTO } from '@repo/shared/types/learning';
 
 import axiosInstance from './http';
 
@@ -16,6 +20,10 @@ type SubmitRecordParams = {
 type FinishSessionParams = {
   sessionId: number;
 };
+
+type SubmitAssessParams = {
+  sessionId: number;
+} & AssessRequestDTO;
 
 // 세션 생성 API
 export const startSessionApi = async (
@@ -59,6 +67,49 @@ export const finishSessionApi = async ({
 }: FinishSessionParams): Promise<FinishSessionResponseDTO> => {
   const { data } = await axiosInstance.post<FinishSessionResponseDTO>(
     `/learning/sessions/${sessionId}/finish`,
+  );
+  return data;
+};
+
+/**
+ * 답변 제출 및 평가 시작
+ * 답변 텍스트와 소요 시간을 전송하고 평가 작업을 시작합니다.
+ */
+export const submitAssessApi = async ({
+  sessionId,
+  questionId,
+  answerText,
+  timeSpentSec,
+}: SubmitAssessParams): Promise<AssessResponseDTO> => {
+  const { data } = await axiosInstance.post<AssessResponseDTO>(
+    `/learning/sessions/${sessionId}/assess`,
+    {
+      questionId,
+      answerText,
+      timeSpentSec,
+    },
+  );
+  return data;
+};
+
+/**
+ * 평가 스냅샷 조회 (재연결 복구용)
+ */
+export const getAssessmentSnapshotApi = async (
+  answerId: number,
+): Promise<AssessmentSnapshotDTO> => {
+  const { data } = await axiosInstance.get<AssessmentSnapshotDTO>(
+    `/learning/answers/${answerId}/assess`,
+  );
+  return data;
+};
+
+/**
+ * 피드백 조회
+ */
+export const getFeedbackApi = async (answerId: number): Promise<GetFeedbackResponseDTO> => {
+  const { data } = await axiosInstance.get<GetFeedbackResponseDTO>(
+    `/learning/answers/${answerId}/feedback`,
   );
   return data;
 };
