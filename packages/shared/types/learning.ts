@@ -1,4 +1,8 @@
-import { type QuestionDifficulty, type QuestionCategory } from '../constants/learning';
+import {
+  type QuestionDifficulty,
+  type QuestionCategory,
+  type AssessmentStatus,
+} from '../constants/learning';
 
 export type Question = {
   questionId: number;
@@ -54,4 +58,38 @@ export type GetFeedbackResponseDTO = {
   followUpQuestions: Array<string>;
   xp: number;
   remainingToken: number;
+};
+
+// 평가 요청 DTO
+export type AssessRequestDTO = {
+  questionId: number;
+  answerText: string;
+  timeSpentSec: number;
+};
+
+// 평가 응답 DTO
+export type AssessResponseDTO = {
+  jobId: number;
+  answerId: number;
+  status: AssessmentStatus;
+};
+
+// SSE 스트림 이벤트 DTO
+export type AssessmentStreamEventDTO = {
+  jobId: number;
+  answerId: number;
+  status: AssessmentStatus;
+  timestamp: string;
+  error: string | null;
+};
+
+// 평가 스냅샷 조회 DTO (재연결 복구용)
+export type AssessmentSnapshotDTO = {
+  jobId: number;
+  answerId: number;
+  status: AssessmentStatus;
+  result: {
+    score: number;
+    feedback: GetFeedbackResponseDTO;
+  } | null;
 };
