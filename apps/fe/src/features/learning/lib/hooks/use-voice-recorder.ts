@@ -4,13 +4,12 @@ import { useTimer } from './use-timer';
 
 type UseVoiceRecorderProps = {
   timeLimit: number;
-  onRecordFinish?: (audioBlob: Blob) => void;
+  onRecordFinish?: (audioBlob: Blob, elapsedTime: number) => void;
 };
 
 type UseVoiceRecorderReturn = {
   stream: MediaStream | null;
   isRecording: boolean;
-  remainingTime: number;
   formattedTime: string;
   audioBlob: Blob | null;
   toggleRecording: () => void;
@@ -34,7 +33,7 @@ export const useVoiceRecorder = ({
     setIsRecording(false);
   }, []);
 
-  const { remainingTime, formattedTime } = useTimer({
+  const { formattedTime, getElapsedTime } = useTimer({
     timeLimit,
     isActive: isRecording,
     onTimeEnd: stopRecording,
@@ -60,7 +59,9 @@ export const useVoiceRecorder = ({
           type: mediaRecorderRef.current?.mimeType || 'audio/webm',
         });
         setAudioBlob(blob);
-        onRecordFinish?.(blob);
+
+        const elapsedTime = getElapsedTime();
+        onRecordFinish?.(blob, elapsedTime);
 
         mediaStream.getTracks().forEach((track) => track.stop());
         setStream(null);
@@ -93,7 +94,6 @@ export const useVoiceRecorder = ({
   return {
     stream,
     isRecording,
-    remainingTime,
     formattedTime,
     audioBlob,
     toggleRecording,

@@ -12,14 +12,15 @@ const VoiceRecorderSection = ({ onRecordingComplete }: VoiceRecorderSectionProps
   const question = useLearningSession((state) => state.question);
   const { phase, setPhase, setRecordingTime } = useAnswerFlow();
 
-  const handleRecordFinish = (audioBlob: Blob) => {
-    const elapsedTime = (question?.timeLimit ?? 300) - remainingTime;
+  const timeLimit = question?.timeLimit ?? 300;
+
+  const handleRecordFinish = (audioBlob: Blob, elapsedTime: number) => {
     setRecordingTime(elapsedTime);
     onRecordingComplete(audioBlob, elapsedTime);
   };
 
-  const { stream, isRecording, remainingTime, formattedTime, toggleRecording } = useVoiceRecorder({
-    timeLimit: question?.timeLimit ?? 300,
+  const { stream, isRecording, formattedTime, toggleRecording } = useVoiceRecorder({
+    timeLimit,
     onRecordFinish: handleRecordFinish,
   });
 
