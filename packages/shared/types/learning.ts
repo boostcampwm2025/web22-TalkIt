@@ -22,7 +22,8 @@ export type SubmitRecordResponseDTO = {
 
 export type FinishSessionResponseDTO = {
   currentXp: number;
-  requiredXp: number;
+  prevRequiredXpForNextLevel: number;
+  requiredXpForNextLevel: number;
   level: number;
   gainedXp: {
     baseXp: number;

@@ -3,13 +3,14 @@ import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
 
 // Note: 세션 종료 API 구현 시 제거
 export const DUMMY_RESULT_DATA: FinishSessionResponseDTO = {
-  currentXp: 1200,
-  requiredXp: 1600,
+  currentXp: 200,
+  prevRequiredXpForNextLevel: 1500,
+  requiredXpForNextLevel: 1600,
   level: 15,
   gainedXp: {
-    baseXp: 150,
+    baseXp: 500,
     difficultyBonus: 100,
-    deepDiveBonus: null,
+    deepDiveBonus: 50,
   },
   category: QUESTION_CATEGORY['OS'],
   difficulty: QUESTION_DIFFICULTY['EASY'],
