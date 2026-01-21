@@ -205,12 +205,12 @@ const RewardModalContent = forwardRef<HTMLDivElement, RewardModalContentProps>(
           {/* 3D 책 쌓기 캔버스 부분에 대한 캡션 */}
           <figcaption className="pointer-events-none absolute bottom-10 z-10 w-full text-center">
             <p className="mb-2 text-[10px] font-extrabold tracking-[0.2em] text-dark-gray">
-              KNOWLEDGE GROWTH
+              YOUR KNOWLEDGE STACK
             </p>
             <p className="text-xs leading-relaxed text-dark-gray">
-              매 학습 세션이 지식의 기둥이 되어
+              오늘 답변한 질문들이 한 권의 책이 되어
               <br />
-              당신의 커리어를 지탱합니다.
+              당신만의 지식 서고에 차곡차곡 쌓였습니다.
             </p>
           </figcaption>
         </figure>
