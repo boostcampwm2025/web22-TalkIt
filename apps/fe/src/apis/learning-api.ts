@@ -5,7 +5,6 @@ import type {
   AssessmentSnapshotDTO,
   CreateQuestionResponseDTO,
   FinishSessionResponseDTO,
-  GetFeedbackResponseDTO,
   SubmitRecordResponseDTO,
 } from '@repo/shared/types/learning';
 
@@ -100,16 +99,6 @@ export const getAssessmentSnapshotApi = async (
 ): Promise<AssessmentSnapshotDTO> => {
   const { data } = await axiosInstance.get<AssessmentSnapshotDTO>(
     `/learning/answers/${answerId}/assess`,
-  );
-  return data;
-};
-
-/**
- * 피드백 조회
- */
-export const getFeedbackApi = async (answerId: number): Promise<GetFeedbackResponseDTO> => {
-  const { data } = await axiosInstance.get<GetFeedbackResponseDTO>(
-    `/learning/answers/${answerId}/feedback`,
   );
   return data;
 };
