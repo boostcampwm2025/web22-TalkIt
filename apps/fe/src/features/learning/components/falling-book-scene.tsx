@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { Suspense, useMemo, useRef } from 'react';
 
 import { ContactShadows, OrbitControls, Text } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
@@ -191,7 +191,9 @@ export default function FallingBooksScene({ questions }: FallingBooksSceneProps)
       gl={{ alpha: true, antialias: true }}
       className="h-full w-full cursor-move"
     >
-      <SceneContent questions={questions} />
+      <Suspense fallback={null}>
+        <SceneContent questions={questions} />
+      </Suspense>
     </Canvas>
   );
 }
