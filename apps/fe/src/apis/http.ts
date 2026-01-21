@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance } from 'axios';
 
-const BASE_URL = '/api'; // todo: 추후에 환경변수로 엔드포인트 관리하기
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: BASE_URL,
