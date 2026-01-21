@@ -15,14 +15,27 @@ const getRandomColor = () => {
   return '#' + randomColor.padStart(6, '0');
 };
 
+type QuestionItem = {
+  content: string;
+  type: 'NORMAL' | 'TAIL';
+  score: number;
+};
+
 type FallingBooksSceneProps = {
-  questions: string[];
+  questions: QuestionItem[];
+};
+
+type FallingBookProps = {
+  title: string;
+  type: 'NORMAL' | 'TAIL'; // [추가됨] 타입 정보
+  index: number;
+  total: number;
 };
 
 /**
  * 개별 책 컴포넌트
  */
-const FallingBook = ({ title, index, total }: { title: string; index: number; total: number }) => {
+const FallingBook = ({ title, index, total }: FallingBookProps) => {
   const rigidBodyRef = useRef<RapierRigidBody>(null);
   const color = useMemo(() => getRandomColor(), []);
   const startY = 3.5 + (total - 1 - index) * 1.2; // 책이 떨어지기 시작하는 높이
@@ -109,7 +122,7 @@ const FallingBook = ({ title, index, total }: { title: string; index: number; to
 /**
  * 씬 컨텐츠 컴포넌트 (조명, 물리 세계 설정, 카메라 컨트롤)
  */
-const SceneContent = ({ questions }: { questions: string[] }) => {
+const SceneContent = ({ questions }: { questions: QuestionItem[] }) => {
   return (
     <>
       {/* 조명 설정 */}
@@ -153,10 +166,11 @@ const SceneContent = ({ questions }: { questions: string[] }) => {
 
         {/* 답변했던 질문 목록을 순회하며 떨어지는 책 컴포넌트들을 생성 */}
         <group>
-          {questions.map((title, index) => (
+          {questions.map((item, index) => (
             <FallingBook
               key={`book-${index}`}
-              title={title}
+              title={item.content}
+              type={item.type}
               index={index}
               total={questions.length}
             />
