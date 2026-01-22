@@ -23,6 +23,10 @@ export class ExtraQuestionRepositoryPrisma implements ExtraQuestionRepositoryPor
       parentAnswerId: row.parentAnswerId,
       content: row.content,
       mustInclude: row.mustInclude as string[],
+      category: row.category,
+      difficulty: row.difficulty,
+      timeLimitSec: row.timeLimitSec,
+      depth: row.depth,
       createdAt: row.createdAt,
     };
   }
@@ -41,6 +45,10 @@ export class ExtraQuestionRepositoryPrisma implements ExtraQuestionRepositoryPor
       parentAnswerId: row.parentAnswerId,
       content: row.content,
       mustInclude: row.mustInclude as string[],
+      category: row.category,
+      difficulty: row.difficulty,
+      timeLimitSec: row.timeLimitSec,
+      depth: row.depth,
       createdAt: row.createdAt,
     };
   }
@@ -50,7 +58,6 @@ export class ExtraQuestionRepositoryPrisma implements ExtraQuestionRepositoryPor
     parentAnswerId: number;
     content: string;
     mustInclude: string[];
-
     category: Category;
     difficulty: Difficulty;
     timeLimitSec: number;
@@ -75,6 +82,10 @@ export class ExtraQuestionRepositoryPrisma implements ExtraQuestionRepositoryPor
       parentAnswerId: row.parentAnswerId,
       content: row.content,
       mustInclude: row.mustInclude as string[],
+      category: row.category,
+      difficulty: row.difficulty,
+      timeLimitSec: row.timeLimitSec,
+      depth: row.depth,
       createdAt: row.createdAt,
     };
   }
