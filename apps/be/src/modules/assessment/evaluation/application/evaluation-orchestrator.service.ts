@@ -8,6 +8,12 @@ import { LlmFeedbackProvider } from '../infra/llm-feedback.provider';
 import { promises as fsp } from 'node:fs';
 import * as path from 'node:path';
 
+type QuestionContext = {
+  id: number;
+  content: string;
+  mustInclude: string[];
+};
+
 @Injectable()
 export class EvaluationOrchestratorService {
   constructor(
@@ -19,56 +25,102 @@ export class EvaluationOrchestratorService {
 
   async evaluate(answerId: number): Promise<{ score: number; issues: IssuesPayload }> {
     const answer = await this.repo.getAnswerWithRelations(answerId);
-    if (!answer) throw new Error('ANSWER_NOT_FOUND');
-    const q = answer.question;
-    const mustInclude = Array.isArray(q.mustInclude) ? (q.mustInclude as any[]).map(String) : [];
-    const questionSummary = String(q.content).slice(0, 200);
+    if (!answer) {
+      throw new Error('ANSWER_NOT_FOUND');
+    }
+
+    const q = this.extractQuestionContext(answer);
+
+    const questionSummary = q.content.slice(0, 200);
 
     const issuesRaw = await this.evalProvider.evaluate({
       questionId: q.id,
       questionSummary,
-      mustInclude,
+      mustInclude: q.mustInclude,
       answerText: answer.answerText,
     });
 
-    const issues = this.canonicalizeIssuesForScoring(mustInclude, issuesRaw);
+    const issues = this.canonicalizeIssuesForScoring(q.mustInclude, issuesRaw);
 
-    const { score } = this.scoring.score(mustInclude, issues.issues, issues.meta);
+    const { score } = this.scoring.score(q.mustInclude, issues.issues, issues.meta);
     await this.repo.setAnswerScore(answerId, score);
 
-    // Optional: dump evaluation payload to JSONL for debugging/inspection
-    try {
-      const dumpPath =
-        process.env.ASSESS_EVAL_DUMP_PATH ||
-        path.join(process.cwd(), 'resource', 'eval_dumps', 'evaluations.jsonl');
-      await fsp.mkdir(path.dirname(dumpPath), { recursive: true });
-      // Normalize issues for dump: split missing targets and group by type
-      const normalized = this.normalizeIssuesForDump(mustInclude, issues);
-      const line = JSON.stringify({
-        timestamp: new Date().toISOString(),
-        answerId,
-        questionId: q.id,
-        mustInclude,
-        issues: normalized,
-        score,
-      });
-      await fsp.appendFile(dumpPath, line + '\n', 'utf8');
-    } catch (_) {
-      // best-effort only
-    }
+    await this.dumpEvaluationIfNeeded({
+      answerId,
+      questionId: q.id,
+      mustInclude: q.mustInclude,
+      issues,
+      score,
+    });
+
     return { score, issues };
   }
 
   async buildFeedback(answerId: number, issues: IssuesPayload): Promise<{ feedback: any }> {
     const answer = await this.repo.getAnswerWithRelations(answerId);
-    if (!answer) throw new Error('ANSWER_NOT_FOUND');
-    const q = answer.question;
-    const mustInclude = Array.isArray(q.mustInclude) ? (q.mustInclude as any[]).map(String) : [];
-    const questionSummary = String(q.content).slice(0, 200);
+    if (!answer) {
+      throw new Error('ANSWER_NOT_FOUND');
+    }
 
-    const feedback = await this.feedbackProvider.build({ questionSummary, mustInclude, issues });
+    const q = this.extractQuestionContext(answer);
+
+    const questionSummary = q.content.slice(0, 200);
+
+    const feedback = await this.feedbackProvider.build({
+      questionSummary,
+      mustInclude: q.mustInclude,
+      issues,
+    });
+
     await this.repo.setAnswerFeedback(answerId, feedback as any);
     return { feedback };
+  }
+
+  private extractQuestionContext(answer: any): QuestionContext {
+    const q = answer.question ?? answer.extraQuestion;
+
+    if (!q) {
+      throw new Error('QUESTION_CONTEXT_NOT_FOUND');
+    }
+
+    const mustInclude = Array.isArray(q.mustInclude) ? q.mustInclude.map(String) : [];
+
+    return {
+      id: q.id,
+      content: String(q.content),
+      mustInclude,
+    };
+  }
+
+  private async dumpEvaluationIfNeeded(params: {
+    answerId: number;
+    questionId: number;
+    mustInclude: string[];
+    issues: IssuesPayload;
+    score: number;
+  }) {
+    try {
+      const dumpPath =
+        process.env.ASSESS_EVAL_DUMP_PATH ||
+        path.join(process.cwd(), 'resource', 'eval_dumps', 'evaluations.jsonl');
+
+      await fsp.mkdir(path.dirname(dumpPath), { recursive: true });
+
+      const normalized = this.normalizeIssuesForDump(params.mustInclude, params.issues);
+
+      const line = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        answerId: params.answerId,
+        questionId: params.questionId,
+        mustInclude: params.mustInclude,
+        issues: normalized,
+        score: params.score,
+      });
+
+      await fsp.appendFile(dumpPath, line + '\n', 'utf8');
+    } catch {
+      // best-effort only
+    }
   }
 
   private normalizeIssuesForDump(mustInclude: string[], payload: IssuesPayload) {
@@ -83,10 +135,8 @@ export class EvaluationOrchestratorService {
       'wrong-example': [],
     };
 
-    // Start with provided issues
-    for (const i of payload.issues) {
-      if (i.type === 'missing' && (!i.target || i.target === '')) {
-        // If missing target unspecified, expand using meta.mustIncludeMissing
+    for (const i of payload.issues ?? []) {
+      if (i.type === 'missing' && !i.target) {
         for (const miss of payload.meta?.mustIncludeMissing ?? []) {
           byType.missing.push({
             type: 'missing',
@@ -95,30 +145,14 @@ export class EvaluationOrchestratorService {
             target: miss,
           });
         }
-      } else {
-        const key = i.type;
-        if (byType[key]) byType[key].push(i);
-      }
-    }
-
-    // Ensure any missing items not represented are added
-    const presentMissingTargets = new Set(byType.missing.map((m) => m.target));
-    for (const miss of payload.meta?.mustIncludeMissing ?? []) {
-      if (!presentMissingTargets.has(miss)) {
-        byType.missing.push({
-          type: 'missing',
-          detail: `'${miss}'에 대한 정보가 누락됨`,
-          evidence: '',
-          target: miss,
-        });
+      } else if (byType[i.type]) {
+        byType[i.type].push(i);
       }
     }
 
     return { ...byType, meta: payload.meta };
   }
 
-  // Produce issues suitable for scoring/feedback: expand missing by items, ensure targets,
-  // and synthesize strength entries for meta.mustIncludeMatched when absent.
   private canonicalizeIssuesForScoring(
     mustInclude: string[],
     payload: IssuesPayload,
@@ -126,12 +160,10 @@ export class EvaluationOrchestratorService {
     const out: IssuesPayload = { issues: [], meta: payload.meta } as any;
     const seen = new Set<string>();
 
-    function key(t: string, target?: string | null) {
-      return `${t}::${target ?? ''}`;
-    }
+    const key = (t: string, target?: string | null) => `${t}::${target ?? ''}`;
 
     for (const i of payload.issues ?? []) {
-      if (i.type === 'missing' && (!i.target || i.target === '')) {
+      if (i.type === 'missing' && !i.target) {
         for (const miss of payload.meta?.mustIncludeMissing ?? []) {
           const k = key('missing', miss);
           if (seen.has(k)) continue;
@@ -152,25 +184,6 @@ export class EvaluationOrchestratorService {
       }
     }
 
-    // Ensure matched items have at least one strength record (avoids 0점/피드백 불일치)
-    const matched = new Set(payload.meta?.mustIncludeMatched ?? []);
-    const src = payload.meta?.source;
-    if (src !== 'fallback') {
-      for (const m of matched) {
-        const k = key('strength', m);
-        if (!seen.has(k)) {
-          out.issues.push({
-            type: 'strength',
-            detail: `'${m}' 개념을 정확히 언급함`,
-            evidence: m,
-            target: m,
-          } as any);
-          seen.add(k);
-        }
-      }
-    }
-
-    // Also ensure missing items listed in meta are present
     for (const miss of payload.meta?.mustIncludeMissing ?? []) {
       const k = key('missing', miss);
       if (!seen.has(k)) {
