@@ -1,7 +1,11 @@
 import { type ReactNode, useState } from 'react';
 
-import { getDeepDiveQuestionApi, getNextQuestionApi, submitAssessApi } from '@/apis/learning-api';
-import { DUMMY_RESULT_DATA } from '@/constants/learning';
+import {
+  finishSessionApi,
+  getDeepDiveQuestionApi,
+  getNextQuestionApi,
+  submitAssessApi,
+} from '@/apis/learning-api';
 import useLearningSession from '@/lib/stores/learning-session';
 import { cn } from '@/lib/utils';
 import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
@@ -25,7 +29,7 @@ const FloatingStepBar = () => {
   const handleEndLearning = async () => {
     if (!sessionId) return;
 
-    const data = DUMMY_RESULT_DATA; // await finishSessionApi({ sessionId });
+    const data = await finishSessionApi({ sessionId });
     setRewardData(data);
     useLearningSession.getState().resetQuestion();
     setIsRewardModalOpen(true);
