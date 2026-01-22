@@ -83,7 +83,12 @@ const FloatingStepBar = () => {
             <Binoculars className="hidden h-4 w-4 sm:block" />
             딥다이브
           </ActionBar.Button>
-          <ActionBar.PrimaryButton onClick={handleNextQuestion}>다음 질문</ActionBar.PrimaryButton>
+          <ActionBar.PrimaryButton
+            disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE}
+            onClick={handleNextQuestion}
+          >
+            다음 질문
+          </ActionBar.PrimaryButton>
         </>
       ) : (
         <>
@@ -91,7 +96,10 @@ const FloatingStepBar = () => {
             <SkipForward className="hidden h-4 w-4 sm:block" />
             다음 질문으로 건너뛰기
           </ActionBar.Button>
-          <ActionBar.PrimaryButton onClick={handleSubmitAnswer}>
+          <ActionBar.PrimaryButton
+            disabled={phase !== ANSWER_PHASE.STT_DONE}
+            onClick={handleSubmitAnswer}
+          >
             답변 제출하기
           </ActionBar.PrimaryButton>
         </>
@@ -129,7 +137,13 @@ const ActionBarButton = ({ children, className, withDivider, ...rest }: ActionBa
 
 const ActionBarPrimaryButton = ({ children, className, ...rest }: ActionBarButtonProps) => {
   return (
-    <ActionBarButton className={cn('rounded-2xl bg-primary', className)} {...rest}>
+    <ActionBarButton
+      className={cn(
+        'rounded-2xl bg-primary disabled:cursor-not-allowed disabled:bg-gray-600 disabled:text-gray-200',
+        className,
+      )}
+      {...rest}
+    >
       {children}
     </ActionBarButton>
   );
