@@ -182,8 +182,11 @@ model Session {
 model UserAnswer {
   id           Int      @id @default(autoincrement()) @map("answer_id")
   userId       Int      @map("user_id")
-  questionId   Int      @map("question_id")
   sessionId    Int      @map("session_id")
+
+  questionId   Int?      @map("question_id")
+  extraQuestionId Int? @map("extra_question_id")
+
   answerText   String   @map("answer_text") @db.Text
   timeSpentSec Int      @map("time_spent_sec")
   overallScore Int?     @map("overall_score")
