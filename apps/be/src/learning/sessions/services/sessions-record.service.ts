@@ -74,7 +74,8 @@ export class SessionsRecordService {
       const sttResult = await this.sttService.transcribe({
         objectKey,
         language: 'ko-KR',
-        questionId: Number(dto.questionId),
+        questionId: dto.questionId,
+        extraQuestionId: dto.extraQuestionId,
       });
       console.log('[SessionsRecordService] STT result:', sttResult);
 
