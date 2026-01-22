@@ -88,7 +88,7 @@ const QuestionPageContent = () => {
       <AnswerSection />
       <FeedbackSection />
       <div className="flex-1" />
-      <FloatingStepBar />
+      <FloatingStepBar key={question?.questionId} />
     </div>
   );
 };

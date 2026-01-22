@@ -22,12 +22,20 @@ const FloatingStepBar = () => {
 
   const [rewardData, setRewardData] = useState<FinishSessionResponseDTO | null>(null);
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+  const [clickedButtons, setClickedButtons] = useState<Set<string>>(new Set());
 
   const isFeedbackPhase =
     phase === ANSWER_PHASE.FEEDBACK_LOADING || phase === ANSWER_PHASE.FEEDBACK_DONE;
 
+  const markClicked = (buttonName: string) => {
+    setClickedButtons((prev) => new Set(prev).add(buttonName));
+  };
+
+  const isClicked = (buttonName: string) => clickedButtons.has(buttonName);
+
   const handleEndLearning = async () => {
-    if (!sessionId) return;
+    if (!sessionId || isClicked('endLearning')) return;
+    markClicked('endLearning');
 
     const data = await finishSessionApi({ sessionId });
     setRewardData(data);
@@ -36,7 +44,8 @@ const FloatingStepBar = () => {
   };
 
   const handleSubmitAnswer = async () => {
-    if (!sessionId || !question || !sttText) return;
+    if (!sessionId || !question || !sttText || isClicked('submitAnswer')) return;
+    markClicked('submitAnswer');
 
     try {
       setPhase(ANSWER_PHASE.FEEDBACK_LOADING);
@@ -55,7 +64,8 @@ const FloatingStepBar = () => {
   };
 
   const handleNextQuestion = () => {
-    if (!sessionId) return;
+    if (!sessionId || isClicked('nextQuestion')) return;
+    markClicked('nextQuestion');
 
     reset();
     getNextQuestionApi(sessionId).then((data) => {
@@ -64,7 +74,8 @@ const FloatingStepBar = () => {
   };
 
   const handleDeepDive = () => {
-    if (!sessionId || !answerId) return;
+    if (!sessionId || !answerId || isClicked('deepDive')) return;
+    markClicked('deepDive');
 
     getDeepDiveQuestionApi(sessionId, answerId).then((data) => {
       reset();
