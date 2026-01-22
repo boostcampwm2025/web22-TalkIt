@@ -5,8 +5,8 @@ import { NormalizeService } from '@/normalize/normalize.service';
 import { normalizeAudio } from '../../../common/audio/normalize-audio';
 import { SttService } from '../../../stt/services/stt.service';
 import { ObjectStorageProvider } from '../providers/object-storage.provider';
+import { SessionsRepository } from '../repository/sessions.repository';
 import type { RecordSessionAnswerDto } from '../schemas/record-session-answer.schema';
-import { SessionsRepository } from '../sessions.repository';
 
 @Injectable()
 export class SessionsRecordService {
@@ -74,7 +74,8 @@ export class SessionsRecordService {
       const sttResult = await this.sttService.transcribe({
         objectKey,
         language: 'ko-KR',
-        questionId: Number(dto.questionId),
+        questionId: dto.questionId,
+        extraQuestionId: dto.extraQuestionId,
       });
       console.log('[SessionsRecordService] STT result:', sttResult);
 

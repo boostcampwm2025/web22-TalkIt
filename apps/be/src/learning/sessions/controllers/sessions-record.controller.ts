@@ -15,10 +15,8 @@ import {
   RecordSessionAnswerSchema,
 } from '../schemas/record-session-answer.schema';
 import { SessionsRecordService } from '../services/sessions-record.service';
-
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
 import { zodSchemaToOpenAPI } from 'src/common/utils/zod-to-openapi.util';
-
 
 @ApiTags('Learning - Sessions')
 @Controller('/api/learning/sessions')
@@ -46,7 +44,7 @@ export class SessionsRecordController {
           format: 'binary',
         },
       },
-      required: ['questionId', 'audioFile'],
+      required: ['audioFile'],
     },
   })
   @UseInterceptors(FileInterceptor('audioFile'))

@@ -13,12 +13,17 @@ import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
 import { zodSchemaToOpenAPI } from '@/common/utils/zod-to-openapi.util';
 
 import { type CreateSessionDto, CreateSessionSchema } from '../schemas/create-session.schema';
+import { type DeepDiveRequestDto, DeepDiveRequestSchema } from '../schemas/deep-dive.schema';
+import { DeepDiveService } from '../services/deep-dive.service';
 import { SessionsService } from '../services/sessions.service';
 
 @ApiTags('Learning - Sessions')
 @Controller('/api/learning/sessions')
 export class SessionsController {
-  constructor(private readonly sessionsService: SessionsService) {}
+  constructor(
+    private readonly sessionsService: SessionsService,
+    private readonly deepDiveService: DeepDiveService,
+  ) {}
 
   @Post()
   @ApiOperation({
@@ -94,5 +99,34 @@ export class SessionsController {
   })
   async getNextQuestion(@Param('sessionId', ParseIntPipe) sessionId: number) {
     return this.sessionsService.getNextQuestion(sessionId);
+  }
+  // 꼬리질문(Deep Dive) 요청
+  @Post(':sessionId/deep-dive')
+  @ApiOperation({
+    summary: '꼬리질문(Deep Dive) 생성',
+    description: '사용자 답변을 기반으로 꼬리질문을 생성합니다.',
+  })
+  @ApiBody({
+    schema: zodSchemaToOpenAPI(DeepDiveRequestSchema),
+  })
+  @ApiResponse({
+    status: 200,
+    description: '꼬리질문 생성 성공',
+  })
+  @ApiBadRequestResponse({
+    description: '세션이 유효하지 않거나, 답변/크레딧이 없음',
+  })
+  async deepDive(
+    @Param('sessionId', ParseIntPipe) sessionId: number,
+    @Body(new ZodValidationPipe(DeepDiveRequestSchema))
+    body: DeepDiveRequestDto,
+  ) {
+    const userId = 1; // TODO: auth
+
+    return this.deepDiveService.execute({
+      userId,
+      sessionId,
+      answerId: body.answerId,
+    });
   }
 }

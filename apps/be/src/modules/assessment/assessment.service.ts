@@ -16,7 +16,8 @@ export class AssessmentService {
     userId: number,
     sessionId: number,
     body: {
-      questionId: number;
+      questionId?: number;
+      extraQuestionId?: number;
       answerText: string;
       timeSpentSec: number;
     },
@@ -32,10 +33,18 @@ export class AssessmentService {
       throw new BadRequestException({ code: 'FORBIDDEN', message: '세션 소유자가 아닙니다.' });
     }
 
+    if ((!body.questionId && !body.extraQuestionId) || (body.questionId && body.extraQuestionId)) {
+      throw new BadRequestException({
+        code: 'INVALID_ANSWER_TARGET',
+        message: 'questionId 또는 extraQuestionId 중 하나만 제공해야 합니다.',
+      });
+    }
+
     const answer = await this.repo.createUserAnswer({
       userId,
       sessionId,
       questionId: body.questionId,
+      extraQuestionId: body.extraQuestionId,
       answerText: body.answerText,
       timeSpentSec: body.timeSpentSec,
     });
