@@ -5,6 +5,7 @@ import type {
   AssessmentSnapshotDTO,
   CreateQuestionResponseDTO,
   FinishSessionResponseDTO,
+  GetNextQuestionResponseDTO,
   SubmitRecordResponseDTO,
 } from '@repo/shared/types/learning';
 
@@ -99,6 +100,16 @@ export const getAssessmentSnapshotApi = async (
 ): Promise<AssessmentSnapshotDTO> => {
   const { data } = await axiosInstance.get<AssessmentSnapshotDTO>(
     `/learning/answers/${answerId}/assess`,
+  );
+  return data;
+};
+
+/**
+ * 다음 질문 조회 (세션 내 다음 질문으로 이동)
+ */
+export const getNextQuestionApi = async (sessionId: number) => {
+  const { data } = await axiosInstance.post<GetNextQuestionResponseDTO>(
+    `/learning/sessions/${sessionId}/next-question`,
   );
   return data;
 };
