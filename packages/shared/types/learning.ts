@@ -5,7 +5,8 @@ import {
 } from '../constants/learning';
 
 export type Question = {
-  questionId: number;
+  questionId?: number;
+  extraQuestionId?: number;
   content: string;
   guide: string;
   category: QuestionCategory;
@@ -22,7 +23,7 @@ export type CreateQuestionResponseDTO = {
 };
 
 // 다음 질문 조회 DTO
-export type GetNextQuestionResponseDTO = Pick<
+export type GetQuestionResponseDTO = Pick<
   CreateQuestionResponseDTO,
   'question' | 'remainedCredit' | 'currentQuestionCount'
 >;
@@ -68,7 +69,8 @@ export type GetFeedbackResponseDTO = {
 
 // 평가 요청 DTO
 export type AssessRequestDTO = {
-  questionId: number;
+  questionId?: number;
+  extraQuestionId?: number;
   answerText: string;
   timeSpentSec: number;
 };

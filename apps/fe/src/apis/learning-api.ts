@@ -5,7 +5,7 @@ import type {
   CreateQuestionResponseDTO,
   FinishSessionResponseDTO,
   GetFeedbackResponseDTO,
-  GetNextQuestionResponseDTO,
+  GetQuestionResponseDTO,
   SubmitRecordResponseDTO,
 } from '@repo/shared/types/learning';
 
@@ -13,7 +13,8 @@ import axiosInstance from './http';
 
 type SubmitRecordParams = {
   sessionId: number;
-  questionId: number;
+  questionId?: number;
+  extraQuestionId?: number;
   audioFile: File;
 };
 
@@ -43,11 +44,13 @@ export const startSessionApi = async (
  */
 export const submitRecordApi = async ({
   sessionId,
+  extraQuestionId,
   questionId,
   audioFile,
 }: SubmitRecordParams): Promise<SubmitRecordResponseDTO> => {
   const formData = new FormData();
-  formData.append('questionId', String(questionId));
+  if (questionId) formData.append('questionId', String(questionId));
+  if (extraQuestionId) formData.append('extraQuestionId', String(extraQuestionId));
   formData.append('audioFile', audioFile);
 
   const response = await axiosInstance.post(`/learning/sessions/${sessionId}/record`, formData, {
@@ -77,16 +80,12 @@ export const finishSessionApi = async ({
  */
 export const submitAssessApi = async ({
   sessionId,
-  questionId,
-  answerText,
-  timeSpentSec,
+  ...rest
 }: SubmitAssessParams): Promise<AssessResponseDTO> => {
   const { data } = await axiosInstance.post<AssessResponseDTO>(
     `/learning/sessions/${sessionId}/assess`,
     {
-      questionId,
-      answerText,
-      timeSpentSec,
+      ...rest,
     },
   );
   return data;
@@ -106,8 +105,19 @@ export const getFeedbackApi = async (answerId: number): Promise<GetFeedbackRespo
  * 다음 질문 조회 (세션 내 다음 질문으로 이동)
  */
 export const getNextQuestionApi = async (sessionId: number) => {
-  const { data } = await axiosInstance.post<GetNextQuestionResponseDTO>(
+  const { data } = await axiosInstance.post<GetQuestionResponseDTO>(
     `/learning/sessions/${sessionId}/next-question`,
+  );
+  return data;
+};
+
+/**
+ * 꼬리 질문 조회
+ */
+export const getDeepDiveQuestionApi = async (sessionId: number, answerId: number) => {
+  const { data } = await axiosInstance.post<GetQuestionResponseDTO>(
+    `/learning/sessions/${sessionId}/deep-dive`,
+    { answerId },
   );
   return data;
 };

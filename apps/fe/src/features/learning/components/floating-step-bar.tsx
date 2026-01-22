@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { getNextQuestionApi, submitAssessApi } from '@/apis/learning-api';
+import { getDeepDiveQuestionApi, getNextQuestionApi, submitAssessApi } from '@/apis/learning-api';
 import useLearningSession from '@/lib/stores/learning-session';
 import { cn } from '@/lib/utils';
 
@@ -11,7 +11,7 @@ const FloatingStepBar = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
 
-  const { phase, setPhase, sttText, setAnswerId, recordingTime, reset } = useAnswerFlow();
+  const { phase, setPhase, sttText, setAnswerId, answerId, recordingTime, reset } = useAnswerFlow();
 
   const isFeedbackPhase =
     phase === ANSWER_PHASE.FEEDBACK_LOADING || phase === ANSWER_PHASE.FEEDBACK_DONE;
@@ -26,6 +26,7 @@ const FloatingStepBar = () => {
       const { answerId: newAnswerId } = await submitAssessApi({
         sessionId,
         questionId: question.questionId,
+        extraQuestionId: question.extraQuestionId,
         answerText: sttText,
         timeSpentSec: recordingTime,
       });
@@ -45,7 +46,14 @@ const FloatingStepBar = () => {
     });
   };
 
-  const handleDeepDive = () => {};
+  const handleDeepDive = () => {
+    if (!sessionId || !answerId) return;
+
+    getDeepDiveQuestionApi(sessionId, answerId).then((data) => {
+      reset();
+      useLearningSession.getState().setQuestion({ ...data, sessionId });
+    });
+  };
 
   return (
     <ActionBar>

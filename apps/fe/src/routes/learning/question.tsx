@@ -55,6 +55,7 @@ const QuestionPageContent = () => {
       const { sttText } = await submitRecordApi({
         sessionId,
         questionId: question.questionId,
+        extraQuestionId: question.extraQuestionId,
         audioFile,
       });
 
