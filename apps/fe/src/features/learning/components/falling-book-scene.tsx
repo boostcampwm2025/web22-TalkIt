@@ -3,6 +3,7 @@ import { Suspense, useMemo, useRef } from 'react';
 import { ContactShadows, OrbitControls, Text } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { CuboidCollider, Physics, RapierRigidBody, RigidBody } from '@react-three/rapier';
+import type { QuestionArchiveItem } from '@repo/shared/types/learning';
 
 import * as THREE from 'three';
 
@@ -15,14 +16,8 @@ const getRandomColor = () => {
   return '#' + randomColor.padStart(6, '0');
 };
 
-type QuestionItem = {
-  content: string;
-  type: 'NORMAL' | 'TAIL';
-  score: number;
-};
-
 type FallingBooksSceneProps = {
-  questions: QuestionItem[];
+  questions: QuestionArchiveItem[];
 };
 
 type FallingBookProps = {
@@ -122,7 +117,7 @@ const FallingBook = ({ title, index, total }: FallingBookProps) => {
 /**
  * 씬 컨텐츠 컴포넌트 (조명, 물리 세계 설정, 카메라 컨트롤)
  */
-const SceneContent = ({ questions }: { questions: QuestionItem[] }) => {
+const SceneContent = ({ questions }: { questions: QuestionArchiveItem[] }) => {
   return (
     <>
       {/* 조명 설정 */}
