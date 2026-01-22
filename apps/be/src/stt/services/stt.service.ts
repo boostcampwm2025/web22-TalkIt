@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 
 import { SttBoostingBuilder } from '../builders/stt-boosting.builder';
 import { ClovaSttProvider } from '../providers/clova-stt.provider';
@@ -6,6 +6,8 @@ import { SttQuestionLoaderService } from './stt-question-loader.service';
 
 @Injectable()
 export class SttService {
+  private readonly logger = new Logger(SttService.name);
+
   constructor(
     private readonly clovaSttProvider: ClovaSttProvider,
     private readonly questionLoader: SttQuestionLoaderService,
@@ -19,7 +21,7 @@ export class SttService {
   }): Promise<{ text: string }> {
     try {
       // 1. 메서드 진입
-      console.log('[STT] transcribe start', {
+      this.logger.log('transcribe start', {
         objectKey: params.objectKey,
         language: params.language,
         questionId: params.questionId,
@@ -34,28 +36,28 @@ export class SttService {
         throw new Error('INVALID_QUESTION_TARGET');
       }
 
-      // 2. QuestionMeta 로딩 시작
-      console.log('[STT] loading question meta...');
+      // 2. QuestionMeta 로딩
+      this.logger.log('loading question meta...');
       const questionMeta = await this.questionLoader.loadQuestionMeta({
         questionId: params.questionId,
         extraQuestionId: params.extraQuestionId,
       });
 
-      // 4. boostWords 생성
+      // 3. boostWords 생성
       const boostWords = SttBoostingBuilder.build(questionMeta);
-      console.log('[STT] boostWords built', {
+      this.logger.log('boostWords built', {
         boostWordsCount: boostWords.length,
       });
 
-      // 3. QuestionMeta 로딩 완료
-      console.log('[STT] question meta loaded', {
+      // 4. QuestionMeta 로딩 완료
+      this.logger.log('question meta loaded', {
         questionId: questionMeta.questionId,
         topicId: questionMeta.topicId,
         mustIncludeLength: questionMeta.mustInclude?.length,
       });
 
-      // 5. Clova STT 호출 직전
-      console.log('[STT] calling Clova STT', {
+      // 5. Clova STT 호출
+      this.logger.log('calling Clova STT', {
         objectKey: params.objectKey,
         language: params.language,
       });
@@ -66,21 +68,22 @@ export class SttService {
         boostWords,
       );
 
-      // 6. Clova STT 응답 수신
-      console.log('[STT] Clova STT success', {
+      // 6. STT 성공
+      this.logger.log('Clova STT success', {
         textLength: text?.length,
         textPreview: text?.slice(0, 50),
       });
 
       return { text };
     } catch (error) {
-      // 7. 에러 발생 지점 로그
-      console.error('[STT ERROR] occurred');
-      console.error('[STT ERROR] raw error:', error);
+      // 7. 에러 처리
+      this.logger.error('STT error occurred', error);
 
       if ((error as any)?.response) {
-        console.error('[STT ERROR] Clova response status:', (error as any).response.status);
-        console.error('[STT ERROR] Clova response data:', (error as any).response.data);
+        this.logger.error('Clova response error', {
+          status: (error as any).response.status,
+          data: (error as any).response.data,
+        });
       }
 
       throw new InternalServerErrorException({

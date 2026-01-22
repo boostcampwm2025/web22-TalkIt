@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { NormalizeService } from '@/normalize/normalize.service';
 
@@ -10,6 +10,8 @@ import type { RecordSessionAnswerDto } from '../schemas/record-session-answer.sc
 
 @Injectable()
 export class SessionsRecordService {
+  private readonly logger = new Logger(SessionsRecordService.name);
+
   constructor(
     private readonly sessionsRepository: SessionsRepository,
     private readonly storageProvider: ObjectStorageProvider,
@@ -27,91 +29,70 @@ export class SessionsRecordService {
     let objectKey: string | null = null;
 
     try {
-      console.log('[SessionsRecordService] 1. Starting record process');
-
       /**
        * 세션 존재 확인
        */
-      console.log('[SessionsRecordService] 2. Checking session existence:', sessionId);
       const session = await this.sessionsRepository.findById(sessionId);
 
       if (!session) {
-        console.error('[SessionsRecordService] Session not found:', sessionId);
+        this.logger.error('Session not found', { sessionId });
+
         throw new NotFoundException({
           code: 'SESSION_NOT_FOUND',
           message: '세션을 찾을 수 없습니다.',
         });
       }
-      console.log('[SessionsRecordService] Session found:', session);
 
       /**
        * 오디오 포맷 정규화
        * - speech 모듈에서 검증된 로직
        * - wav / mono / 16kHz 등 STT 요구사항 충족
        */
-      console.log('[SessionsRecordService] 3. Normalizing audio');
       const { buffer, contentType, filename } = await normalizeAudio(file);
-      console.log('[SessionsRecordService] Audio normalized:', {
-        contentType,
-        filename,
-        bufferSize: buffer.length,
-      });
 
       /**
        * Object Storage 업로드
        * - STT 서버가 직접 접근 가능한 위치
        */
-      console.log('[SessionsRecordService] 4. Uploading to Object Storage');
       objectKey = await this.storageProvider.upload(buffer, contentType, filename);
-      console.log('[SessionsRecordService] Uploaded to storage:', objectKey);
 
       /**
        * STT 요청
        * - 파일을 다시 보내지 않음
        * - objectKey 기준으로 STT 서버가 fetch
        */
-      console.log('[SessionsRecordService] 5. Requesting STT');
       const sttResult = await this.sttService.transcribe({
         objectKey,
         language: 'ko-KR',
         questionId: dto.questionId,
         extraQuestionId: dto.extraQuestionId,
       });
-      console.log('[SessionsRecordService] STT result:', sttResult);
 
       /**
        * stt -> 정규화 로직
        */
-      console.log('[NormalizeService] Normalizing STT text for draft');
       const normalizeResult = await this.normalizeService.normalizeForDraft(sttResult.text);
-      console.log(
-        `[NormalizeService] Normalize completed | rawLength=${normalizeResult.rawText.length}, preLength=${normalizeResult.preNormalizedText.length}, draftLength=${normalizeResult.draftText.length}`,
-      );
-
       /**
        * 응답 반환 -> 일단 최종 변환만 작성
        * 필요시 응답 변환
        * preNormalizedText: 음차만 변경
        * rawText: 기존 stt 텍스트
        */
-      console.log('[SessionsRecordService] 7. Record process completed successfully');
       return {
         sttText: normalizeResult.draftText,
       };
     } catch (error) {
-      console.error('[SessionsRecordService] ERROR in record process:', error);
+      this.logger.error('ERROR in record process', error);
       throw error;
     } finally {
       if (objectKey) {
         try {
-          console.log('[SessionsRecordService] 6. Deleting temp object:', objectKey);
           await this.storageProvider.deleteObject(objectKey);
         } catch (cleanupError) {
-          console.error(
-            '[SessionsRecordService] Failed to delete temp object:',
+          this.logger.error('Failed to delete temp object', {
             objectKey,
-            cleanupError,
-          );
+            error: cleanupError,
+          });
         }
       }
     }
