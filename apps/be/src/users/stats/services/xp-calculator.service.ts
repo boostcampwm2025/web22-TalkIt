@@ -17,7 +17,8 @@ export class XpCalculatorService {
   // 난이도와 답변(꼬리 질문 여부)을 기반으로 최종 획득 XP를 계산하는 메서드
   calculate(difficulty: Difficulty, answers: { extraQuestionId: string | null }[]) {
     // 1. 기본 XP
-    const baseXp = XP_CONFIG.BASE_SESSION_XP;
+    const XP_PER_QUESTION = 100;
+    const baseXp = answers.length * XP_PER_QUESTION;
 
     // 2. 난이도 보너스
     let multiplier = XP_CONFIG.BONUS.DIFFICULTY.EASY;
