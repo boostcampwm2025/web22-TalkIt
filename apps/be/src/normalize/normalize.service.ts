@@ -26,7 +26,7 @@ export class NormalizeService {
     //  LLM Cleanup (User-friendly, optional)
     let draftText = preNormalizedText;
 
-    if (!shouldCallLlm(preNormalizedText)) {
+    if (shouldCallLlm(preNormalizedText)) {
       try {
         this.logger.debug(`Calling LLM cleanup (length=${preNormalizedText.length})`);
         draftText = await this.llmCleanupService.cleanup(preNormalizedText);
@@ -35,6 +35,14 @@ export class NormalizeService {
         this.logger.warn('LLM cleanup failed, falling back to preNormalizedText', error);
         draftText = preNormalizedText;
       }
+    }
+
+    if (!originalText.trim()) {
+      return {
+        rawText: originalText,
+        preNormalizedText: '입력받은 음성이 없습니다.',
+        draftText: '입력받은 음성이 없습니다.',
+      };
     }
 
     return {
