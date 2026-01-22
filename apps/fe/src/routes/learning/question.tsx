@@ -81,7 +81,10 @@ const QuestionPageContent = () => {
     <div className="relative mx-auto flex min-h-screen max-w-250 flex-col gap-8 p-6 sm:p-10">
       <QuestionHeader />
       <QuestionContent />
-      <VoiceRecorderSection onRecordingComplete={handleRecordingComplete} />
+      <VoiceRecorderSection
+        key={question?.questionId}
+        onRecordingComplete={handleRecordingComplete}
+      />
       <AnswerSection />
       <FeedbackSection />
       <div className="flex-1" />
