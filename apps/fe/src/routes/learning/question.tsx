@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useRef } from 'react';
 
 import { getFeedbackApi, submitRecordApi } from '@/apis/learning-api';
 import AnswerSection from '@/features/learning/components/answer-section';
@@ -20,6 +20,12 @@ const QuestionPageContent = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
   const setRemainedCredit = useLearningSession((state) => state.setRemainedCredit);
+
+  const lastQuestionRef = useRef(question);
+  if (question) {
+    lastQuestionRef.current = question;
+  }
+  const activeQuestion = question || lastQuestionRef.current;
 
   const { setPhase, setSttText, setFeedback, setAssessmentStatus, answerId } = useAnswerFlow();
 
@@ -66,13 +72,10 @@ const QuestionPageContent = () => {
     }
   };
 
-  useEffect(() => {
-    if (!question) {
-      navigate({ to: '/learning' });
-    }
-  }, [question, navigate]);
-
-  if (!question) return null;
+  if (!activeQuestion) {
+    navigate({ to: '/learning', replace: true });
+    return null;
+  }
 
   return (
     <div className="relative mx-auto flex min-h-screen max-w-250 flex-col gap-8 p-6 sm:p-10">

@@ -1,10 +1,13 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { getDeepDiveQuestionApi, getNextQuestionApi, submitAssessApi } from '@/apis/learning-api';
+import { DUMMY_RESULT_DATA } from '@/constants/learning';
 import useLearningSession from '@/lib/stores/learning-session';
 import { cn } from '@/lib/utils';
+import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
 
 import { ANSWER_PHASE, useAnswerFlow } from '../lib/contexts/answer-flow-context';
+import RewardModal from './reward-modal';
 import { Binoculars, SkipForward } from 'lucide-react';
 
 const FloatingStepBar = () => {
@@ -13,10 +16,20 @@ const FloatingStepBar = () => {
 
   const { phase, setPhase, sttText, setAnswerId, answerId, recordingTime, reset } = useAnswerFlow();
 
+  const [rewardData, setRewardData] = useState<FinishSessionResponseDTO | null>(null);
+  const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+
   const isFeedbackPhase =
     phase === ANSWER_PHASE.FEEDBACK_LOADING || phase === ANSWER_PHASE.FEEDBACK_DONE;
 
-  const handleEndLearning = () => {};
+  const handleEndLearning = async () => {
+    if (!sessionId) return;
+
+    const data = DUMMY_RESULT_DATA; // await finishSessionApi({ sessionId });
+    setRewardData(data);
+    useLearningSession.getState().resetQuestion();
+    setIsRewardModalOpen(true);
+  };
 
   const handleSubmitAnswer = async () => {
     if (!sessionId || !question || !sttText) return;
@@ -78,6 +91,13 @@ const FloatingStepBar = () => {
             답변 제출하기
           </ActionBar.PrimaryButton>
         </>
+      )}
+      {rewardData && (
+        <RewardModal
+          data={rewardData}
+          isModalOpen={isRewardModalOpen}
+          onOpenChange={setIsRewardModalOpen}
+        />
       )}
     </ActionBar>
   );
