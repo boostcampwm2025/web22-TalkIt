@@ -14,7 +14,8 @@ export class SttService {
   async transcribe(params: {
     objectKey: string;
     language: string;
-    questionId: number;
+    questionId?: number;
+    extraQuestionId?: number;
   }): Promise<{ text: string }> {
     try {
       // 1. 메서드 진입
@@ -22,26 +23,35 @@ export class SttService {
         objectKey: params.objectKey,
         language: params.language,
         questionId: params.questionId,
-        questionIdType: typeof params.questionId,
+        extraQuestionId: params.extraQuestionId,
       });
+
+      // 핵심 방어 로직
+      if (
+        (!params.questionId && !params.extraQuestionId) ||
+        (params.questionId && params.extraQuestionId)
+      ) {
+        throw new Error('INVALID_QUESTION_TARGET');
+      }
 
       // 2. QuestionMeta 로딩 시작
       console.log('[STT] loading question meta...');
-      const questionMeta = await this.questionLoader.loadQuestionMeta(params.questionId);
-
-      // 3. QuestionMeta 로딩 완료
-      console.log('[STT] question meta loaded', {
-        questionId: questionMeta.questionId,
-        topicId: questionMeta.topicId,
-        mustInclude: questionMeta.mustInclude,
-        mustIncludeLength: questionMeta.mustInclude?.length,
+      const questionMeta = await this.questionLoader.loadQuestionMeta({
+        questionId: params.questionId,
+        extraQuestionId: params.extraQuestionId,
       });
 
       // 4. boostWords 생성
       const boostWords = SttBoostingBuilder.build(questionMeta);
       console.log('[STT] boostWords built', {
-        boostWords,
         boostWordsCount: boostWords.length,
+      });
+
+      // 3. QuestionMeta 로딩 완료
+      console.log('[STT] question meta loaded', {
+        questionId: questionMeta.questionId,
+        topicId: questionMeta.topicId,
+        mustIncludeLength: questionMeta.mustInclude?.length,
       });
 
       // 5. Clova STT 호출 직전
@@ -68,7 +78,6 @@ export class SttService {
       console.error('[STT ERROR] occurred');
       console.error('[STT ERROR] raw error:', error);
 
-      // axios 에러일 경우 (Clova)
       if ((error as any)?.response) {
         console.error('[STT ERROR] Clova response status:', (error as any).response.status);
         console.error('[STT ERROR] Clova response data:', (error as any).response.data);
