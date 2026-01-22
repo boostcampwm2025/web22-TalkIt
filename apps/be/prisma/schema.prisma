@@ -159,7 +159,7 @@ model Session {
   status               String   @db.VarChar(20)
   totalScore           Int      @default(0) @map("total_score")
   totalTimeSec         Int      @default(0) @map("total_time_sec")
-  gainedXp             Int      @default(0) @map("gained_xp")
+  gainedXp             Json?     @map("gained_xp")
   currentQuestionCount Int      @default(0) @map("current_question_count")
   category             String   @db.VarChar(20)
   difficulty           String   @db.VarChar(20)
@@ -211,34 +211,6 @@ model UserAnswer {
 }
 
 
-
-// =====================================================
-// 6. 평가 잡 (Assessment Jobs)
-// =====================================================
-
-enum AssessmentStatus {
-  QUEUED
-  EVALUATING
-  FEEDBACKING
-  REWARDING
-  DONE
-  FAILED
-  FAILED_EVALUATION
-  FAILED_FEEDBACK
-}
-
-model AssessmentJob {
-  id         Int               @id @default(autoincrement()) @map("job_id")
-  answerId   Int               @unique @map("answer_id")
-  status     AssessmentStatus
-  startedAt  DateTime?         @map("started_at")
-  finishedAt DateTime?         @map("finished_at")
-  error      String?           @db.Text
-
-  answer UserAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
-
-  @@map("assessment_jobs")
-}
 
 // =====================================================
 // 6. 평가 잡 (Assessment Jobs)
