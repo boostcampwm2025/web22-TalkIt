@@ -31,7 +31,8 @@ const VoiceRecorderSection = ({ onRecordingComplete }: VoiceRecorderSectionProps
     toggleRecording();
   };
 
-  const shouldShow = phase === ANSWER_PHASE.IDLE || phase === ANSWER_PHASE.RECORDING;
+  const shouldShow =
+    phase !== ANSWER_PHASE.FEEDBACK_LOADING && phase !== ANSWER_PHASE.FEEDBACK_DONE;
 
   if (!shouldShow) return null;
 
