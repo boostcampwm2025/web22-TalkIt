@@ -130,15 +130,16 @@ model Session {
   status               String   @db.VarChar(20)
   totalScore           Int      @default(0) @map("total_score")
   totalTimeSec         Int      @default(0) @map("total_time_sec")
-  gainedXp             Int      @default(0) @map("gained_xp")
+  gainedXp             Json?     @map("gained_xp")
   currentQuestionCount Int      @default(0) @map("current_question_count")
-  category             String   @db.VarChar(50)
+  category             String   @db.VarChar(20)
   difficulty           String   @db.VarChar(20)
   startedAt            DateTime @default(now()) @map("started_at")
   completedAt          DateTime? @map("completed_at")
 
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   answers UserAnswer[]
+  extraQuestions ExtraQuestion[]
 
   @@index([userId])
   @@index([status])
