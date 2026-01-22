@@ -1,7 +1,12 @@
-import { type QuestionDifficulty, type QuestionCategory } from '../constants/learning';
+import {
+  type QuestionDifficulty,
+  type QuestionCategory,
+  type AssessmentStatus,
+} from '../constants/learning';
 
 export type Question = {
-  questionId: number;
+  questionId?: number;
+  extraQuestionId?: number;
   content: string;
   guide: string;
   category: QuestionCategory;
@@ -9,12 +14,19 @@ export type Question = {
   timeLimit: number; // seconds
 };
 
+// 새 학습 세션 생성 및 첫 번째 질문 조회 DTO
 export type CreateQuestionResponseDTO = {
   sessionId: number;
   currentQuestionCount: number;
   remainedCredit: number;
   question: Question;
 };
+
+// 다음 질문 조회 DTO
+export type GetQuestionResponseDTO = Pick<
+  CreateQuestionResponseDTO,
+  'question' | 'remainedCredit' | 'currentQuestionCount'
+>;
 
 export type SubmitRecordResponseDTO = {
   sttText: string;
@@ -41,4 +53,40 @@ export type FinishSessionResponseDTO = {
   category: QuestionCategory;
   difficulty: QuestionDifficulty;
   questions: QuestionArchiveItem[];
+};
+
+export type GetFeedbackResponseDTO = {
+  answerId: number;
+  question: string;
+  answer: string;
+  overallScore: number;
+  strengths: Array<string>;
+  weaknesses: Array<string>;
+  suggestions: Array<string>;
+  xp: number;
+  remainingToken: number;
+};
+
+// 평가 요청 DTO
+export type AssessRequestDTO = {
+  questionId?: number;
+  extraQuestionId?: number;
+  answerText: string;
+  timeSpentSec: number;
+};
+
+// 평가 응답 DTO
+export type AssessResponseDTO = {
+  jobId: number;
+  answerId: number;
+  status: AssessmentStatus;
+};
+
+// SSE 스트림 이벤트 DTO
+export type AssessmentStreamEventDTO = {
+  jobId: number;
+  answerId: number;
+  status: AssessmentStatus;
+  timestamp: string;
+  error: string | null;
 };

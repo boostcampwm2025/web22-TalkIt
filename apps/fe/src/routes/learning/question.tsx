@@ -1,121 +1,100 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useRef } from 'react';
 
-import { submitRecordApi } from '@/apis/learning-api';
-import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constants/question';
-import PulsingMicButton from '@/features/learning/components/pulsing-mic-button';
-import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
+import { getFeedbackApi, submitRecordApi } from '@/apis/learning-api';
+import AnswerSection from '@/features/learning/components/answer-section';
+import FeedbackSection from '@/features/learning/components/feedback-section';
+import FloatingStepBar from '@/features/learning/components/floating-step-bar';
+import QuestionContent from '@/features/learning/components/question-content';
+import QuestionHeader from '@/features/learning/components/question-header';
+import VoiceRecorderSection from '@/features/learning/components/voice-recorder-section';
+import {
+  ANSWER_PHASE,
+  AnswerFlowProvider,
+  useAnswerFlow,
+} from '@/features/learning/lib/contexts/answer-flow-context';
+import { useAssessmentStream } from '@/features/learning/lib/hooks/use-assessment-stream';
 import useLearningSession from '@/lib/stores/learning-session';
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 
-import { ArrowLeft } from 'lucide-react';
-
-const QuestionPage = () => {
+const QuestionPageContent = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
-  const currentQuestionCount = useLearningSession((state) => state.currentQuestionCount);
-  const remainedCredit = useLearningSession((state) => state.remainedCredit);
+  const setRemainedCredit = useLearningSession((state) => state.setRemainedCredit);
 
-  const [answer, setAnswer] = useState<string>('');
-  const [isRecordSubmitting, setIsRecordSubmitting] = useState(false);
+  const lastQuestionRef = useRef(question);
+  if (question) {
+    lastQuestionRef.current = question;
+  }
+  const activeQuestion = question || lastQuestionRef.current;
+
+  const { setPhase, setSttText, setFeedback, setAssessmentStatus, answerId } = useAnswerFlow();
 
   const navigate = useNavigate();
 
-  const handleSubmitRecord = async (audioBlob: Blob) => {
+  const handleFeedbackDone = useCallback(async () => {
+    if (!answerId) return;
+
+    try {
+      const feedback = await getFeedbackApi(answerId);
+      setFeedback(feedback);
+      setRemainedCredit(feedback.remainingToken);
+      setPhase(ANSWER_PHASE.FEEDBACK_DONE);
+    } catch (error) {
+      console.error('피드백 조회 실패:', error);
+    }
+  }, [answerId, setFeedback, setPhase, setRemainedCredit]);
+
+  useAssessmentStream({
+    answerId,
+    onStatusChange: setAssessmentStatus,
+    onDone: handleFeedbackDone,
+  });
+
+  const handleRecordingComplete = async (audioBlob: Blob) => {
     if (!sessionId || !question) return;
 
     try {
-      setIsRecordSubmitting(true);
+      setPhase(ANSWER_PHASE.STT_LOADING);
+
       const extension = audioBlob.type.split('/')[1]?.split(';')[0] || 'webm';
       const audioFile = new File([audioBlob], `answer.${extension}`, { type: audioBlob.type });
       const { sttText } = await submitRecordApi({
         sessionId,
         questionId: question.questionId,
+        extraQuestionId: question.extraQuestionId,
         audioFile,
       });
 
-      setAnswer(sttText);
+      setSttText(sttText);
+      setPhase(ANSWER_PHASE.STT_DONE);
     } catch (error) {
       console.error('녹음 제출 실패:', error);
-      // TODO: 에러 토스트 표시 또는 재시도 UI
-    } finally {
-      setIsRecordSubmitting(false);
     }
   };
 
-  const { stream, isRecording, formattedTime, toggleRecording } = useVoiceRecorder({
-    timeLimit: question?.timeLimit ?? 300,
-    onRecordFinish: handleSubmitRecord,
-  });
-
-  useEffect(() => {
-    if (!question) {
-      navigate({ to: '/learning' });
-    }
-  }, [question, navigate]);
-
-  if (!question) return null;
+  if (!activeQuestion) {
+    navigate({ to: '/learning', replace: true });
+    return null;
+  }
 
   return (
-    <div className="mx-auto max-w-250 p-6 sm:p-10">
-      <div className="flex items-center justify-between">
-        <Link
-          to="/learning"
-          className="flex items-center gap-3 transition-colors hover:text-slate-800"
-        >
-          <ArrowLeft size={20} />
-          <div className="flex flex-col">
-            <p className="text-base font-bold">
-              {QUESTION_CATEGORY_CONFIG[question.category].label}
-            </p>
-            <span className="text-xs text-dark-gray">
-              {QUESTION_DIFFICULTY_CONFIG[question.difficulty].label}
-            </span>
-          </div>
-        </Link>
-        <div className="flex items-center gap-1.5 text-sm">
-          <span className="text-dark-gray">질문 생성권</span>
-          <span className="rounded-md bg-primary/10 px-2 py-0.5 font-bold text-primary">
-            {remainedCredit}
-          </span>
-        </div>
-      </div>
-      <section className="mx-auto mt-8 max-w-150 space-y-4 text-center">
-        <span className="inline-block rounded-full border border-primary/20 bg-gray px-3 py-1 text-xs font-bold text-primary sm:text-sm">
-          질문 {currentQuestionCount}
-        </span>
-        <h2 className="text-2xl font-black break-keep sm:text-4xl">{question.content}</h2>
-        <div className="break-keep text-dark-gray sm:text-lg">
-          <div className="flex flex-wrap justify-center [&>span:not(:first-child)]:after:content-[',_']">
-            <span>{question.guide}</span>
-
-            <p className="pl-2">위 키워드를 중심으로 답변해보세요.</p>
-          </div>
-        </div>
-      </section>
-      <section className="mt-6 flex flex-col items-center gap-6">
-        <h3 className="sr-only">음성 답변</h3>
-        <PulsingMicButton isRecording={isRecording} stream={stream} onToggle={toggleRecording} />
-        <p className="text-lg sm:text-2xl">
-          <span className="text-dark-gray">남은 시간: </span>
-          {formattedTime}
-        </p>
-      </section>
-      <section className="relative mt-6 overflow-hidden rounded-2xl border border-gray bg-white p-8 after:absolute after:top-0 after:left-0 after:h-full after:w-1 after:bg-primary">
-        <h3 className="sr-only">음성 인식 결과</h3>
-        <p className="text-xl font-bold">나의 답변</p>
-        <div className="mt-4 rounded-md">
-          {isRecordSubmitting ? (
-            <p className="text-center text-dark-gray">음성 인식 중...</p>
-          ) : answer ? (
-            <p>{answer}</p>
-          ) : (
-            <p className="text-center text-dark-gray">
-              녹음을 제출하면 인식된 텍스트가 여기에 표시됩니다.
-            </p>
-          )}
-        </div>
-      </section>
+    <div className="relative mx-auto flex min-h-screen max-w-250 flex-col gap-8 p-6 sm:p-10">
+      <QuestionHeader />
+      <QuestionContent />
+      <VoiceRecorderSection onRecordingComplete={handleRecordingComplete} />
+      <AnswerSection />
+      <FeedbackSection />
+      <div className="flex-1" />
+      <FloatingStepBar />
     </div>
+  );
+};
+
+const QuestionPage = () => {
+  return (
+    <AnswerFlowProvider>
+      <QuestionPageContent />
+    </AnswerFlowProvider>
   );
 };
 

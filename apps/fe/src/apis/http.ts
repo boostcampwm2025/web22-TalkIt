@@ -1,10 +1,10 @@
+import { ENV } from '@/constants/env';
+
 import axios, { type AxiosInstance } from 'axios';
 
-const BASE_URL = '/api'; // todo: 추후에 환경변수로 엔드포인트 관리하기
-
 const axiosInstance: AxiosInstance = axios.create({
-  baseURL: BASE_URL,
-  timeout: 30000, // 타임아웃 30초 (개발하면서 적절하게 수정)
+  baseURL: ENV.API_URL,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -28,7 +28,7 @@ export class QuestionProviderService {
       throw new Error(`Question not found for id=${id.toString()}`);
     }
     return {
-      questionId: q.id.toString(),
+      questionId: q.id,
       domain: q.domain,
       difficulty: q.difficulty,
       topicId: q.topicId,

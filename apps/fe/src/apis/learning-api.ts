@@ -1,21 +1,30 @@
 import type { QuestionCategory, QuestionDifficulty } from '@repo/shared/constants/learning';
 import type {
+  AssessRequestDTO,
+  AssessResponseDTO,
   CreateQuestionResponseDTO,
   FinishSessionResponseDTO,
+  GetFeedbackResponseDTO,
+  GetQuestionResponseDTO,
+  SubmitRecordResponseDTO,
 } from '@repo/shared/types/learning';
-import type { SubmitRecordResponseDTO } from '@repo/shared/types/learning';
 
 import axiosInstance from './http';
 
 type SubmitRecordParams = {
   sessionId: number;
-  questionId: number;
+  questionId?: number;
+  extraQuestionId?: number;
   audioFile: File;
 };
 
 type FinishSessionParams = {
   sessionId: number;
 };
+
+type SubmitAssessParams = {
+  sessionId: number;
+} & AssessRequestDTO;
 
 // 세션 생성 API
 export const startSessionApi = async (
@@ -35,11 +44,13 @@ export const startSessionApi = async (
  */
 export const submitRecordApi = async ({
   sessionId,
+  extraQuestionId,
   questionId,
   audioFile,
 }: SubmitRecordParams): Promise<SubmitRecordResponseDTO> => {
   const formData = new FormData();
-  formData.append('questionId', String(questionId));
+  if (questionId) formData.append('questionId', String(questionId));
+  if (extraQuestionId) formData.append('extraQuestionId', String(extraQuestionId));
   formData.append('audioFile', audioFile);
 
   const response = await axiosInstance.post(`/learning/sessions/${sessionId}/record`, formData, {
@@ -59,6 +70,54 @@ export const finishSessionApi = async ({
 }: FinishSessionParams): Promise<FinishSessionResponseDTO> => {
   const { data } = await axiosInstance.post<FinishSessionResponseDTO>(
     `/learning/sessions/${sessionId}/finish`,
+  );
+  return data;
+};
+
+/**
+ * 답변 제출 및 평가 시작
+ * 답변 텍스트와 소요 시간을 전송하고 평가 작업을 시작합니다.
+ */
+export const submitAssessApi = async ({
+  sessionId,
+  ...rest
+}: SubmitAssessParams): Promise<AssessResponseDTO> => {
+  const { data } = await axiosInstance.post<AssessResponseDTO>(
+    `/learning/sessions/${sessionId}/assess`,
+    {
+      ...rest,
+    },
+  );
+  return data;
+};
+
+/**
+ * 평가 스냅샷 조회 (재연결 복구용)
+ */
+export const getFeedbackApi = async (answerId: number): Promise<GetFeedbackResponseDTO> => {
+  const { data } = await axiosInstance.get<GetFeedbackResponseDTO>(
+    `/learning/answers/${answerId}/assess`,
+  );
+  return data;
+};
+
+/**
+ * 다음 질문 조회 (세션 내 다음 질문으로 이동)
+ */
+export const getNextQuestionApi = async (sessionId: number) => {
+  const { data } = await axiosInstance.post<GetQuestionResponseDTO>(
+    `/learning/sessions/${sessionId}/next-question`,
+  );
+  return data;
+};
+
+/**
+ * 꼬리 질문 조회
+ */
+export const getDeepDiveQuestionApi = async (sessionId: number, answerId: number) => {
+  const { data } = await axiosInstance.post<GetQuestionResponseDTO>(
+    `/learning/sessions/${sessionId}/deep-dive`,
+    { answerId },
   );
   return data;
 };
