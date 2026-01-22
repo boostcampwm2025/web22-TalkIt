@@ -1,8 +1,10 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Param, ParseIntPipe, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBody,
+  ApiNoContentResponse,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -54,5 +56,43 @@ export class SessionsController {
   ) {
     const userId = 1; // TODO: 추후 인증 연동
     return this.sessionsService.createSession(userId, dto);
+  }
+
+  @Post(':sessionId/next-question')
+  @ApiOperation({
+    summary: '다음 질문 제공',
+    description: '진행 중인 학습 세션에서 다음 질문을 제공합니다.',
+  })
+  @ApiParam({
+    name: 'sessionId',
+    description: '학습 세션 ID',
+    type: Number,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '다음 질문 제공 성공',
+    schema: {
+      example: {
+        currentQuestionCount: 3,
+        remainedCredit: 20,
+        question: {
+          questionId: 102,
+          content: 'Deadlock의 발생 조건 4가지를 설명해주세요.',
+          guide: '상호 배제, 점유와 대기, 비선점, 순환 대기를 중심으로 설명하세요.',
+          category: 'OS',
+          difficulty: 'MEDIUM',
+          timeLimit: 300,
+        },
+      },
+    },
+  })
+  @ApiNoContentResponse({
+    description: '더 이상 제공할 질문이 없음',
+  })
+  @ApiBadRequestResponse({
+    description: '유효하지 않은 세션이거나 잔여 크레딧 부족',
+  })
+  async getNextQuestion(@Param('sessionId', ParseIntPipe) sessionId: number) {
+    return this.sessionsService.getNextQuestion(sessionId);
   }
 }
