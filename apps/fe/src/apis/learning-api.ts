@@ -18,14 +18,15 @@ type FinishSessionParams = {
 };
 
 // 세션 생성 API
-export const learningApi = {
-  startSession: async (category: QuestionCategory, difficulty: QuestionDifficulty) => {
-    const { data } = await axiosInstance.post<CreateQuestionResponseDTO>('/learning/sessions', {
-      category,
-      difficulty,
-    });
-    return data;
-  },
+export const startSessionApi = async (
+  category: QuestionCategory,
+  difficulty: QuestionDifficulty,
+) => {
+  const { data } = await axiosInstance.post<CreateQuestionResponseDTO>('/learning/sessions', {
+    category,
+    difficulty,
+  });
+  return data;
 };
 
 /**
