@@ -61,15 +61,24 @@ export class AssessmentService {
     if (answer.userId !== userId) {
       throw new BadRequestException({ code: 'FORBIDDEN', message: '답변 소유자가 아닙니다.' });
     }
-    const job = await this.repo.getAssessmentJobByAnswerId(answerId);
+    const feedback: any = (answer as any).feedbackJson ?? {};
+    const accurate: string[] = Array.isArray(feedback?.accurate)
+      ? feedback.accurate.map(String)
+      : [];
+    const improvement: string[] = Array.isArray(feedback?.improvement)
+      ? feedback.improvement.map(String)
+      : [];
+
     return {
-      jobId: job?.id ?? null,
       answerId: answer.id,
-      status: job?.status ?? null,
-      result: {
-        score: answer.overallScore ?? null,
-        feedback: answer.feedbackJson ?? null,
-      },
-    };
+      question: String((answer as any).question?.content ?? ''),
+      answer: String((answer as any).answerText ?? ''),
+      overallScore: (answer as any).overallScore ?? null,
+      strengths: accurate,
+      weaknesses: [],
+      suggestions: improvement,
+      xp: (answer as any).session?.gainedXp ?? null,
+      remainingToken: null,
+    } as any;
   }
 }
