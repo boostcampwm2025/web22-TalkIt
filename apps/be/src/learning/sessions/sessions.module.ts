@@ -9,10 +9,12 @@ import { SttModule } from '../../stt/stt.module';
 import { SessionsRecordController } from './controllers/sessions-record.controller';
 import { SessionsController } from './controllers/sessions.controller';
 import { ObjectStorageProvider } from './providers/object-storage.provider';
+import { AnswerRepository } from './repository/answer.repository';
+import { SessionsRepository } from './repository/sessions.repository';
+import { DeepDiveService } from './services/deep-dive.service';
 import { GuideBuilderService } from './services/guide-builder.service';
 import { SessionsRecordService } from './services/sessions-record.service';
 import { SessionsService } from './services/sessions.service';
-import { SessionsRepository } from './sessions.repository';
 
 @Module({
   imports: [DatabaseModule, SttModule, QuestionProviderModule, UsersModule],
@@ -24,6 +26,9 @@ import { SessionsRepository } from './sessions.repository';
     ClovaSttProvider,
     SessionsService,
     GuideBuilderService,
+    DeepDiveService,
+    AnswerRepository,
   ],
+  exports: [DeepDiveService],
 })
 export class SessionsModule {}

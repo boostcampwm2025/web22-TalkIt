@@ -5,7 +5,7 @@ import { CreateSessionDto } from '@/learning/sessions/schemas/create-session.sch
 import { QuestionProviderService } from '@/modules/question-provider/application/question-provider.service';
 import { UserCreditsRepository } from '@/users/credits/user-credits.repository';
 
-import { SessionsRepository } from '../sessions.repository';
+import { SessionsRepository } from '../repository/sessions.repository';
 import { GuideBuilderService } from './guide-builder.service';
 
 @Injectable()
