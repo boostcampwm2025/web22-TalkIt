@@ -40,7 +40,6 @@ const LearningPage = () => {
       await navigate({ to: '/learning/question' });
     } catch (error) {
       console.error('Error starting session:', error);
-      throw error;
     } finally {
       setIsLoading(false);
     }
