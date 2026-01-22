@@ -58,7 +58,7 @@ export class AssessmentRepository {
   async getAnswerWithRelations(answerId: number) {
     return this.prisma.userAnswer.findUnique({
       where: { id: answerId },
-      include: { session: true, question: true },
+      include: { session: true, question: true, extraQuestion: true },
     });
   }
 

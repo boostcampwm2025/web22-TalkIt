@@ -40,10 +40,26 @@ export class LlmEvaluationProvider {
         maxCompletionTokens: 700,
         stream: false,
       });
-      const text = out.content ?? '';
-      const parsed = IssuesPayloadSchema.safeParse(JSON.parse(text));
+      const text = (out.content ?? '').trim();
+
+      // 1차: 그대로 파싱 시도
+      let parsed = IssuesPayloadSchema.safeParse(this.parseJsonStrict(text));
+      // 2차: 정리 후 재시도 (코드블록/스마트쿼트/트레일링 콤마 제거 등)
       if (!parsed.success) {
-        this.logger.warn(`Clova JSON validation failed: ${parsed.error.message}`);
+        const cleaned = this.prepareLikelyJson(text);
+        try {
+          parsed = IssuesPayloadSchema.safeParse(this.parseJsonStrict(cleaned));
+        } catch {
+          // 무시: 아래 공통 처리
+        }
+      }
+
+      if (!parsed.success) {
+        // 원인 파악을 위한 안전한 프리뷰
+        const preview = text.replace(/\s+/g, ' ').slice(0, 300);
+        this.logger.warn(
+          `Clova JSON validation failed: ${parsed.error.message}; preview='${preview}'`,
+        );
         if (allowFallback) return this.fallbackHeuristic(mustInclude, answerText);
         throw new Error('LLM response invalid');
       }
@@ -94,5 +110,91 @@ export class LlmEvaluationProvider {
       issues,
       meta: { mustIncludeMatched: matched, mustIncludeMissing: missing, source: 'fallback' },
     };
+  }
+
+  /** JSON.parse 래퍼: 예외 메시지를 원형 유지 */
+  private parseJsonStrict<T = unknown>(s: string): T {
+    return JSON.parse(s) as T;
+  }
+
+  /**
+   * LLM 출력이 마크다운 코드블록, 스마트 따옴표, 트레일링 콤마 등으로 오염됐을 때
+   * 합리적인 범위에서 복구 시도 후 JSON 파싱에 재사용할 수 있게 정리합니다.
+   */
+  private prepareLikelyJson(s: string): string {
+    let t = String(s ?? '').trim();
+
+    // 코드블록 백틱 제거
+    if (t.startsWith('```')) {
+      t = t
+        .replace(/^```[a-zA-Z0-9_-]*\n?/, '')
+        .replace(/```\s*$/, '')
+        .trim();
+    }
+
+    // 스마트 따옴표 → 일반 큰따옴표로 치환
+    t = t.replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"').replace(/[\u2018\u2019\u2032]/g, "'");
+
+    // JSON 본문 추출: 첫 '{'부터 마지막 '}'까지
+    const first = t.indexOf('{');
+    const last = t.lastIndexOf('}');
+    if (first !== -1 && last !== -1 && last > first) {
+      t = t.slice(first, last + 1);
+    }
+
+    // 흔한 오타: 트레일링 콤마 제거
+    t = t.replace(/,\s*([}\]])/g, '$1');
+
+    // 숫자 앞의 '+' 제거 (JSON 미지원) — 문자열 내부는 보존
+    t = this.stripLeadingPlusFromNumbers(t);
+
+    return t.trim();
+  }
+
+  /** 문자열 리터럴 밖에서 숫자 앞의 '+'를 제거 */
+  private stripLeadingPlusFromNumbers(input: string): string {
+    let out = '';
+    let inString = false;
+    let escape = false;
+    const isSpace = (c: string) => c === ' ' || c === '\n' || c === '\r' || c === '\t';
+
+    for (let i = 0; i < input.length; i++) {
+      const c = input[i];
+
+      if (inString) {
+        out += c;
+        if (escape) {
+          escape = false;
+        } else if (c === '\\') {
+          escape = true;
+        } else if (c === '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (c === '"') {
+        inString = true;
+        out += c;
+        continue;
+      }
+
+      if (c === '+') {
+        // 앞쪽의 의미있는 문자 탐색
+        let j = out.length - 1;
+        while (j >= 0 && isSpace(out.charAt(j))) j--;
+        const prev = j >= 0 ? out.charAt(j) : '';
+        const next = input[i + 1] ?? '';
+        const prevOk = prev === ':' || prev === ',' || prev === '[' || prev === '{' || prev === '';
+        if (prevOk && /[0-9]/.test(next)) {
+          // '+' 스킵
+          continue;
+        }
+      }
+
+      out += c;
+    }
+
+    return out;
   }
 }
