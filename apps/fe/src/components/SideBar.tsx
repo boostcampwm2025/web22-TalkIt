@@ -8,7 +8,6 @@ import {
   LogOut,
   PanelLeft,
   PanelLeftClose,
-  Settings,
   Swords,
   Trophy,
   User,
@@ -26,7 +25,6 @@ const NAV_ITEMS = [
   { to: '/battle', label: '배틀 모드', icon: Swords },
   { to: '/mypage', label: '마이페이지', icon: User },
   { to: '/ranking', label: '랭킹', icon: Trophy },
-  { to: '/settings', label: '설정', icon: Settings },
 ];
 
 // 사이드 바 컴포넌트
