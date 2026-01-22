@@ -241,6 +241,34 @@ model AssessmentJob {
 }
 
 // =====================================================
+// 6. 평가 잡 (Assessment Jobs)
+// =====================================================
+
+enum AssessmentStatus {
+  QUEUED
+  EVALUATING
+  FEEDBACKING
+  REWARDING
+  DONE
+  FAILED
+  FAILED_EVALUATION
+  FAILED_FEEDBACK
+}
+
+model AssessmentJob {
+  id         Int               @id @default(autoincrement()) @map("job_id")
+  answerId   Int               @unique @map("answer_id")
+  status     AssessmentStatus
+  startedAt  DateTime?         @map("started_at")
+  finishedAt DateTime?         @map("finished_at")
+  error      String?           @db.Text
+
+  answer UserAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  @@map("assessment_jobs")
+}
+
+// =====================================================
 // 5. 게이미피케이션 (Gamification)
 // =====================================================
 
