@@ -4,6 +4,15 @@ import { Prisma, PrismaClient } from '@prisma/client';
 
 import { PrismaService } from '../../infra/database/prisma.service';
 
+/**
+ * SessionsRepository (세션 생명주기 전용)
+ * 책임
+ * - 세션 생성
+ * - 세션 조회
+ * - 세션 상태 변경 (ACTIVE / COMPLETED)
+ * - 세션 메타데이터 관리
+ */
+
 @Injectable()
 export class SessionsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -67,86 +76,5 @@ export class SessionsRepository {
         completedAt: new Date(),
       },
     });
-  }
-
-  /**
-   * 사용자 답변 저장
-   */
-  async saveAnswer(data: {
-    sessionId: number;
-    userId: number;
-    questionId: number;
-    answerText: string;
-    timeSpentSec: number;
-    overallScore?: number;
-    feedbackJson?: Prisma.InputJsonValue;
-  }) {
-    return this.prisma.userAnswer.create({
-      data: {
-        sessionId: data.sessionId,
-        userId: data.userId,
-        questionId: data.questionId,
-        answerText: data.answerText,
-        timeSpentSec: data.timeSpentSec,
-        overallScore: data.overallScore ?? 0,
-        feedbackJson: data.feedbackJson ?? {},
-      },
-    });
-  }
-
-  /**
-   * 세션의 모든 답변 조회
-   */
-  async findAnswersBySessionId(sessionId: number) {
-    return this.prisma.userAnswer.findMany({
-      where: { sessionId },
-      include: {
-        question: {
-          select: {
-            id: true,
-            content: true,
-            category: true,
-            difficulty: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
-  }
-
-  /**
-   * 답변 ID로 답변 조회
-   */
-  async findAnswerById(id: number) {
-    return this.prisma.userAnswer.findUnique({
-      where: { id },
-      include: {
-        question: true,
-        session: true,
-      },
-    });
-  }
-
-  /**
-   * 답변 업데이트
-   */
-  async updateAnswer(id: number, data: Prisma.UserAnswerUpdateInput) {
-    return this.prisma.userAnswer.update({
-      where: { id },
-      data,
-    });
-  }
-
-  /**
-   * Prisma 트랜잭션 래퍼
-   *
-   * - Service 레이어에서 트랜잭션 경계를 명확히 하기 위함
-   * - 현재는 세션 진행용으로 사용
-   * - 내부 로직은 추후 확장 가능
-   */
-  async transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-    return this.prisma.$transaction(fn);
   }
 }
