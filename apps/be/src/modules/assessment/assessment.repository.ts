@@ -14,15 +14,21 @@ export class AssessmentRepository {
   async createUserAnswer(data: {
     userId: number;
     sessionId: number;
-    questionId: number;
     answerText: string;
     timeSpentSec: number;
+    questionId?: number;
+    extraQuestionId?: number;
   }) {
+    if ((!data.questionId && !data.extraQuestionId) || (data.questionId && data.extraQuestionId)) {
+      throw new Error('Either questionId or extraQuestionId must be provided (but not both)');
+    }
+
     return this.prisma.userAnswer.create({
       data: {
         userId: data.userId,
         sessionId: data.sessionId,
         questionId: data.questionId,
+        extraQuestionId: data.extraQuestionId,
         answerText: data.answerText,
         timeSpentSec: data.timeSpentSec,
         // overallScore, feedbackJson left null initially
