@@ -63,7 +63,8 @@ export class ClovaService {
 
     const messageSchema = z.object({
       role: z.union([z.literal('system'), z.literal('user'), z.literal('assistant')]).optional(),
-      content: z.string().optional(),
+      // 일부 응답은 content가 문자열이 아닌 배열 형태([{ type, text }])로 올 수 있어 any 허용
+      content: z.any().optional(),
     });
 
     const clovaSchema = z.object({
@@ -107,7 +108,7 @@ export class ClovaService {
       );
     }
 
-    const json = safe.data;
+    const json = safe.data as any;
 
     if (!res.ok) {
       throw new HttpException(
@@ -121,7 +122,18 @@ export class ClovaService {
       );
     }
 
-    const content = json.result?.message?.content;
+    // content 추출: 문자열 또는 배열([{ text }]) 모두 대응
+    const contentRaw = json?.result?.message?.content ?? json?.choices?.[0]?.message?.content;
+    let content: string | undefined = undefined;
+    if (typeof contentRaw === 'string') {
+      content = contentRaw;
+    } else if (Array.isArray(contentRaw)) {
+      try {
+        content = contentRaw.map((p: any) => (typeof p?.text === 'string' ? p.text : '')).join('');
+      } catch {
+        content = undefined;
+      }
+    }
     return { requestId, content, raw: json };
   }
 }

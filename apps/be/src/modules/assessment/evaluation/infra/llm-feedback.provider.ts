@@ -37,8 +37,14 @@ export class LlmFeedbackProvider {
         maxCompletionTokens: 500,
         stream: false,
       });
-      const text = out.content ?? '';
-      const parsed = JSON.parse(text);
+      const text = (out.content ?? '').trim();
+      let parsed: any;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        const cleaned = this.prepareLikelyJson(text);
+        parsed = JSON.parse(cleaned);
+      }
       const accurate = Array.isArray(parsed.accurate)
         ? parsed.accurate.map(String).slice(0, 3)
         : [];
@@ -53,6 +59,37 @@ export class LlmFeedbackProvider {
       this.logger.warn(`Clova feedback failed, fallback used: ${(e as any)?.message ?? e}`);
       return this.fallbackFromIssues(issues);
     }
+  }
+
+  /**
+   * LLM 출력이 마크다운 코드블록, 스마트 따옴표, 트레일링 콤마 등으로 오염됐을 때
+   * 합리적인 범위에서 복구 시도 후 JSON 파싱에 재사용할 수 있게 정리합니다.
+   */
+  private prepareLikelyJson(s: string): string {
+    let t = String(s ?? '').trim();
+
+    // 코드블록 백틱 제거
+    if (t.startsWith('```')) {
+      t = t
+        .replace(/^```[a-zA-Z0-9_-]*\n?/, '')
+        .replace(/```\s*$/, '')
+        .trim();
+    }
+
+    // 스마트 따옴표 → 일반 큰따옴표로 치환
+    t = t.replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"').replace(/[\u2018\u2019\u2032]/g, "'");
+
+    // JSON 본문 추출: 첫 '{'부터 마지막 '}'까지
+    const first = t.indexOf('{');
+    const last = t.lastIndexOf('}');
+    if (first !== -1 && last !== -1 && last > first) {
+      t = t.slice(first, last + 1);
+    }
+
+    // 흔한 오타: 트레일링 콤마 제거
+    t = t.replace(/,\s*([}\]])/g, '$1');
+
+    return t.trim();
   }
 
   private fallbackFromIssues(issues: IssuesPayload): {

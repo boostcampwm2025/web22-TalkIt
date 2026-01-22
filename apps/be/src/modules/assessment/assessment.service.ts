@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 
 import { AssessmentStatus } from '@prisma/client';
 
@@ -70,6 +76,30 @@ export class AssessmentService {
     if (answer.userId !== userId) {
       throw new BadRequestException({ code: 'FORBIDDEN', message: '답변 소유자가 아닙니다.' });
     }
+    const job = await this.repo.getAssessmentJobByAnswerId(answerId);
+    if (!job) {
+      throw new NotFoundException({
+        code: 'ASSESSMENT_JOB_NOT_FOUND',
+        message: '평가 작업을 찾을 수 없습니다.',
+      });
+    }
+    if (job.status !== AssessmentStatus.DONE) {
+      if (
+        job.status === AssessmentStatus.FAILED ||
+        job.status === AssessmentStatus.FAILED_EVALUATION ||
+        job.status === AssessmentStatus.FAILED_FEEDBACK
+      ) {
+        throw new UnprocessableEntityException({
+          code: 'ASSESSMENT_FAILED',
+          status: job.status,
+          error: job.error ?? null,
+        });
+      }
+      throw new ConflictException({
+        code: 'ASSESSMENT_NOT_DONE',
+        status: job.status,
+      });
+    }
     const feedback: any = (answer as any).feedbackJson ?? {};
     const accurate: string[] = Array.isArray(feedback?.accurate)
       ? feedback.accurate.map(String)
@@ -80,7 +110,9 @@ export class AssessmentService {
 
     return {
       answerId: answer.id,
-      question: String((answer as any).question?.content ?? ''),
+      question: String(
+        (answer as any).question?.content ?? (answer as any).extraQuestion?.content ?? '',
+      ),
       answer: String((answer as any).answerText ?? ''),
       overallScore: (answer as any).overallScore ?? null,
       strengths: accurate,
