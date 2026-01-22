@@ -15,7 +15,6 @@ const QuestionContent = () => {
       <div className="break-keep text-dark-gray sm:text-lg">
         <div className="flex flex-wrap justify-center [&>span:not(:first-child)]:after:content-[',_']">
           <span>{question.guide}</span>
-          <p className="pl-2">위 키워드를 중심으로 답변해보세요.</p>
         </div>
       </div>
     </section>
