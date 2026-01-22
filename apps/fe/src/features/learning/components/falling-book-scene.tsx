@@ -177,7 +177,18 @@ const SceneContent = ({ questions }: { questions: QuestionArchiveItem[] }) => {
 };
 
 export default function FallingBooksScene({ questions }: FallingBooksSceneProps) {
-  if (!questions || questions.length === 0) return null;
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center">
+        <div className="mb-4 text-5xl">📚</div>
+        <p className="text-sm font-bold text-dark-gray/60">
+          완료한 질문이 없어
+          <br />
+          쌓인 지식이 아직 없습니다.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <Canvas
