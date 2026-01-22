@@ -166,6 +166,35 @@ export class SessionsService {
     // 1. 검증 및 데이터 로드
     const { session, answers } = await this.validateAndLoadSession(sessionId);
 
+    // ✅ 중도 포기 처리 (답변 0개)
+    if (answers.length === 0) {
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+          totalScore: 0,
+          totalTimeSec: 0,
+          gainedXp: { baseXp: 0, difficultyBonus: null, deepDiveBonus: null } as any,
+        },
+      });
+
+      // 유저의 기존 스탯 정보를 가져옴 (경험치 변화 없음)
+      const userStats = await this.userStatsRepository.findStatsByUserId(session.userId);
+      const currentLevel = userStats?.level || 1;
+      const currentTotalXp = userStats?.currentXp || 0;
+
+      // 현재 레벨의 게이지 정보만 계산해서 반환
+      const levelInfo = await this.processLevelUp(currentLevel, currentTotalXp);
+
+      return this.mapToFinishResponse(
+        session,
+        [],
+        { ...levelInfo, newStreak: userStats?.streakDays || 0 },
+        { baseXp: 0, difficultyBonus: null, deepDiveBonus: null },
+      );
+    }
+
     // 2. XP 계산 위임
     const answersForCalc = answers.map((a) => ({
       extraQuestionId: a.extraQuestionId ? String(a.extraQuestionId) : null,
