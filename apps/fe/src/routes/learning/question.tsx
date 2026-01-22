@@ -1,8 +1,9 @@
 import { useCallback, useEffect } from 'react';
 
-import { submitAssessApi, submitRecordApi } from '@/apis/learning-api';
+import { submitRecordApi } from '@/apis/learning-api';
 import AnswerSection from '@/features/learning/components/answer-section';
 import FeedbackSection from '@/features/learning/components/feedback-section';
+import FloatingStepBar from '@/features/learning/components/floating-step-bar';
 import QuestionContent from '@/features/learning/components/question-content';
 import QuestionHeader from '@/features/learning/components/question-header';
 import VoiceRecorderSection from '@/features/learning/components/voice-recorder-section';
@@ -34,16 +35,7 @@ const QuestionPageContent = () => {
   const question = useLearningSession((state) => state.question);
   const setRemainedCredit = useLearningSession((state) => state.setRemainedCredit);
 
-  const {
-    setPhase,
-    sttText,
-    setSttText,
-    setFeedback,
-    setAssessmentStatus,
-    answerId,
-    setAnswerId,
-    recordingTime,
-  } = useAnswerFlow();
+  const { setPhase, setSttText, setFeedback, setAssessmentStatus, answerId } = useAnswerFlow();
 
   const navigate = useNavigate();
 
@@ -87,24 +79,6 @@ const QuestionPageContent = () => {
     }
   };
 
-  const handleSubmitForAssessment = async () => {
-    if (!sessionId || !question || !sttText) return;
-
-    try {
-      setPhase(ANSWER_PHASE.FEEDBACK_LOADING);
-      const { answerId: newAnswerId } = await submitAssessApi({
-        sessionId,
-        questionId: question.questionId,
-        answerText: sttText,
-        timeSpentSec: recordingTime,
-      });
-
-      setAnswerId(newAnswerId);
-    } catch (error) {
-      console.error('평가 제출 실패:', error);
-    }
-  };
-
   useEffect(() => {
     if (!question) {
       navigate({ to: '/learning' });
@@ -114,13 +88,14 @@ const QuestionPageContent = () => {
   if (!question) return null;
 
   return (
-    <div className="mx-auto max-w-250 space-y-6 p-6 sm:p-10">
+    <div className="relative mx-auto flex min-h-screen max-w-250 flex-col gap-8 p-6 sm:p-10">
       <QuestionHeader />
       <QuestionContent />
       <VoiceRecorderSection onRecordingComplete={handleRecordingComplete} />
       <AnswerSection />
-      <button onClick={handleSubmitForAssessment}>답변 제출</button>
       <FeedbackSection />
+      <div className="flex-1" />
+      <FloatingStepBar />
     </div>
   );
 };
