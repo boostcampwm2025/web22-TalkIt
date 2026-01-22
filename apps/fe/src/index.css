@@ -55,6 +55,8 @@ body {
     sans-serif;
 }
 
-button {
-  cursor: pointer;
+@layer base {
+  button {
+    cursor: pointer;
+  }
 }
