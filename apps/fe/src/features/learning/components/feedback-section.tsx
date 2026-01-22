@@ -8,6 +8,7 @@ const ASSESSMENT_STATUS_MESSAGE: Record<string, string> = {
   [ASSESSMENT_STATUS.EVALUATING]: '답변을 평가하고 있습니다...',
   [ASSESSMENT_STATUS.FEEDBACKING]: '피드백을 생성하고 있습니다...',
   [ASSESSMENT_STATUS.REWARDING]: '보상을 계산하고 있습니다...',
+  [ASSESSMENT_STATUS.FAILED]: '평가에 실패했습니다.',
 };
 
 const FeedbackSection = () => {

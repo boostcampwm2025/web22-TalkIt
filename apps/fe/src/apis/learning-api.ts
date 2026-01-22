@@ -2,9 +2,9 @@ import type { QuestionCategory, QuestionDifficulty } from '@repo/shared/constant
 import type {
   AssessRequestDTO,
   AssessResponseDTO,
-  AssessmentSnapshotDTO,
   CreateQuestionResponseDTO,
   FinishSessionResponseDTO,
+  GetFeedbackResponseDTO,
   GetNextQuestionResponseDTO,
   SubmitRecordResponseDTO,
 } from '@repo/shared/types/learning';
@@ -95,10 +95,8 @@ export const submitAssessApi = async ({
 /**
  * 평가 스냅샷 조회 (재연결 복구용)
  */
-export const getAssessmentSnapshotApi = async (
-  answerId: number,
-): Promise<AssessmentSnapshotDTO> => {
-  const { data } = await axiosInstance.get<AssessmentSnapshotDTO>(
+export const getFeedbackApi = async (answerId: number): Promise<GetFeedbackResponseDTO> => {
+  const { data } = await axiosInstance.get<GetFeedbackResponseDTO>(
     `/learning/answers/${answerId}/assess`,
   );
   return data;

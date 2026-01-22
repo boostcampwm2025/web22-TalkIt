@@ -11,7 +11,7 @@ const FloatingStepBar = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
 
-  const { phase, setPhase, sttText, setAnswerId, recordingTime } = useAnswerFlow();
+  const { phase, setPhase, sttText, setAnswerId, recordingTime, reset } = useAnswerFlow();
 
   const isFeedbackPhase =
     phase === ANSWER_PHASE.FEEDBACK_LOADING || phase === ANSWER_PHASE.FEEDBACK_DONE;
@@ -39,7 +39,7 @@ const FloatingStepBar = () => {
   const handleNextQuestion = () => {
     if (!sessionId) return;
 
-    setPhase(ANSWER_PHASE.IDLE);
+    reset();
     getNextQuestionApi(sessionId).then((data) => {
       useLearningSession.getState().setQuestion({ ...data, sessionId });
     });

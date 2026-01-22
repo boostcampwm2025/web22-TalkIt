@@ -62,7 +62,6 @@ export type GetFeedbackResponseDTO = {
   strengths: Array<string>;
   weaknesses: Array<string>;
   suggestions: Array<string>;
-  followUpQuestions: Array<string>;
   xp: number;
   remainingToken: number;
 };
@@ -88,15 +87,4 @@ export type AssessmentStreamEventDTO = {
   status: AssessmentStatus;
   timestamp: string;
   error: string | null;
-};
-
-// 평가 스냅샷 조회 DTO (재연결 복구용)
-export type AssessmentSnapshotDTO = {
-  jobId: number;
-  answerId: number;
-  status: AssessmentStatus;
-  result: {
-    score: number;
-    feedback: GetFeedbackResponseDTO;
-  } | null;
 };
