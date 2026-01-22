@@ -15,7 +15,7 @@ export class SttBoostingBuilder {
   static build(question: QuestionMeta): string[] {
     const keywords: string[] = [];
 
-    question.must_include.forEach((phrase) => {
+    question.mustInclude.forEach((phrase) => {
       keywords.push(...this.expandPhrase(phrase));
     });
 

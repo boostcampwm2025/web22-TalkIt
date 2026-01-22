@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { QuestionProviderModule } from '@/modules/question-provider/question-provider.module';
 import { NormalizeModule } from '@/normalize/normalize.module';
+import { UsersModule } from '@/users/users.module';
 
 import { DatabaseModule } from '../../infra/database/database.module';
 import { ClovaSttProvider } from '../../stt/providers/clova-stt.provider';
@@ -15,7 +16,7 @@ import { SessionsService } from './services/sessions.service';
 import { SessionsRepository } from './sessions.repository';
 
 @Module({
-  imports: [DatabaseModule, SttModule, QuestionProviderModule, NormalizeModule],
+  imports: [DatabaseModule, SttModule, QuestionProviderModule, UsersModule, NormalizeModule],
   controllers: [SessionsRecordController, SessionsController],
   providers: [
     SessionsRecordService,

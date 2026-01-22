@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { SttBoostingBuilder } from '../builders/stt-boosting.builder';
-import { QuestionMeta } from '../types/question-meta.type';
 import axios from 'axios';
 
 @Injectable()
@@ -16,12 +14,7 @@ export class ClovaSttProvider {
     return `${cleanedBase}/${cleanedPath}`;
   }
 
-  async requestSTT(
-    objectKey: string,
-    language: string,
-    questionMeta: QuestionMeta,
-  ): Promise<string> {
-    const boostWords = SttBoostingBuilder.build(questionMeta);
+  async requestSTT(objectKey: string, language: string, boostWords: string[]): Promise<string> {
     console.log('[STT BOOST WORDS]', boostWords);
 
     const url = this.joinUrl(
