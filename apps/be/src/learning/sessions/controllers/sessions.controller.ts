@@ -14,6 +14,7 @@ import { zodSchemaToOpenAPI } from '@/common/utils/zod-to-openapi.util';
 
 import { type CreateSessionDto, CreateSessionSchema } from '../schemas/create-session.schema';
 import { type DeepDiveRequestDto, DeepDiveRequestSchema } from '../schemas/deep-dive.schema';
+import { FinishSessionResponseSchema } from '../schemas/finish-session.schema';
 import { DeepDiveService } from '../services/deep-dive.service';
 import { SessionsService } from '../services/sessions.service';
 
@@ -128,5 +129,28 @@ export class SessionsController {
       sessionId,
       answerId: body.answerId,
     });
+  }
+
+  // 세션 종료 요청
+  @Post(':sessionId/finish')
+  @ApiOperation({
+    summary: '학습 세션 종료 및 리워드 정산',
+    description: '세션을 종료하고 획득한 경험치, 레벨 정보, 답변 결과 목록을 반환합니다.',
+  })
+  @ApiParam({
+    name: 'sessionId',
+    description: '종료할 세션 ID',
+    type: Number,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '정산 성공',
+    schema: zodSchemaToOpenAPI(FinishSessionResponseSchema),
+  })
+  @ApiBadRequestResponse({
+    description: '이미 종료된 세션이거나 유효하지 않은 요청',
+  })
+  async finishSession(@Param('sessionId', ParseIntPipe) sessionId: number) {
+    return this.sessionsService.finishSession(sessionId);
   }
 }
