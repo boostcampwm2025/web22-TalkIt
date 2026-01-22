@@ -13,12 +13,19 @@ export type Question = {
   timeLimit: number; // seconds
 };
 
+// 새 학습 세션 생성 및 첫 번째 질문 조회 DTO
 export type CreateQuestionResponseDTO = {
   sessionId: number;
   currentQuestionCount: number;
   remainedCredit: number;
   question: Question;
 };
+
+// 다음 질문 조회 DTO
+export type GetNextQuestionResponseDTO = Pick<
+  CreateQuestionResponseDTO,
+  'question' | 'remainedCredit' | 'currentQuestionCount'
+>;
 
 export type SubmitRecordResponseDTO = {
   sttText: string;
