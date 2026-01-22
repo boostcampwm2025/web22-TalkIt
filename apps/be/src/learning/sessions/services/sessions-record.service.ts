@@ -96,7 +96,6 @@ export class SessionsRecordService {
       console.log('[SessionsRecordService] 7. Record process completed successfully');
       return {
         sttText: normalizeResult.draftText,
-        //sttText: normalizeResult.preNormalizedText,
       };
     } catch (error) {
       console.error('[SessionsRecordService] ERROR in record process:', error);
