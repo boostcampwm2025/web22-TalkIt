@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 
+import { ClovaModule } from '@/infra/clova/clova.module';
 import { DatabaseModule } from '@/infra/database/database.module';
 
 import { AssessmentController } from './assessment.controller';
 import { AssessmentRepository } from './assessment.repository';
 import { AssessmentService } from './assessment.service';
+import { EvaluationModule } from './evaluation/evaluation.module';
 import { ASSESS_PUB, ASSESS_SUB, AssessmentPubSub } from './pubsub/assessment.pubsub';
 import { AssessmentSseController } from './sse/assessment.sse.controller';
 import { ASSESS_QUEUE, ASSESS_REDIS, AssessmentWorker } from './worker/assessment.worker';
@@ -12,7 +14,7 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, ClovaModule, EvaluationModule],
   controllers: [AssessmentController, AssessmentSseController],
   providers: [
     AssessmentService,
