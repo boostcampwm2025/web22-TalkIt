@@ -114,6 +114,9 @@ export class SessionsService {
        */
     }
 
+    // 질문 제공 후 증가
+    await this.sessionsRepository.incrementQuestionCount(sessionId);
+
     /**
      * 5. 답변 가이드 생성
      */
@@ -123,7 +126,7 @@ export class SessionsService {
      * 6. 응답 반환
      */
     return {
-      currentQuestionCount: session.currentQuestionCount,
+      currentQuestionCount: session.currentQuestionCount + 1,
       remainedCredit: 20,
       question: {
         questionId: question.questionId,

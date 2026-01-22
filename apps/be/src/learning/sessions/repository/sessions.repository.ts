@@ -69,6 +69,20 @@ export class SessionsRepository {
   }
 
   /**
+   * 세션 내 질문 count 증가 처리
+   */
+  async incrementQuestionCount(sessionId: number): Promise<void> {
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        currentQuestionCount: {
+          increment: 1,
+        },
+      },
+    });
+  }
+
+  /**
    * 사용자 답변 저장
    */
   async saveAnswer(data: {

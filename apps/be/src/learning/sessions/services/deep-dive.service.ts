@@ -36,6 +36,9 @@ export class DeepDiveService {
       difficulty: answer.difficulty,
     });
 
+    // 현재 질문 count 증가
+    await this.sessionsRepository.incrementQuestionCount(sessionId);
+
     return this.present(extraQuestion, session, 10);
   }
 
