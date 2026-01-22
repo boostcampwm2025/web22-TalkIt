@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { Prisma } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 import { PrismaService } from '../../infra/database/prisma.service';
 
@@ -137,5 +137,16 @@ export class SessionsRepository {
       where: { id },
       data,
     });
+  }
+
+  /**
+   * Prisma 트랜잭션 래퍼
+   *
+   * - Service 레이어에서 트랜잭션 경계를 명확히 하기 위함
+   * - 현재는 세션 진행용으로 사용
+   * - 내부 로직은 추후 확장 가능
+   */
+  async transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(fn);
   }
 }
