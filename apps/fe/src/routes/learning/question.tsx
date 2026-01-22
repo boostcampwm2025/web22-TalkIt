@@ -1,12 +1,12 @@
 import { useCallback, useRef } from 'react';
 
 import { getFeedbackApi, submitRecordApi } from '@/apis/learning-api';
-import AnswerSection from '@/features/learning/components/answer-section';
-import FeedbackSection from '@/features/learning/components/feedback-section';
-import FloatingStepBar from '@/features/learning/components/floating-step-bar';
-import QuestionContent from '@/features/learning/components/question-content';
-import QuestionHeader from '@/features/learning/components/question-header';
-import VoiceRecorderSection from '@/features/learning/components/voice-recorder-section';
+import AnswerSection from '@/features/learning/components/question/answer-section';
+import FeedbackSection from '@/features/learning/components/question/feedback-section';
+import FloatingStepBar from '@/features/learning/components/question/floating-step-bar';
+import QuestionContent from '@/features/learning/components/question/question-content';
+import QuestionHeader from '@/features/learning/components/question/question-header';
+import VoiceRecorderSection from '@/features/learning/components/question/voice-recorder-section';
 import {
   ANSWER_PHASE,
   AnswerFlowProvider,

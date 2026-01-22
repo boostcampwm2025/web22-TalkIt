@@ -10,7 +10,7 @@ import useLearningSession from '@/lib/stores/learning-session';
 import { cn } from '@/lib/utils';
 import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
 
-import { ANSWER_PHASE, useAnswerFlow } from '../lib/contexts/answer-flow-context';
+import { ANSWER_PHASE, useAnswerFlow } from '../../lib/contexts/answer-flow-context';
 import RewardModal from './reward-modal';
 import { Binoculars, SkipForward } from 'lucide-react';
 
