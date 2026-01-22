@@ -1,10 +1,16 @@
 import { Module } from '@nestjs/common';
 
+import { CreateExtraQuestionUseCase } from './application/create-extra-question.usecase';
+import { GenerateFollowupQuestionUseCase } from './application/generate-followup-question.usecase';
 import { QuestionProviderService } from './application/question-provider.service';
 import { QUESTION_PICK_STRATEGY } from './domain/strategy/question-pick-strategy';
 import { RandomPickStrategy } from './domain/strategy/random-pick-strategy';
+import { FollowupQuestionGenerator } from './infra/llm/followup-question-genrator';
+import { EXTRA_QUESTION_REPOSITORY } from './infra/ports/extra-question.repository.port';
+import { FOLLOWUP_QUESTION_GENERATOR } from './infra/ports/followup-question-generator.port';
 import { QUESTION_POOL_CACHE } from './infra/ports/question-pool.cache';
 import { QUESTION_REPOSITORY } from './infra/ports/question.repository';
+import { ExtraQuestionRepositoryPrisma } from './infra/prisma/extra-question.repository.prisma';
 import { PrismaService } from './infra/prisma/prisma.service';
 import { QuestionRepositoryPrisma } from './infra/prisma/question.repository.prisma';
 import { QuestionPoolCacheRedis } from './infra/redis/question-pool.cache.redis';
@@ -18,10 +24,20 @@ import { QuestionProviderController } from './presentation/question-provider.con
   providers: [
     PrismaService,
     QuestionProviderService,
+    GenerateFollowupQuestionUseCase,
+    CreateExtraQuestionUseCase,
     { provide: QUESTION_PICK_STRATEGY, useClass: RandomPickStrategy },
     { provide: QUESTION_REPOSITORY, useClass: QuestionRepositoryPrisma },
+    { provide: EXTRA_QUESTION_REPOSITORY, useClass: ExtraQuestionRepositoryPrisma },
     { provide: QUESTION_POOL_CACHE, useClass: QuestionPoolCacheRedis },
+    { provide: FOLLOWUP_QUESTION_GENERATOR, useClass: FollowupQuestionGenerator },
   ],
-  exports: [QuestionProviderService],
+  exports: [
+    QuestionProviderService,
+    GenerateFollowupQuestionUseCase,
+    CreateExtraQuestionUseCase,
+    QUESTION_REPOSITORY,
+    EXTRA_QUESTION_REPOSITORY,
+  ],
 })
 export class QuestionProviderModule {}
