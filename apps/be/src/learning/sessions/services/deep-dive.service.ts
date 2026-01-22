@@ -49,8 +49,7 @@ export class DeepDiveService {
       currentQuestionCount: session.currentQuestionCount + 1,
       remainedCredit,
       question: {
-        questionId: extraQuestion.id,
-        type: 'EXTRA_QUESTION',
+        extraQuestionId: extraQuestion.id,
         content: extraQuestion.content,
         guide,
         category: extraQuestion.category,
