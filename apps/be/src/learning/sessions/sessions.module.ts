@@ -3,7 +3,6 @@ import { Module } from '@nestjs/common';
 import { QuestionProviderModule } from '@/modules/question-provider/question-provider.module';
 import { NormalizeModule } from '@/normalize/normalize.module';
 import { UsersModule } from '@/users/users.module';
-import { NormalizeModule } from '@/normalize/normalize.module';
 
 import { DatabaseModule } from '../../infra/database/database.module';
 import { ClovaSttProvider } from '../../stt/providers/clova-stt.provider';
