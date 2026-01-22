@@ -20,21 +20,25 @@ export type SubmitRecordResponseDTO = {
   sttText: string;
 };
 
+export type QuestionArchiveItem = {
+  content: string;
+  type: 'NORMAL' | 'TAIL';
+  score: number;
+};
+
+export type XpDetail = {
+  baseXp: number;
+  difficultyBonus: number | null;
+  deepDiveBonus: number | null;
+};
+
 export type FinishSessionResponseDTO = {
   currentXp: number;
   prevRequiredXpForNextLevel: number;
   requiredXpForNextLevel: number;
   level: number;
-  gainedXp: {
-    baseXp: number;
-    difficultyBonus: number | null;
-    deepDiveBonus: number | null;
-  };
+  gainedXp: XpDetail;
   category: QuestionCategory;
   difficulty: QuestionDifficulty;
-  questions: {
-    content: string;
-    type: 'NORMAL' | 'TAIL';
-    score: number;
-  }[];
+  questions: QuestionArchiveItem[];
 };
