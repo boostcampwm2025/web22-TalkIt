@@ -11,8 +11,6 @@ export class LlmCleanupService {
   private readonly baseUrl = process.env.CLOVA_BASE_URL!;
 
   async cleanup(text: string): Promise<string> {
-    console.log('LLM호출');
-
     try {
       const response = await axios.post(
         `${this.baseUrl}/v1/chat-completions/${this.model}`,
