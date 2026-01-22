@@ -82,13 +82,13 @@ const QuestionPageContent = () => {
       <QuestionHeader />
       <QuestionContent />
       <VoiceRecorderSection
-        key={question?.questionId}
+        key={`voice-recorder-section-${question?.questionId}`}
         onRecordingComplete={handleRecordingComplete}
       />
       <AnswerSection />
       <FeedbackSection />
       <div className="flex-1" />
-      <FloatingStepBar key={question?.questionId} />
+      <FloatingStepBar key={`floating-step-bar-${question?.questionId}`} />
     </div>
   );
 };
