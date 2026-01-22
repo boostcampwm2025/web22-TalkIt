@@ -19,3 +19,26 @@ export type CreateQuestionResponseDTO = {
 export type SubmitRecordResponseDTO = {
   sttText: string;
 };
+
+export type QuestionArchiveItem = {
+  content: string;
+  type: 'NORMAL' | 'TAIL';
+  score: number;
+};
+
+export type XpDetail = {
+  baseXp: number;
+  difficultyBonus: number | null;
+  deepDiveBonus: number | null;
+};
+
+export type FinishSessionResponseDTO = {
+  currentXp: number;
+  prevRequiredXpForNextLevel: number;
+  requiredXpForNextLevel: number;
+  level: number;
+  gainedXp: XpDetail;
+  category: QuestionCategory;
+  difficulty: QuestionDifficulty;
+  questions: QuestionArchiveItem[];
+};

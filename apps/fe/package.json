@@ -10,16 +10,24 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@react-three/rapier": "^2.2.0",
     "@repo/shared": "workspace:^",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.147.3",
     "@tanstack/react-router-devtools": "^1.149.0",
+    "@types/three": "^0.182.0",
     "axios": "^1.13.2",
     "lucide-react": "^0.562.0",
+    "motion": "^12.27.1",
     "pretendard": "^1.3.9",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.1.18",
+    "three": "^0.182.0",
     "zustand": "^5.0.10"
   },
   "devDependencies": {

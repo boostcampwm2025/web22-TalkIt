@@ -46,7 +46,7 @@ export const SideBar = () => {
         </div>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="z-10 rounded-lg p-2 text-dark-gray transition-colors hover:bg-primary/10"
+          className="rounded-lg p-2 text-dark-gray transition-colors hover:bg-primary/10"
         >
           {isOpen ? <PanelLeftClose size={20} /> : <PanelLeft size={20} />}
         </button>

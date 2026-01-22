@@ -1,18 +1,21 @@
 import { useState } from 'react';
 
+import { startSessionApi } from '@/apis/learning-api';
 import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constants/question';
 import { useProgressAnimation } from '@/features/learning/lib/hooks/use-progress-animation';
-import { useStartSession } from '@/features/learning/lib/hooks/use-start-session';
+import useLearningSession from '@/lib/stores/learning-session';
 import { useUserStore } from '@/lib/stores/user-store';
 import { type QuestionCategory, type QuestionDifficulty } from '@repo/shared/constants/learning';
-import { Link, createFileRoute } from '@tanstack/react-router';
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
 import { Flame, ListFilter, Mic, TrendingUp } from 'lucide-react';
 
 const LearningPage = () => {
   const userInfo = useUserStore((state) => state.userInfo);
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const { startSession, isLoading } = useStartSession();
+  const setQuestion = useLearningSession((state) => state.setQuestion);
 
   const { profile, progression, studyStats } = userInfo;
 
@@ -31,11 +34,14 @@ const LearningPage = () => {
   const handleStartClick = async () => {
     if (!selectedTopic || !selectedDifficulty) return;
     try {
-      const data = await startSession(selectedTopic, selectedDifficulty);
-      console.log('세션 생성 완료:', data);
-      alert(`세션 ID: ${data.sessionId}`);
-    } catch (e) {
-      alert('학습 시작 실패');
+      const data = await startSessionApi(selectedTopic, selectedDifficulty);
+      setQuestion(data);
+
+      await navigate({ to: '/learning/question' });
+    } catch (error) {
+      console.error('Error starting session:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
