@@ -16,7 +16,8 @@ export class AssessmentService {
     userId: number,
     sessionId: number,
     body: {
-      questionId: number;
+      questionId?: number;
+      extraQuestionId?: number;
       answerText: string;
       timeSpentSec: number;
     },
@@ -32,10 +33,18 @@ export class AssessmentService {
       throw new BadRequestException({ code: 'FORBIDDEN', message: '세션 소유자가 아닙니다.' });
     }
 
+    if ((!body.questionId && !body.extraQuestionId) || (body.questionId && body.extraQuestionId)) {
+      throw new BadRequestException({
+        code: 'INVALID_ANSWER_TARGET',
+        message: 'questionId 또는 extraQuestionId 중 하나만 제공해야 합니다.',
+      });
+    }
+
     const answer = await this.repo.createUserAnswer({
       userId,
       sessionId,
       questionId: body.questionId,
+      extraQuestionId: body.extraQuestionId,
       answerText: body.answerText,
       timeSpentSec: body.timeSpentSec,
     });
@@ -61,15 +70,24 @@ export class AssessmentService {
     if (answer.userId !== userId) {
       throw new BadRequestException({ code: 'FORBIDDEN', message: '답변 소유자가 아닙니다.' });
     }
-    const job = await this.repo.getAssessmentJobByAnswerId(answerId);
+    const feedback: any = (answer as any).feedbackJson ?? {};
+    const accurate: string[] = Array.isArray(feedback?.accurate)
+      ? feedback.accurate.map(String)
+      : [];
+    const improvement: string[] = Array.isArray(feedback?.improvement)
+      ? feedback.improvement.map(String)
+      : [];
+
     return {
-      jobId: job?.id ?? null,
       answerId: answer.id,
-      status: job?.status ?? null,
-      result: {
-        score: answer.overallScore ?? null,
-        feedback: answer.feedbackJson ?? null,
-      },
-    };
+      question: String((answer as any).question?.content ?? ''),
+      answer: String((answer as any).answerText ?? ''),
+      overallScore: (answer as any).overallScore ?? null,
+      strengths: accurate,
+      weaknesses: [],
+      suggestions: improvement,
+      xp: (answer as any).session?.gainedXp ?? null,
+      remainingToken: null,
+    } as any;
   }
 }

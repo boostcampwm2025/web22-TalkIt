@@ -120,6 +120,35 @@ model QuestionRubricItem {
   @@map("question_rubric_items")
 }
 
+model ExtraQuestion {
+  id Int @id @default(autoincrement())
+
+  sessionId Int
+  parentAnswerId Int @map("parent_answer_id")
+
+  content      String   @db.Text
+  mustInclude  Json
+  depth        Int      @default(1)
+
+  category     Category
+  difficulty   Difficulty
+  timeLimitSec Int       @default(180)
+  createdAt    DateTime  @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  parentAnswer UserAnswer @relation("AnswerToExtraQuestion", fields: [parentAnswerId], references: [id], onDelete: Cascade)
+
+  answers UserAnswer[] @relation("ExtraQuestionToAnswer")
+
+  @@index([sessionId])
+  @@index([parentAnswerId])
+  @@map("extra_questions")
+}
+
+
+
+
 // =====================================================
 // 3. 세션 (Session)
 // =====================================================
@@ -153,8 +182,11 @@ model Session {
 model UserAnswer {
   id           Int      @id @default(autoincrement()) @map("answer_id")
   userId       Int      @map("user_id")
-  questionId   Int      @map("question_id")
   sessionId    Int      @map("session_id")
+
+  questionId   Int?      @map("question_id")
+  extraQuestionId Int? @map("extra_question_id")
+
   answerText   String   @map("answer_text") @db.Text
   timeSpentSec Int      @map("time_spent_sec")
   overallScore Int?     @map("overall_score")
@@ -162,14 +194,50 @@ model UserAnswer {
   createdAt    DateTime @default(now()) @map("created_at")
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  question Question @relation(fields: [questionId], references: [id], onDelete: Restrict)
   session  Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   assessmentJob AssessmentJob?
 
+  question Question? @relation(fields: [questionId], references: [id])
+
+  extraQuestion ExtraQuestion? @relation("ExtraQuestionToAnswer", fields: [extraQuestionId], references: [id])
+
+  extraQuestions ExtraQuestion[] @relation("AnswerToExtraQuestion")
+
   @@index([userId])
-  @@index([questionId])
   @@index([sessionId])
+  @@index([questionId])
+  @@index([extraQuestionId])
   @@map("user_answers")
+}
+
+
+
+// =====================================================
+// 6. 평가 잡 (Assessment Jobs)
+// =====================================================
+
+enum AssessmentStatus {
+  QUEUED
+  EVALUATING
+  FEEDBACKING
+  REWARDING
+  DONE
+  FAILED
+  FAILED_EVALUATION
+  FAILED_FEEDBACK
+}
+
+model AssessmentJob {
+  id         Int               @id @default(autoincrement()) @map("job_id")
+  answerId   Int               @unique @map("answer_id")
+  status     AssessmentStatus
+  startedAt  DateTime?         @map("started_at")
+  finishedAt DateTime?         @map("finished_at")
+  error      String?           @db.Text
+
+  answer UserAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  @@map("assessment_jobs")
 }
 
 // =====================================================
