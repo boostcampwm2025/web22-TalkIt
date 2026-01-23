@@ -1,4 +1,4 @@
-import useAudioLevel from '../lib/hooks/use-audio-level';
+import useAudioLevel from '../../lib/hooks/use-audio-level';
 import { Mic, MicOff } from 'lucide-react';
 
 type PulsingMicButtonProps = {

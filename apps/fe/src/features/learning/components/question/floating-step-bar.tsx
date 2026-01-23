@@ -10,7 +10,7 @@ import useLearningSession from '@/lib/stores/learning-session';
 import { cn } from '@/lib/utils';
 import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
 
-import { ANSWER_PHASE, useAnswerFlow } from '../lib/contexts/answer-flow-context';
+import { ANSWER_PHASE, useAnswerFlow } from '../../lib/contexts/answer-flow-context';
 import RewardModal from './reward-modal';
 import { Binoculars, SkipForward } from 'lucide-react';
 
@@ -22,12 +22,20 @@ const FloatingStepBar = () => {
 
   const [rewardData, setRewardData] = useState<FinishSessionResponseDTO | null>(null);
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+  const [clickedButtons, setClickedButtons] = useState<Set<string>>(new Set());
 
   const isFeedbackPhase =
     phase === ANSWER_PHASE.FEEDBACK_LOADING || phase === ANSWER_PHASE.FEEDBACK_DONE;
 
+  const markClicked = (buttonName: string) => {
+    setClickedButtons((prev) => new Set(prev).add(buttonName));
+  };
+
+  const isClicked = (buttonName: string) => clickedButtons.has(buttonName);
+
   const handleEndLearning = async () => {
-    if (!sessionId) return;
+    if (!sessionId || isClicked('endLearning')) return;
+    markClicked('endLearning');
 
     const data = await finishSessionApi({ sessionId });
     setRewardData(data);
@@ -36,7 +44,8 @@ const FloatingStepBar = () => {
   };
 
   const handleSubmitAnswer = async () => {
-    if (!sessionId || !question || !sttText) return;
+    if (!sessionId || !question || !sttText || isClicked('submitAnswer')) return;
+    markClicked('submitAnswer');
 
     try {
       setPhase(ANSWER_PHASE.FEEDBACK_LOADING);
@@ -55,7 +64,8 @@ const FloatingStepBar = () => {
   };
 
   const handleNextQuestion = () => {
-    if (!sessionId) return;
+    if (!sessionId || isClicked('nextQuestion')) return;
+    markClicked('nextQuestion');
 
     reset();
     getNextQuestionApi(sessionId).then((data) => {
@@ -64,7 +74,8 @@ const FloatingStepBar = () => {
   };
 
   const handleDeepDive = () => {
-    if (!sessionId || !answerId) return;
+    if (!sessionId || !answerId || isClicked('deepDive')) return;
+    markClicked('deepDive');
 
     getDeepDiveQuestionApi(sessionId, answerId).then((data) => {
       reset();
@@ -83,7 +94,12 @@ const FloatingStepBar = () => {
             <Binoculars className="hidden h-4 w-4 sm:block" />
             딥다이브
           </ActionBar.Button>
-          <ActionBar.PrimaryButton onClick={handleNextQuestion}>다음 질문</ActionBar.PrimaryButton>
+          <ActionBar.PrimaryButton
+            disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE}
+            onClick={handleNextQuestion}
+          >
+            다음 질문
+          </ActionBar.PrimaryButton>
         </>
       ) : (
         <>
@@ -91,7 +107,10 @@ const FloatingStepBar = () => {
             <SkipForward className="hidden h-4 w-4 sm:block" />
             다음 질문으로 건너뛰기
           </ActionBar.Button>
-          <ActionBar.PrimaryButton onClick={handleSubmitAnswer}>
+          <ActionBar.PrimaryButton
+            disabled={phase !== ANSWER_PHASE.STT_DONE}
+            onClick={handleSubmitAnswer}
+          >
             답변 제출하기
           </ActionBar.PrimaryButton>
         </>
@@ -129,7 +148,13 @@ const ActionBarButton = ({ children, className, withDivider, ...rest }: ActionBa
 
 const ActionBarPrimaryButton = ({ children, className, ...rest }: ActionBarButtonProps) => {
   return (
-    <ActionBarButton className={cn('rounded-2xl bg-primary', className)} {...rest}>
+    <ActionBarButton
+      className={cn(
+        'rounded-2xl bg-primary disabled:cursor-not-allowed disabled:bg-gray-600 disabled:text-gray-200',
+        className,
+      )}
+      {...rest}
+    >
       {children}
     </ActionBarButton>
   );

@@ -1,12 +1,12 @@
 import { useCallback, useRef } from 'react';
 
 import { getFeedbackApi, submitRecordApi } from '@/apis/learning-api';
-import AnswerSection from '@/features/learning/components/answer-section';
-import FeedbackSection from '@/features/learning/components/feedback-section';
-import FloatingStepBar from '@/features/learning/components/floating-step-bar';
-import QuestionContent from '@/features/learning/components/question-content';
-import QuestionHeader from '@/features/learning/components/question-header';
-import VoiceRecorderSection from '@/features/learning/components/voice-recorder-section';
+import AnswerSection from '@/features/learning/components/question/answer-section';
+import FeedbackSection from '@/features/learning/components/question/feedback-section';
+import FloatingStepBar from '@/features/learning/components/question/floating-step-bar';
+import QuestionContent from '@/features/learning/components/question/question-content';
+import QuestionHeader from '@/features/learning/components/question/question-header';
+import VoiceRecorderSection from '@/features/learning/components/question/voice-recorder-section';
 import {
   ANSWER_PHASE,
   AnswerFlowProvider,
@@ -81,11 +81,14 @@ const QuestionPageContent = () => {
     <div className="relative mx-auto flex min-h-screen max-w-250 flex-col gap-8 p-6 sm:p-10">
       <QuestionHeader />
       <QuestionContent />
-      <VoiceRecorderSection onRecordingComplete={handleRecordingComplete} />
+      <VoiceRecorderSection
+        key={`voice-recorder-section-${question?.questionId}`}
+        onRecordingComplete={handleRecordingComplete}
+      />
       <AnswerSection />
       <FeedbackSection />
       <div className="flex-1" />
-      <FloatingStepBar />
+      <FloatingStepBar key={`floating-step-bar-${question?.questionId}`} />
     </div>
   );
 };

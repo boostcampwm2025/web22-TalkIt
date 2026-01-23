@@ -14,7 +14,10 @@ const AnswerSection = () => {
       <p className="text-xl font-bold">나의 답변</p>
       <div className="mt-4 rounded-md">
         {isSttLoading || !sttText ? (
-          <p className="text-center text-dark-gray">AI가 음성을 텍스트로 변환하고 있어요</p>
+          <div className="flex flex-col items-center gap-3">
+            <div className="loader-dots" />
+            <p className="text-dark-gray">AI가 음성을 텍스트로 변환하고 있어요</p>
+          </div>
         ) : (
           <p>{sttText}</p>
         )}
