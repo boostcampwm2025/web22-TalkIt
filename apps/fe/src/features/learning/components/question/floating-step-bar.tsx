@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 
 import {
   finishSessionApi,
@@ -22,16 +22,16 @@ const FloatingStepBar = () => {
 
   const [rewardData, setRewardData] = useState<FinishSessionResponseDTO | null>(null);
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
-  const [clickedButtons, setClickedButtons] = useState<Set<string>>(new Set());
+  const clickedButtonsRef = useRef<Set<string>>(new Set());
 
   const isFeedbackPhase =
     phase === ANSWER_PHASE.FEEDBACK_LOADING || phase === ANSWER_PHASE.FEEDBACK_DONE;
 
   const markClicked = (buttonName: string) => {
-    setClickedButtons((prev) => new Set(prev).add(buttonName));
+    clickedButtonsRef.current.add(buttonName);
   };
 
-  const isClicked = (buttonName: string) => clickedButtons.has(buttonName);
+  const isClicked = (buttonName: string) => clickedButtonsRef.current.has(buttonName);
 
   const handleEndLearning = async () => {
     if (!sessionId || isClicked('endLearning')) return;
@@ -39,7 +39,6 @@ const FloatingStepBar = () => {
 
     const data = await finishSessionApi({ sessionId });
     setRewardData(data);
-    useLearningSession.getState().resetQuestion();
     setIsRewardModalOpen(true);
   };
 
@@ -90,7 +89,11 @@ const FloatingStepBar = () => {
       </ActionBar.Button>
       {isFeedbackPhase ? (
         <>
-          <ActionBar.Button onClick={handleDeepDive} className="flex items-center gap-2">
+          <ActionBar.Button
+            onClick={handleDeepDive}
+            disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE}
+            className="flex items-center gap-2"
+          >
             <Binoculars className="hidden h-4 w-4 sm:block" />
             딥다이브
           </ActionBar.Button>
@@ -134,7 +137,7 @@ const ActionBarButton = ({ children, className, withDivider, ...rest }: ActionBa
   return (
     <button
       className={cn(
-        'px-3 py-2 text-xs sm:px-6 sm:text-sm',
+        'px-3 py-2 text-xs disabled:cursor-not-allowed sm:px-6 sm:text-sm',
         withDivider &&
           'relative after:absolute after:top-1/2 after:-right-1 after:h-1/2 after:w-px after:-translate-y-1/2 after:bg-gray-300',
         className,
@@ -150,7 +153,7 @@ const ActionBarPrimaryButton = ({ children, className, ...rest }: ActionBarButto
   return (
     <ActionBarButton
       className={cn(
-        'rounded-2xl bg-primary disabled:cursor-not-allowed disabled:bg-gray-600 disabled:text-gray-200',
+        'rounded-2xl bg-primary disabled:bg-gray-600 disabled:text-gray-200',
         className,
       )}
       {...rest}
