@@ -1,5 +1,6 @@
 import { forwardRef, useMemo } from 'react';
 
+import useLearningSession from '@/lib/stores/learning-session';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
 import { useNavigate } from '@tanstack/react-router';
@@ -108,6 +109,7 @@ const RewardModal = forwardRef<HTMLDivElement, RewardModalProps>(
     const navigate = useNavigate();
 
     const handleClose = () => {
+      useLearningSession.getState().resetQuestion();
       navigate({ to: '/learning', replace: true });
     };
 

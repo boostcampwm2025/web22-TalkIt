@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 
 import { getFeedbackApi, submitRecordApi } from '@/apis/learning-api';
 import AnswerSection from '@/features/learning/components/question/answer-section';
@@ -20,12 +20,6 @@ const QuestionPageContent = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
   const setRemainedCredit = useLearningSession((state) => state.setRemainedCredit);
-
-  const lastQuestionRef = useRef(question);
-  if (question) {
-    lastQuestionRef.current = question;
-  }
-  const activeQuestion = question || lastQuestionRef.current;
 
   const { setPhase, setSttText, setFeedback, setAssessmentStatus, answerId } = useAnswerFlow();
 
@@ -72,7 +66,7 @@ const QuestionPageContent = () => {
     }
   };
 
-  if (!activeQuestion) {
+  if (!question) {
     navigate({ to: '/learning', replace: true });
     return null;
   }
@@ -80,7 +74,7 @@ const QuestionPageContent = () => {
   return (
     <div className="relative mx-auto flex min-h-screen max-w-250 flex-col gap-8 p-6 sm:p-10">
       <QuestionHeader />
-      <QuestionContent />
+      <QuestionContent key={`question-content-${question?.questionId}`} />
       <VoiceRecorderSection
         key={`voice-recorder-section-${question?.questionId}`}
         onRecordingComplete={handleRecordingComplete}
