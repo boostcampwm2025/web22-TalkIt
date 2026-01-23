@@ -74,7 +74,7 @@ const QuestionPageContent = () => {
   return (
     <div className="relative mx-auto flex min-h-screen max-w-250 flex-col gap-8 p-6 sm:p-10">
       <QuestionHeader />
-      <QuestionContent />
+      <QuestionContent key={`question-content-${question?.questionId}`} />
       <VoiceRecorderSection
         key={`voice-recorder-section-${question?.questionId}`}
         onRecordingComplete={handleRecordingComplete}
