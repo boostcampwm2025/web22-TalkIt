@@ -10,11 +10,14 @@ export class GenerateFollowupQuestionUseCase {
     private readonly followupQuestionGenerator: FollowupQuestionGenerator,
   ) {}
 
-  async execute(input: { answerContent: string }): Promise<{
+  // 꼬리질문 생성 로직 -> llm 호출
+
+  async execute(input: { questionContent: string; answerContent: string }): Promise<{
     content: string;
     mustInclude: string[];
   }> {
     return this.followupQuestionGenerator.generate({
+      question: input.questionContent,
       answer: input.answerContent,
     });
   }
