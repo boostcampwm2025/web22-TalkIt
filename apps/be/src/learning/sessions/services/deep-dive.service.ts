@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 
 import { CreateExtraQuestionUseCase } from '@/modules/question-provider/application/create-extra-question.usecase';
+import { USER_ANSWER_REPOSITORY } from '@/modules/question-provider/infra/ports/user-answer.repository.port';
+import type { UserAnswerRepositoryPort } from '@/modules/question-provider/infra/ports/user-answer.repository.port';
 
-import { AnswerRepository } from '../repository/answer.repository';
 import { SessionsRepository } from '../repository/sessions.repository';
 import { GuideBuilderService } from './guide-builder.service';
 
@@ -10,9 +11,11 @@ import { GuideBuilderService } from './guide-builder.service';
 export class DeepDiveService {
   constructor(
     private readonly sessionsRepository: SessionsRepository,
-    private readonly answerRepository: AnswerRepository,
     private readonly createExtraQuestionUseCase: CreateExtraQuestionUseCase,
     private readonly guideBuilder: GuideBuilderService,
+
+    @Inject(USER_ANSWER_REPOSITORY)
+    private readonly answerRepository: UserAnswerRepositoryPort,
   ) {}
 
   async execute(params: { userId: number; sessionId: number; answerId: number }) {
@@ -23,7 +26,7 @@ export class DeepDiveService {
       throw new BadRequestException('INVALID_SESSION');
     }
 
-    const answer = await this.answerRepository.findByIdWithContext(answerId);
+    const answer = await this.answerRepository.findById(answerId);
     if (!answer || answer.sessionId !== sessionId) {
       throw new BadRequestException('ANSWER_NOT_FOUND');
     }
@@ -32,8 +35,6 @@ export class DeepDiveService {
       sessionId,
       parentAnswerId: answer.id,
       answerContent: answer.answerText,
-      category: answer.category,
-      difficulty: answer.difficulty,
     });
 
     // 현재 질문 count 증가
