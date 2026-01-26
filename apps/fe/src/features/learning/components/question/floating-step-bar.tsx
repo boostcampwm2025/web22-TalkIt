@@ -83,6 +83,14 @@ const FloatingStepBar = () => {
     });
   };
 
+  const isInsufficientAnswer = Boolean(
+    feedback &&
+    ((feedback.strengths.length === 0 &&
+      feedback.weaknesses.length === 0 &&
+      feedback.suggestions.length === 0) ||
+      feedback.overallScore === 0),
+  );
+
   return (
     <ActionBar>
       <ActionBar.Button onClick={handleEndLearning} withDivider>
@@ -92,7 +100,7 @@ const FloatingStepBar = () => {
         <>
           <ActionBar.Button
             onClick={handleDeepDive}
-            disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE || feedback?.overallScore === 0}
+            disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE || isInsufficientAnswer}
             className="flex items-center gap-2"
           >
             <Binoculars className="hidden h-4 w-4 sm:block" />
