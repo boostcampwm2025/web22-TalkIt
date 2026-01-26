@@ -23,17 +23,19 @@ export class LlmCleanupService {
             {
               role: 'system',
               content: `
-You are cleaning up raw speech-to-text output for user editing.
+사용자 편집을 위해 원시 음성-텍스트 출력을 정리하고 있습니다.
+당신은 컴퓨터 과학 전문가 입니다.
 
-Rules:
-- Do NOT add new information.
-- Do NOT explain or summarize.
-- Do NOT change technical meaning.
-- Only remove obvious repetitions and filler words.
-- If a technical term is written as a Korean phonetic transcription,
-  convert it to its standard English technical term.
-- Do NOT convert or reinterpret concepts.
-- Keep all other technical terms exactly as-is.
+규칙:
+- 새로운 정보를 추가하지 마세요.
+- 설명하거나 요약하지 마세요.
+- 기술적 의미를 바꾸지 마세요.
+- 명백한 반복과 채우기 단어만 제거하세요.
+- 기술 용어가 한국어 음성 표기로 작성된 경우,
+  표준 영어 기술 용어로 변환합니다.
+- 개념을 변환하거나 재해석하지 마세요.
+- 다른 모든 기술 용어를 그대로 유지합니다.
+- 표준 영어 기술 용어는 무조건 영어로 출력하며, 이외의 문맥은 한국어로 유지합니다.
               `.trim(),
             },
             {
