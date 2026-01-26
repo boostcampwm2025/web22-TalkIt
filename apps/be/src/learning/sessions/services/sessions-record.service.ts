@@ -25,6 +25,7 @@ export class SessionsRecordService {
     file: Express.Multer.File,
   ): Promise<{
     sttText: string;
+    preSttText: string;
   }> {
     let objectKey: string | null = null;
 
@@ -80,6 +81,7 @@ export class SessionsRecordService {
        */
       return {
         sttText: normalizeResult.draftText,
+        preSttText: normalizeResult.preNormalizedText,
       };
     } catch (error) {
       this.logger.error('ERROR in record process', error);
