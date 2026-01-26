@@ -23,7 +23,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   // 중복 검사 API
-  @Get('check')
+  @Get('check-duplicate')
   @ApiOperation({
     summary: '이메일/닉네임 중복 검사',
     description: '회원가입 전 이메일 또는 닉네임이 이미 사용 중인지 확인합니다.',
@@ -67,7 +67,7 @@ export class UsersController {
   }
 
   // 회원가입 API
-  @Post()
+  @Post('register')
   @ApiOperation({
     summary: '회원가입',
     description: '새로운 사용자를 생성하고 초기 크레딧과 통계 정보를 초기화합니다.',
@@ -86,12 +86,17 @@ export class UsersController {
       example: {
         statusCode: 409,
         message: '이미 존재하는 이메일입니다.',
-        error: 'Conflict',
       },
     },
   })
   @ApiBadRequestResponse({
     description: '유효성 검사 실패 (비밀번호 정규식 미준수 등)',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: '이미 존재하는 이메일입니다.',
+      },
+    },
   })
   async register(
     @Body(new ZodValidationPipe(CreateUserSchema))
