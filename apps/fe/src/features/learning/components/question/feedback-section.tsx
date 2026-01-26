@@ -2,7 +2,18 @@ import { ANSWER_PHASE, useAnswerFlow } from '@/features/learning/lib/contexts/an
 import { ASSESSMENT_STATUS, type AssessmentStatus } from '@repo/shared/constants/learning';
 import type { GetFeedbackResponseDTO } from '@repo/shared/types/learning';
 
-import { BookOpen, Bot, CircleCheck, Lightbulb, Loader2, TriangleAlert } from 'lucide-react';
+import {
+  BookOpen,
+  Bot,
+  CircleCheck,
+  Info,
+  Lightbulb,
+  Loader2,
+  type LucideIcon,
+  Search,
+  ThumbsUp,
+  TriangleAlert,
+} from 'lucide-react';
 
 const ASSESSMENT_STATUS_MESSAGE: Record<string, string> = {
   [ASSESSMENT_STATUS.QUEUED]: '평가 대기 중...',
@@ -75,45 +86,58 @@ const InsufficientAnswerFeedbackContent = () => (
 const FeedbackContent = ({ feedback }: { feedback: GetFeedbackResponseDTO }) => (
   <>
     <div className="grid grid-cols-2 gap-6">
-      <div className="space-y-4 rounded-2xl border border-[#22C55E] bg-[#F0FDF4]/50 p-6">
+      <div className="flex flex-col gap-4 rounded-2xl border border-[#22C55E] bg-[#F0FDF4]/50 p-6">
         <p className="flex items-center gap-2 text-lg font-bold text-[#14532D]">
           <CircleCheck className="h-5 w-5 text-[#16A34A]" />
           정확한 개념 설명
         </p>
-        <ul className="flex list-disc flex-col gap-2 pl-5 text-dark-green marker:text-[#22C55E]">
-          {feedback.strengths.map((strength, index) => (
-            <li className="text-sm" key={index}>
-              {strength}
-            </li>
-          ))}
-        </ul>
+        {feedback.strengths.length > 0 ? (
+          <ul className="flex list-disc flex-col gap-2 pl-5 text-dark-green marker:text-[#22C55E]">
+            {feedback.strengths.map((strength, index) => (
+              <li key={index}>{strength}</li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyListItem message="핵심 개념에 대해 더 구체적으로 설명해보세요" icon={Search} />
+        )}
       </div>
-      <div className="space-y-4 rounded-2xl border border-[#F97316] bg-[#FFF7ED]/50 p-6">
+      <div className="flex flex-col gap-4 rounded-2xl border border-[#F97316] bg-[#FFF7ED]/50 p-6">
         <p className="flex items-center gap-2 text-lg font-bold text-[#7C2D12]">
           <TriangleAlert className="h-5 w-5 text-[#EA580C]" />
           보완하면 좋을 점
         </p>
-        <ul className="flex list-disc flex-col gap-2 pl-5 text-[#9A3412] marker:text-[#F97316]">
-          {feedback.weaknesses.map((weakness, index) => (
-            <li className="text-sm" key={index}>
-              {weakness}
-            </li>
-          ))}
-        </ul>
+        {feedback.weaknesses.length > 0 ? (
+          <ul className="flex list-disc flex-col gap-2 pl-5 text-[#9A3412] marker:text-[#F97316]">
+            {feedback.weaknesses.map((weakness, index) => (
+              <li key={index}>{weakness}</li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyListItem message="특별히 보완할 점이 없어요!" icon={ThumbsUp} />
+        )}
       </div>
     </div>
-    <div className="space-y-4 rounded-2xl border border-[#A855F7] bg-[#FAF5FF] p-6">
+    <div className="flex flex-col gap-4 rounded-2xl border border-[#A855F7] bg-[#FAF5FF] p-6">
       <p className="flex items-center gap-2 text-lg font-bold text-[#9333EA]">
         <Lightbulb className="h-5 w-5 text-[#9333EA]" />
         도움이 될 팁
       </p>
-      <ul className="flex list-disc flex-col gap-2 pl-5 text-[#6B21A8] marker:text-[#b064ee]">
-        {feedback.suggestions.map((suggestion, index) => (
-          <li className="text-sm" key={index}>
-            {suggestion}
-          </li>
-        ))}
-      </ul>
+      {feedback.suggestions.length > 0 ? (
+        <ul className="flex list-disc flex-col gap-2 pl-5 text-[#6B21A8] marker:text-[#b064ee]">
+          {feedback.suggestions.map((suggestion, index) => (
+            <li key={index}>{suggestion}</li>
+          ))}
+        </ul>
+      ) : (
+        <EmptyListItem message="추가로 드릴 팁이 없어요" icon={Info} />
+      )}
     </div>
   </>
+);
+
+const EmptyListItem = ({ message, icon: Icon }: { message: string; icon: LucideIcon }) => (
+  <div className="flex flex-1 items-center justify-center gap-2">
+    <Icon className="h-4 w-4" />
+    {message}
+  </div>
 );
