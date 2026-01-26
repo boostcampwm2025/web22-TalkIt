@@ -21,6 +21,20 @@ export class UserCreditsRepository {
   }
 
   /**
+   * 유저 크레딧 지급 (양수 저장)
+   * 회원가입 보상, 미션 완료 보상 등
+   */
+  async grant(userId: number, reason: string, amount: number) {
+    return this.prisma.userCredit.create({
+      data: {
+        userId,
+        amount: amount, // 양수(+) 그대로 저장
+        reason,
+      },
+    });
+  }
+
+  /**
    * 유저 크레딧 차감
    * 크레딧 차감은 기존 row를 수정하지 않고
    * 새로운 row를 추가하는 방식으로 처리
