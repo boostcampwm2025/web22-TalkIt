@@ -13,7 +13,6 @@ import { XpRepository } from '../xp/repository/xp.repository';
 import { SessionsRecordController } from './controllers/sessions-record.controller';
 import { SessionsController } from './controllers/sessions.controller';
 import { ObjectStorageProvider } from './providers/object-storage.provider';
-import { AnswerRepository } from './repository/answer.repository';
 import { SessionsRepository } from './repository/sessions.repository';
 import { DeepDiveService } from './services/deep-dive.service';
 import { GuideBuilderService } from './services/guide-builder.service';
@@ -31,7 +30,6 @@ import { SessionsService } from './services/sessions.service';
     SessionsService,
     GuideBuilderService,
     DeepDiveService,
-    AnswerRepository,
     XpRepository,
     StreakCalculatorService,
     XpCalculatorService,
