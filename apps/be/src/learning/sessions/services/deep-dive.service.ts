@@ -57,8 +57,6 @@ export class DeepDiveService {
           sessionId,
           parentAnswerId: answer.id,
           answerContent: answer.answerText,
-          category: answer.category,
-          difficulty: answer.difficulty,
         });
 
         await this.userCreditsRepository.consume(
