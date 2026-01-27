@@ -24,6 +24,8 @@ export const IssuesMetaSchema = z.object({
   source: z.enum(['llm', 'fallback']).optional(),
   finalScore: z.number().optional(),
   scoreDeterministic: z.boolean().optional(),
+  offTopic: z.boolean().optional(),
+  reason: z.string().optional(),
 });
 
 export type IssuesMeta = z.infer<typeof IssuesMetaSchema>;
