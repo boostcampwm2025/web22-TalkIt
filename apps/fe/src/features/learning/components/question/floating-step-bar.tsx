@@ -111,7 +111,7 @@ const FloatingStepBar = () => {
             다음 질문으로 건너뛰기
           </ActionBar.Button>
           <ActionBar.PrimaryButton
-            disabled={phase !== ANSWER_PHASE.STT_DONE}
+            disabled={phase !== ANSWER_PHASE.STT_DONE || !sttText}
             onClick={handleSubmitAnswer}
           >
             답변 제출하기
