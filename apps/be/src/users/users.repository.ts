@@ -14,7 +14,7 @@ export class UsersRepository {
 
   // 닉네임으로 유저 찾기
   async findByNickname(nickname: string): Promise<User | null> {
-    return this.prisma.user.findFirst({ where: { nickname } });
+    return this.prisma.user.findUnique({ where: { nickname } });
   }
 
   // 유저 생성 (트랜잭션 지원, 실패 시 롤백)
