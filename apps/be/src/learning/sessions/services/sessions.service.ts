@@ -37,6 +37,14 @@ export class SessionsService {
     private readonly streakCalculator: StreakCalculatorService,
   ) {}
 
+  /**
+   * 세션 생성 + 첫 질문 제공
+   *
+   * 규칙:
+   * - 세션 생성과 첫 질문 비용 차감은 하나의 트랜잭션
+   * - createSession 시점에 currentQuestionCount = 1
+   */
+
   async createSession(userId: number, dto: CreateSessionDto) {
     /**
      * 이미 진행 중인 세션 체크
@@ -58,24 +66,49 @@ export class SessionsService {
     }
 
     /**
+     * 유저의 잔여 크레딧 조회
+     */
+
+    const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
+
+    // NOTE: 테스트를 위해서 일단 주석처리했습니다. 실 사용시 주석 해제하면 됩니다.
+    if (remainedCredit <= 0) {
+      //throw new BadRequestException('잔여 크레딧이 부족합니다.');
+    }
+
+    /**
+     * 세션 생성 + 첫 질문 비용 차감 (원자적 처리)
+     */
+    const session = await this.sessionsRepository.transaction(async (tx) => {
+      const createdSession = await this.sessionsRepository.createSession(
+        {
+          userId,
+          category: dto.category,
+          difficulty: dto.difficulty,
+        },
+        tx,
+      );
+
+      await this.userCreditsRepository.consume(
+        userId,
+        'QUESTION_CONSUME', // TODO: CreditReason enum으로 교체
+        1,
+        tx,
+      );
+
+      return createdSession;
+    });
+
+    /**
      * mustInclude 키워드를 기반으로
      * 사용자에게 제공할 답변 가이드를 생성
      */
     const guide = this.guideBuilder.build(question.mustInclude);
 
-    /**
-     * 세션 생성 (Repository 타입과 정확히 일치)
-     */
-    const session = await this.sessionsRepository.createSession({
-      userId,
-      category: dto.category,
-      difficulty: dto.difficulty,
-    });
-
     return {
       sessionId: session.id,
-      currentQuestionCount: 1,
-      remainedCredit: 20,
+      currentQuestionCount: session.currentQuestionCount,
+      remainedCredit: remainedCredit - 1,
       question: {
         questionId: question.questionId,
         content: question.content,
@@ -86,6 +119,14 @@ export class SessionsService {
       },
     };
   }
+
+  /**
+   * 다음 질문 조회
+   *
+   * 규칙:
+   * - 질문 제공 시점에 크레딧 차감 + questionCount 증가
+   * - 종료 조건 감지만 담당 (종료 처리는 finishSession에 위임)
+   */
 
   async getNextQuestion(sessionId: number) {
     /**
@@ -108,11 +149,16 @@ export class SessionsService {
     /**
      * 3. 유저 잔여 크레딧 조회 (UserCredit ledger SUM)
      */
-    /*const remainedCredit = await this.userCreditsRepository.getTotalCredit(session.userId);
+    const remainedCredit = await this.userCreditsRepository.getTotalCredit(session.userId);
 
+    // NOTE: 테스트를 위해서 일단 주석처리했습니다. 실 사용시 주석 해제하면 됩니다.
     if (remainedCredit <= 0) {
-      throw new BadRequestException('잔여 크레딧이 부족합니다.');
-    }*/
+      //await this.finishSession(sessionId);
+      /*throw new BadRequestException({
+        code: 'CREDIT_EXHAUSTED',
+        message: '잔여 크레딧이 부족하여 세션이 종료되었습니다.',
+      });*/
+    }
 
     const question = await this.questionService.pickOne(
       session.category as Domain,
@@ -123,20 +169,20 @@ export class SessionsService {
       /**
        * 더 이상 질문이 없다면 세션 종료 처리
        */
-      /**
-       * TODO: 세션 종료 처리
-       *
-       * - status를 COMPLETED로 변경
-       * - completedAt 기록
-       * - 최종 점수 / XP 계산 (향후)
-       * - 세션 요약 리포트 생성 (향후)
-       * - 더이상 질문이 없다는 건, 알려줘야하지 않을까?
-       */
+
+      await this.finishSession(sessionId);
+      throw new BadRequestException({
+        code: 'SESSION_COMPLETED',
+        message: '더 이상 제공할 질문이 없어 세션이 종료되었습니다.',
+      });
     }
 
     // 질문 제공 후 증가
-    await this.sessionsRepository.incrementQuestionCount(sessionId);
+    const updatedSession = await this.sessionsRepository.transaction(async (tx) => {
+      await this.userCreditsRepository.consume(session.userId, 'QUESTION_CONSUME', 1, tx);
 
+      return this.sessionsRepository.incrementQuestionCount(sessionId, tx);
+    });
     /**
      * 5. 답변 가이드 생성
      */
@@ -146,8 +192,8 @@ export class SessionsService {
      * 6. 응답 반환
      */
     return {
-      currentQuestionCount: session.currentQuestionCount + 1,
-      remainedCredit: 20,
+      currentQuestionCount: updatedSession.currentQuestionCount,
+      remainedCredit: remainedCredit - 1,
       question: {
         questionId: question.questionId,
         content: question.content,
@@ -161,6 +207,7 @@ export class SessionsService {
 
   /**
    * 세션 종료 및 리워드(XP, 레벨, 스트릭) 정산을 수행하는 메인 메서드
+   * - 세션 종료는 반드시 이 메서드를 통해서만 수행
    */
   async finishSession(sessionId: number): Promise<FinishSessionResponseDto> {
     // 1. 검증 및 데이터 로드
