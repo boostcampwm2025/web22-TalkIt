@@ -81,7 +81,7 @@ export class DeepDiveService {
     const guide = this.guideBuilder.build(extraQuestion.mustInclude);
 
     return {
-      currentQuestionCount: session.currentQuestionCount + 1,
+      currentQuestionCount: session.currentQuestionCount,
       remainedCredit,
       question: {
         extraQuestionId: extraQuestion.id,
