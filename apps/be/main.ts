@@ -5,9 +5,12 @@ import '@/common/utils/zod-openapi';
 
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './src/common/filters/http-exception.filter';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(cookieParser());
 
   app.useGlobalFilters(new HttpExceptionFilter());
   app.enableCors({
