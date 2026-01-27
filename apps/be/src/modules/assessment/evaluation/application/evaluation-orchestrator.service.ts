@@ -5,6 +5,7 @@ import type { IssuesPayload } from '../domain/issues.schema';
 import { ScoringService } from '../domain/scoring.service';
 import { LlmEvaluationProvider } from '../infra/llm-evaluation.provider';
 import { LlmFeedbackProvider } from '../infra/llm-feedback.provider';
+import { KeywordExtractorService } from './keyword-extractor.service';
 import { promises as fsp } from 'node:fs';
 import * as path from 'node:path';
 
@@ -21,9 +22,10 @@ export class EvaluationOrchestratorService {
     private readonly evalProvider: LlmEvaluationProvider,
     private readonly feedbackProvider: LlmFeedbackProvider,
     private readonly scoring: ScoringService,
+    private readonly extractor: KeywordExtractorService,
   ) {}
 
-  async evaluate(answerId: number): Promise<{ score: number; issues: IssuesPayload }> {
+  async evaluate(answerId: number): Promise<{ score: number }> {
     const answer = await this.repo.getAnswerWithRelations(answerId);
     if (!answer) {
       throw new Error('ANSWER_NOT_FOUND');
@@ -53,10 +55,10 @@ export class EvaluationOrchestratorService {
       score,
     });
 
-    return { score, issues };
+    return { score };
   }
 
-  async buildFeedback(answerId: number, issues: IssuesPayload): Promise<{ feedback: any }> {
+  async buildFeedback(answerId: number): Promise<{ feedback: any }> {
     const answer = await this.repo.getAnswerWithRelations(answerId);
     if (!answer) {
       throw new Error('ANSWER_NOT_FOUND');
@@ -68,12 +70,16 @@ export class EvaluationOrchestratorService {
 
     const feedback = await this.feedbackProvider.build({
       questionSummary,
-      mustInclude: q.mustInclude,
-      issues,
+      answerText: String(answer.answerText ?? ''),
+      issues: { issues: [], meta: { mustIncludeMatched: [], mustIncludeMissing: [] } } as any,
     });
 
-    await this.repo.setAnswerFeedback(answerId, feedback as any);
-    return { feedback };
+    // 키워드 가이드라인 준수: 사용자 답변에서만 추출(최대 5개)
+    const keywords = this.extractor.extract(answer.answerText);
+    const finalFeedback = { ...feedback, keywords } as any;
+
+    await this.repo.setAnswerFeedback(answerId, finalFeedback);
+    return { feedback: finalFeedback };
   }
 
   private extractQuestionContext(answer: any): QuestionContext {
