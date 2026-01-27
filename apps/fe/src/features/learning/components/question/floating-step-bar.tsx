@@ -18,8 +18,16 @@ const FloatingStepBar = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
 
-  const { phase, setPhase, sttText, setAnswerId, answerId, recordingTime, reset, feedback } =
-    useAnswerFlow();
+  const {
+    phase,
+    setPhase,
+    sttText,
+    setAnswerId,
+    answerId,
+    recordingTime,
+    reset,
+    isInsufficientAnswer,
+  } = useAnswerFlow();
 
   const [rewardData, setRewardData] = useState<FinishSessionResponseDTO | null>(null);
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
@@ -82,14 +90,6 @@ const FloatingStepBar = () => {
       useLearningSession.getState().setQuestion({ ...data, sessionId });
     });
   };
-
-  const isInsufficientAnswer = Boolean(
-    feedback &&
-    ((feedback.strengths.length === 0 &&
-      feedback.weaknesses.length === 0 &&
-      feedback.suggestions.length === 0) ||
-      feedback.overallScore === 0),
-  );
 
   return (
     <ActionBar>

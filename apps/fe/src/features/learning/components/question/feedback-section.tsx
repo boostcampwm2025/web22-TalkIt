@@ -29,16 +29,9 @@ const getStatusMessage = (assessmentStatus: AssessmentStatus | null) => {
 };
 
 const FeedbackSection = () => {
-  const { feedback, phase, assessmentStatus } = useAnswerFlow();
+  const { feedback, phase, assessmentStatus, isInsufficientAnswer } = useAnswerFlow();
 
   const isFeedbackLoading = phase === ANSWER_PHASE.FEEDBACK_LOADING;
-
-  const isInsufficientAnswer =
-    feedback &&
-    ((feedback.strengths.length === 0 &&
-      feedback.weaknesses.length === 0 &&
-      feedback.suggestions.length === 0) ||
-      feedback.overallScore === 0);
 
   if (phase !== ANSWER_PHASE.FEEDBACK_LOADING && phase !== ANSWER_PHASE.FEEDBACK_DONE) return null;
 
