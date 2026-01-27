@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { AuthModule } from './src/auth/auth.module';
 import { DatabaseModule } from './src/infra/database/database.module';
 import { SessionsModule } from './src/learning/sessions/sessions.module';
 import { AssessmentModule } from './src/modules/assessment/assessment.module';
@@ -17,6 +18,7 @@ import { SttModule } from './src/stt/stt.module';
     SttModule,
     QuestionProviderModule,
     AssessmentModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [],
