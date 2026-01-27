@@ -19,7 +19,7 @@ export class FollowupQuestionGenerator implements FollowupQuestionGeneratorPort 
   private readonly baseUrl = process.env.CLOVA_BASE_URL!;
   private readonly model = process.env.CLOVA_MODEL!;
 
-  async generate(input: { answer: string }): Promise<{
+  async generate(input: { question: string; answer: string }): Promise<{
     content: string;
     mustInclude: string[];
   }> {
@@ -36,12 +36,19 @@ export class FollowupQuestionGenerator implements FollowupQuestionGeneratorPort 
                   text: `
 You are an interviewer conducting a deep technical interview.
 
+Context:
+- An original interview question is provided.
+- A candidate's answer is provided.
+- The answer may be incomplete, partially incorrect, or unclear.
+
+
 Your task:
 - Generate ONE follow-up question that digs deeper into the user's answer.
 - Identify key points that the follow-up answer MUST include.
 
 Rules:
 - Do NOT repeat or restate the user's answer.
+- The follow-up question MUST be written in Korean.
 - Do NOT include explanations or answers.
 - Ask only ONE clear follow-up question.
 - Output MUST be valid JSON.
@@ -56,6 +63,9 @@ JSON format:
   "content": "<one follow-up question sentence>",
   "must_include": ["<key point 1>", "<key point 2>", "<key point 3>"]
 }
+
+Question:
+"${input.question}"
 
 User Answer:
 "${input.answer}"
