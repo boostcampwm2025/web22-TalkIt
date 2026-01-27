@@ -94,7 +94,7 @@ export class UsersController {
     schema: {
       example: {
         statusCode: 400,
-        message: '이미 존재하는 이메일입니다.',
+        message: '비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다.',
       },
     },
   })
