@@ -57,4 +57,22 @@ export class UsersRepository {
       return user;
     });
   }
+
+  // 이메일을 통해 UserOAuth 포함 조회
+  async findByEmailWithAuth(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+      include: {
+        oauthAccounts: true,
+      },
+    });
+  }
+
+  // 리프레쉬 토큰 컬럼 업데이트
+  async updateRefreshToken(userId: number, refreshToken: string | null) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { currentRefreshToken: refreshToken },
+    });
+  }
 }
