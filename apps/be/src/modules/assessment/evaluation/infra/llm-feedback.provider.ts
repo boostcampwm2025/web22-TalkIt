@@ -3,20 +3,21 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ClovaService } from '@/infra/clova/clova.service';
 
 import type { IssuesPayload } from '../domain/issues.schema';
-import { FeedbackSystemPrompt, FeedbackUserPrompt } from '../prompt/prompt.template';
+import { FeedbackSystemPromptV3, FeedbackUserPromptV3, GoldenSystemPrompt, GoldenUserPrompt } from '../prompt/prompt.template';
+import { LlmGoldenProvider } from './llm-golden.provider';
 
 @Injectable()
 export class LlmFeedbackProvider {
   private readonly logger = new Logger(LlmFeedbackProvider.name);
 
-  constructor(private readonly clova: ClovaService) {}
+  constructor(private readonly clova: ClovaService, private readonly golden: LlmGoldenProvider) {}
 
   async build(params: {
     questionSummary: string;
-    mustInclude: string[];
+    answerText: string;
     issues: IssuesPayload;
   }): Promise<{ accurate: string[]; improvement: string[]; keywords: string[] }> {
-    const { questionSummary, mustInclude, issues } = params;
+    const { questionSummary, answerText, issues } = params;
 
     const apiKey = (process.env.CLOVA_API_KEY ?? '').trim();
     if (!apiKey) {
@@ -24,41 +25,58 @@ export class LlmFeedbackProvider {
     }
 
     const issuesJson = JSON.stringify(issues);
-    const messages = [
-      { role: 'system' as const, content: FeedbackSystemPrompt },
-      {
-        role: 'user' as const,
-        content: FeedbackUserPrompt(questionSummary, mustInclude, issuesJson),
-      },
-    ];
-    try {
-      const out = await this.clova.chat(messages, {
-        temperature: 0,
-        maxCompletionTokens: 500,
-        stream: false,
-      });
-      const text = (out.content ?? '').trim();
-      let parsed: any;
+    const attempts = Math.max(1, Number(process.env.ASSESS_FEEDBACK_RETRIES ?? '2'));
+    let lastErr: any = null;
+    for (let i = 0; i < attempts; i++) {
+      const reinforce = i > 0 ? '\n\n[IMPORTANT]\n이전 응답은 JSON 문법 오류였습니다. 반드시 유효한 JSON만 한 줄로 출력하세요.' : '';
+      // 1) Golden 생성 (비용 우선 X: 매번 호출)
+      let goldenJson = '';
       try {
-        parsed = JSON.parse(text);
-      } catch {
-        const cleaned = this.prepareLikelyJson(text);
-        parsed = JSON.parse(cleaned);
+        const golden = await this.golden.generate({ questionSummary });
+        goldenJson = JSON.stringify(golden);
+      } catch (e) {
+        this.logger.warn(`Golden generation failed: ${(e as any)?.message ?? e}`);
+        goldenJson = JSON.stringify({ definition: questionSummary, key_points: [] });
       }
-      const accurate = Array.isArray(parsed.accurate)
-        ? parsed.accurate.map(String).slice(0, 3)
-        : [];
-      const improvement = Array.isArray(parsed.improvement)
-        ? parsed.improvement.map(String).slice(0, 5)
-        : [];
-      const keywords = Array.isArray(parsed.keywords)
-        ? parsed.keywords.map(String).slice(0, 5)
-        : [];
-      return { accurate, improvement, keywords };
-    } catch (e) {
-      this.logger.warn(`Clova feedback failed, fallback used: ${(e as any)?.message ?? e}`);
-      return this.fallbackFromIssues(issues);
+
+      const messages = [
+        { role: 'system' as const, content: FeedbackSystemPromptV3 },
+        {
+          role: 'user' as const,
+          content: FeedbackUserPromptV3(questionSummary, goldenJson, answerText) + reinforce,
+        },
+      ];
+      try {
+        const out = await this.clova.chat(messages, {
+          temperature: 0,
+          maxCompletionTokens: 500,
+          stream: false,
+        });
+        const text = (out.content ?? '').trim();
+        let parsed: any;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          const cleaned = this.prepareLikelyJson(text);
+          parsed = JSON.parse(cleaned);
+        }
+        const accurate = Array.isArray(parsed.accurate)
+          ? parsed.accurate.map(String).slice(0, 3)
+          : [];
+        const improvement = Array.isArray(parsed.improvement)
+          ? parsed.improvement.map(String).slice(0, 5)
+          : [];
+        const keywords = Array.isArray(parsed.keywords)
+          ? parsed.keywords.map(String).slice(0, 5)
+          : [];
+        return { accurate, improvement, keywords };
+      } catch (e) {
+        lastErr = e;
+        continue;
+      }
     }
+    this.logger.warn(`Clova feedback failed, fallback used: ${(lastErr as any)?.message ?? lastErr}`);
+    return this.fallbackFromIssues(issues);
   }
 
   /**
@@ -117,6 +135,15 @@ export class LlmFeedbackProvider {
       } else if (i.type === 'unclear') {
         improvement.push('서론-전개-결론 구조로 핵심을 먼저 제시하면 더 명료합니다.');
       }
+    }
+
+    // 오프토픽 가드: 모든 mustInclude가 누락된 경우(추정)
+    if (
+      issues.meta?.offTopic ||
+      ((issues.meta?.mustIncludeMissing?.length ?? 0) > 0 &&
+        (issues.meta?.mustIncludeMatched?.length ?? 0) === 0)
+    ) {
+      improvement.unshift('질문과의 관련성이 매우 낮거나 부적절한 지시가 감지되었습니다. 질문의 핵심 키워드를 중심으로 답변을 재구성하세요.');
     }
 
     return {
