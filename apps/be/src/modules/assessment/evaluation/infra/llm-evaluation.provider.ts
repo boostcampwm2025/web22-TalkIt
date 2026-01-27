@@ -3,11 +3,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ClovaService } from '@/infra/clova/clova.service';
 
 import { IssuesPayload, IssuesPayloadSchema } from '../domain/issues.schema';
-import { EvaluationSystemPrompt, EvaluationUserPrompt } from '../prompt/prompt.template';
+import { EvaluationSystemPrompt, EvaluationUserPrompt, PROMPT_VERSION } from '../prompt/prompt.template';
 
 @Injectable()
 export class LlmEvaluationProvider {
   private readonly logger = new Logger(LlmEvaluationProvider.name);
+  private cache = new Map<string, { expiresAt: number; payload: IssuesPayload }>();
 
   constructor(private readonly clova: ClovaService) {}
 
@@ -18,6 +19,23 @@ export class LlmEvaluationProvider {
     answerText: string;
   }): Promise<IssuesPayload> {
     const { questionSummary, mustInclude, answerText } = params;
+
+    // 0) Simple CS-domain/off-topic pre-gate
+    const injection = this.isInjectionOrNonCs(answerText);
+    const pre = this.preMatch(mustInclude, answerText);
+    if (injection || pre.coverage <= 0) {
+      // 완전 오프토픽 또는 명백한 인젝션: LLM 호출 없이 즉시 missing 처리
+      return this.missingAll(mustInclude, injection ? 'non_cs_or_injection' : 'no_coverage');
+    }
+
+    // 1) Cache lookup (process-local, TTL)
+    const key = this.cacheKey(params);
+    const now = Date.now();
+    const ttlMs = Number(process.env.ASSESS_EVAL_CACHE_TTL ?? '0');
+    if (ttlMs > 0) {
+      const hit = this.cache.get(key);
+      if (hit && hit.expiresAt > now) return hit.payload;
+    }
 
     const apiKey = (process.env.CLOVA_API_KEY ?? '').trim();
     const allowFallback =
@@ -60,13 +78,27 @@ export class LlmEvaluationProvider {
         this.logger.warn(
           `Clova JSON validation failed: ${parsed.error.message}; preview='${preview}'`,
         );
-        if (allowFallback) return this.fallbackHeuristic(mustInclude, answerText);
+        // 3차: 관찰된 type 오표기 강제 교정 후 재검증(weakness -> unclear 등)
+        try {
+          const raw = this.parseJsonStrict<any>(this.prepareLikelyJson(text));
+          const coerced = this.coerceIssueTypes(raw);
+          const parsed2 = IssuesPayloadSchema.safeParse(coerced);
+          if (parsed2.success) {
+            const payload = { ...parsed2.data, meta: { ...parsed2.data.meta, source: 'llm' } } as any;
+            this.logger.warn('LLM issues.type coerced to allowed enums.');
+            return this.cachePutAndReturn(key, payload);
+          }
+        } catch {
+          // ignore; fallback below
+        }
+        if (allowFallback) return this.cachePutAndReturn(key, this.fallbackHeuristic(mustInclude, answerText));
         throw new Error('LLM response invalid');
       }
-      return { ...parsed.data, meta: { ...parsed.data.meta, source: 'llm' } } as any;
+      const payload = { ...parsed.data, meta: { ...parsed.data.meta, source: 'llm' } } as any;
+      return this.cachePutAndReturn(key, payload);
     } catch (e) {
       this.logger.warn(`Clova call failed: ${(e as any)?.message ?? e}`);
-      if (allowFallback) return this.fallbackHeuristic(mustInclude, answerText);
+      if (allowFallback) return this.cachePutAndReturn(key, this.fallbackHeuristic(mustInclude, answerText));
       throw e;
     }
   }
@@ -109,6 +141,25 @@ export class LlmEvaluationProvider {
     return {
       issues,
       meta: { mustIncludeMatched: matched, mustIncludeMissing: missing, source: 'fallback' },
+    };
+  }
+
+  private missingAll(mustInclude: string[], reason?: string): IssuesPayload {
+    const issues = mustInclude.map((m) => ({
+      type: 'missing' as const,
+      detail: `'${m}'에 대한 정보가 누락됨`,
+      evidence: '',
+      target: m,
+    }));
+    return {
+      issues,
+      meta: {
+        mustIncludeMatched: [],
+        mustIncludeMissing: mustInclude.slice(),
+        source: 'fallback',
+        offTopic: true,
+        reason,
+      },
     };
   }
 
@@ -196,5 +247,98 @@ export class LlmEvaluationProvider {
     }
 
     return out;
+  }
+
+  private cacheKey(p: {
+    questionId: number;
+    questionSummary: string;
+    mustInclude: string[];
+    answerText: string;
+  }): string {
+    const base = `${p.questionId}|${this.normalizeMi(p.mustInclude).join(',')}|${PROMPT_VERSION}|${p.questionSummary.slice(0, 200)}|${p.answerText}`;
+    return this.hashLike(base);
+  }
+
+  private cachePutAndReturn(key: string, payload: IssuesPayload): IssuesPayload {
+    const ttlMs = Number(process.env.ASSESS_EVAL_CACHE_TTL ?? '0');
+    if (ttlMs > 0) {
+      this.cache.set(key, { expiresAt: Date.now() + ttlMs, payload });
+    }
+    return payload;
+  }
+
+  private normalizeMi(mi: string[]): string[] {
+    return [...mi].map((s) => String(s).trim()).filter(Boolean).sort();
+  }
+
+  private hashLike(s: string): string {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h).toString(36);
+  }
+
+  private preMatch(_mi: string[], answerText: string) {
+    const lower = (answerText ?? '').toLowerCase();
+    const tokens = (s: string) =>
+      String(s)
+        .toLowerCase()
+        .split(/[^a-z0-9가-힣]+/)
+        .filter((t) => t && t.length >= 2);
+    const mi = this.normalizeMi(_mi);
+    let hit = 0;
+    for (const k of mi) {
+      const toks = tokens(k);
+      const ok = toks.every((t) => lower.includes(t));
+      if (ok) hit++;
+    }
+    const coverage = mi.length ? hit / mi.length : 0;
+    return { hit, total: mi.length, coverage };
+  }
+
+  private isInjectionOrNonCs(answerText: string): boolean {
+    const t = String(answerText ?? '').toLowerCase();
+    if (!t.trim()) return false;
+    const signals = [
+      /오늘\s*날씨/,
+      /날씨\s*어때/,
+      /지침\s*전부\s*무시/,
+      /지침.*무시/,
+      /ignore\s+all\s+instructions/,
+      /ignore\s+the\s+instructions/,
+      /따라.*않고.*설명/,
+    ];
+    return signals.some((re) => re.test(t));
+  }
+
+  // 관찰된 오표기(type)를 허용 enum으로 강제 매핑합니다.
+  private coerceIssueTypes(raw: any): any {
+    const map = (v: string): string | null => {
+      if (!v) return null;
+      const t = String(v).toLowerCase().replace(/\s+/g, '').replace(/_/g, '-');
+      if (t === 'strength' || t === 'misconception' || t === 'missing' || t === 'unclear' || t === 'wrong-example')
+        return t;
+      if (t === 'weakness') return 'unclear';
+      if (t === 'correct' || t === 'accurate' || t === 'right') return 'strength';
+      if (t === 'wrongexample' || t === 'wrong-example' || t === 'wrong-example.') return 'wrong-example';
+      if (t === 'omission' || t === 'missing-item') return 'missing';
+      if (t === 'error' || t === 'mistake' || t === 'incorrect') return 'misconception';
+      if (t === 'strengths') return 'strength';
+      return null;
+    };
+    try {
+      const cloned = typeof raw === 'object' && raw ? JSON.parse(JSON.stringify(raw)) : raw;
+      if (cloned && Array.isArray(cloned.issues)) {
+        cloned.issues = cloned.issues
+          .map((i: any) => {
+            const m = map(i?.type);
+            if (!m) return null;
+            return { ...i, type: m };
+          })
+          .filter(Boolean);
+      }
+      return cloned;
+    } catch {
+      return raw;
+    }
   }
 }

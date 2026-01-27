@@ -73,12 +73,12 @@ export class AssessmentWorker implements OnModuleDestroy {
       });
       await this.publish(job.id, answerId, AssessmentStatus.EVALUATING);
 
-      const { issues } = await this.orchestrator.evaluate(answerId);
+      await this.orchestrator.evaluate(answerId);
 
       await this.repo.updateAssessmentJob(job.id, { status: AssessmentStatus.FEEDBACKING });
       await this.publish(job.id, answerId, AssessmentStatus.FEEDBACKING);
 
-      await this.orchestrator.buildFeedback(answerId, issues);
+      await this.orchestrator.buildFeedback(answerId);
 
       await this.repo.updateAssessmentJob(job.id, { status: AssessmentStatus.REWARDING });
       await this.publish(job.id, answerId, AssessmentStatus.REWARDING);
