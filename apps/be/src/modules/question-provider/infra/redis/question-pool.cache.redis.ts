@@ -11,7 +11,8 @@ export class QuestionPoolCacheRedis implements QuestionPoolCachePort {
   constructor(@Inject(REDIS_CLIENT) private readonly redis: any) {}
 
   private key(domain: Domain, difficulty: Difficulty) {
-    return `qpool:${domain}:${difficulty}`;
+    const prefix = process.env.QPOOL_PREFIX ?? 'qpool';
+    return `${prefix}:${domain}:${difficulty}`;
   }
 
   async getRandomId(domain: Domain, difficulty: Difficulty): Promise<number | null> {
