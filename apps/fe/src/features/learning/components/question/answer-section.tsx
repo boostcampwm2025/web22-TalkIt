@@ -13,13 +13,15 @@ const AnswerSection = () => {
       <h3 className="sr-only">음성 인식 결과</h3>
       <p className="text-xl font-bold">나의 답변</p>
       <div className="mt-4 rounded-md">
-        {isSttLoading || !sttText ? (
+        {isSttLoading ? (
           <div className="flex flex-col items-center gap-3">
             <div className="loader-dots" />
             <p className="text-dark-gray">AI가 음성을 텍스트로 변환하고 있어요</p>
           </div>
-        ) : (
+        ) : sttText ? (
           <p>{sttText}</p>
+        ) : (
+          <p>음성이 인식되지 않았어요. 다시 녹음해 주세요</p>
         )}
       </div>
     </section>
