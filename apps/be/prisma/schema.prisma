@@ -27,7 +27,7 @@ enum Difficulty {
 model User {
   id              Int      @id @default(autoincrement())
   email           String?  @unique
-  nickname        String   @db.VarChar(50)
+  nickname        String   @db.VarChar(50) @unique
   bio             String?  @db.VarChar(200)
   profileImageUrl String?  @map("profile_image_url") @db.VarChar(500)
   createdAt       DateTime @default(now()) @map("created_at")
