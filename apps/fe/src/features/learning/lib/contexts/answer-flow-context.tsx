@@ -23,6 +23,10 @@ type AnswerFlowState = {
   recordingTime: number;
 };
 
+type ComputedAnswerFlowState = AnswerFlowState & {
+  isInsufficientAnswer: boolean;
+};
+
 type AnswerFlowActions = {
   setPhase: (phase: AnswerPhase) => void;
   setSttText: (text: string) => void;
@@ -33,7 +37,7 @@ type AnswerFlowActions = {
   reset: () => void;
 };
 
-type AnswerFlowContextType = AnswerFlowState & AnswerFlowActions;
+type AnswerFlowContextType = ComputedAnswerFlowState & AnswerFlowActions;
 
 const initialState: AnswerFlowState = {
   phase: ANSWER_PHASE.IDLE,
@@ -81,10 +85,19 @@ export const AnswerFlowProvider = ({ children }: AnswerFlowProviderProps) => {
     setState(initialState);
   }, []);
 
+  const isInsufficientAnswer = Boolean(
+    state.feedback &&
+    ((state.feedback.strengths.length === 0 &&
+      state.feedback.weaknesses.length === 0 &&
+      state.feedback.suggestions.length === 0) ||
+      state.feedback.overallScore === 0),
+  );
+
   return (
     <AnswerFlowContext.Provider
       value={{
         ...state,
+        isInsufficientAnswer,
         setPhase,
         setSttText,
         setFeedback,

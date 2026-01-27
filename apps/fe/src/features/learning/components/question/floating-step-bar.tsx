@@ -18,7 +18,16 @@ const FloatingStepBar = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
 
-  const { phase, setPhase, sttText, setAnswerId, answerId, recordingTime, reset } = useAnswerFlow();
+  const {
+    phase,
+    setPhase,
+    sttText,
+    setAnswerId,
+    answerId,
+    recordingTime,
+    reset,
+    isInsufficientAnswer,
+  } = useAnswerFlow();
 
   const [rewardData, setRewardData] = useState<FinishSessionResponseDTO | null>(null);
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
@@ -91,7 +100,7 @@ const FloatingStepBar = () => {
         <>
           <ActionBar.Button
             onClick={handleDeepDive}
-            disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE}
+            disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE || isInsufficientAnswer}
             className="flex items-center gap-2"
           >
             <Binoculars className="hidden h-4 w-4 sm:block" />
