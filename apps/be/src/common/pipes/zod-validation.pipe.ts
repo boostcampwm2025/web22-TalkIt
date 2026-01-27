@@ -10,9 +10,13 @@ export class ZodValidationPipe implements PipeTransform {
     const result = this.schema.safeParse(value);
 
     if (!result.success) {
-      const firstErrorMessage = result.error.issues[0]?.message ?? 'Validation failed';
+      // zod의 flatten()을 사용하여 에러를 필드별로 그룹화
+      const { fieldErrors } = result.error.flatten();
 
-      throw new BadRequestException(firstErrorMessage);
+      throw new BadRequestException({
+        message: '유효성 검사에 실패했습니다.',
+        errors: fieldErrors,
+      });
     }
 
     return result.data;
