@@ -8,6 +8,7 @@ import {
 } from '@/apis/learning-api';
 import useLearningSession from '@/lib/stores/learning-session';
 import { cn } from '@/lib/utils';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
 
 import { ANSWER_PHASE, useAnswerFlow } from '../../lib/contexts/answer-flow-context';
@@ -101,6 +102,11 @@ const FloatingStepBar = () => {
           <ActionBar.Button
             onClick={handleDeepDive}
             disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE || isInsufficientAnswer}
+            disabledReason={
+              phase !== ANSWER_PHASE.FEEDBACK_DONE
+                ? '피드백이 완료된 후 이용할 수 있어요'
+                : '답변이 충분하지 않아 딥다이브를 할 수 없어요'
+            }
             className="flex items-center gap-2"
           >
             <Binoculars className="hidden h-4 w-4 sm:block" />
@@ -108,6 +114,7 @@ const FloatingStepBar = () => {
           </ActionBar.Button>
           <ActionBar.PrimaryButton
             disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE}
+            disabledReason="피드백이 완료된 후 이용할 수 있어요"
             onClick={handleNextQuestion}
           >
             다음 질문
@@ -121,6 +128,11 @@ const FloatingStepBar = () => {
           </ActionBar.Button>
           <ActionBar.PrimaryButton
             disabled={phase !== ANSWER_PHASE.STT_DONE || !sttText}
+            disabledReason={
+              !sttText
+                ? '인식된 답변이 없어요. 다시 녹음해 주세요'
+                : '음성 인식이 완료된 후 제출할 수 있어요'
+            }
             onClick={handleSubmitAnswer}
           >
             답변 제출하기
@@ -140,10 +152,20 @@ const FloatingStepBar = () => {
 
 export default FloatingStepBar;
 
-type ActionBarButtonProps = React.ComponentProps<'button'> & { withDivider?: boolean };
+type ActionBarButtonProps = React.ComponentProps<'button'> & {
+  withDivider?: boolean;
+  disabledReason?: string;
+};
 
-const ActionBarButton = ({ children, className, withDivider, ...rest }: ActionBarButtonProps) => {
-  return (
+const ActionBarButton = ({
+  children,
+  className,
+  withDivider,
+  disabledReason,
+  disabled,
+  ...rest
+}: ActionBarButtonProps) => {
+  const button = (
     <button
       className={cn(
         'px-3 py-2 text-xs disabled:cursor-not-allowed sm:px-6 sm:text-sm',
@@ -151,10 +173,35 @@ const ActionBarButton = ({ children, className, withDivider, ...rest }: ActionBa
           'relative after:absolute after:top-1/2 after:-right-1 after:h-1/2 after:w-px after:-translate-y-1/2 after:bg-gray-300',
         className,
       )}
+      disabled={disabled}
       {...rest}
     >
       {children}
     </button>
+  );
+
+  if (!disabled || !disabledReason) return button;
+
+  return (
+    <Tooltip.Provider delayDuration={200}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <span tabIndex={0} className="inline-flex">
+            {button}
+          </span>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            side="top"
+            sideOffset={8}
+            className="rounded-lg bg-white px-3 py-2 text-xs text-black shadow-lg"
+          >
+            {disabledReason}
+            <Tooltip.Arrow className="fill-white" />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
   );
 };
 
