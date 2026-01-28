@@ -45,24 +45,47 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { sub: user.id, nickname: user.nickname, email: user.email }; // 토큰에 담을 정보
+    const tokens = await this.getTokens(user.id, user.nickname, user.email);
 
-    // Access Token 생성
-    const accessToken = this.jwtService.sign(payload);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
 
-    // Refresh Token 생성 (별도 시크릿 사용)
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.get('JWT_REFRESH_EXPIRATION_TIME'),
-    });
+    return tokens;
+  }
+  // 토큰 생성 헬퍼 함수
+  private async getTokens(userId: number, nickname: string, email?: string) {
+    const payload: JwtPayload = {
+      sub: userId,
+      nickname,
+      email,
+    };
 
-    // Refresh Token 해싱 후 DB 저장
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-    await this.usersRepository.updateRefreshToken(user.id, hashedRefreshToken);
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+        expiresIn: this.configService.getOrThrow<string>('JWT_ACCESS_EXPIRATION_TIME') as any,
+      }),
+
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        expiresIn: this.configService.getOrThrow<string>('JWT_REFRESH_EXPIRATION_TIME') as any,
+      }),
+    ]);
 
     return {
       accessToken,
       refreshToken,
     };
+  }
+
+  // DB 리프레시 토큰 업데이트 헬퍼 함수
+  private async updateRefreshToken(userId: number, refreshToken: string | null) {
+    let hashedRefreshToken: string | null = null;
+
+    // null이 아닐 경우(재발급) 새로운 토큰 해싱하고 업데이트
+    if (refreshToken) {
+      hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    }
+
+    await this.usersRepository.updateRefreshToken(userId, hashedRefreshToken);
   }
 }
