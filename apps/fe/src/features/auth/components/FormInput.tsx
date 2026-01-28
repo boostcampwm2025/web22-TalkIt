@@ -1,4 +1,4 @@
-import { type ComponentProps, type ReactNode, forwardRef } from 'react';
+import { type ComponentProps, type ReactNode } from 'react';
 import type { FieldError } from 'react-hook-form';
 
 import { cn } from '@/lib/utils';

@@ -9,6 +9,7 @@ export const CreateUserSchema = z.object({
     .email({ message: '이메일 형식이 올바르지 않습니다.' }),
   nickname: z
     .string()
+    .trim()
     .min(2, '닉네임은 2글자 이상이어야 합니다.')
     .max(10, '닉네임은 10글자 이하여야 합니다.'),
   password: z.string().min(8, '비밀번호는 8자 이상이어야 합니다.').regex(passwordRegex, {
