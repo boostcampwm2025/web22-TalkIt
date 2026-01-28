@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { AuthHeader } from '@/features/auth/components/AuthHeader';
@@ -27,7 +27,34 @@ const RegisterPage = () => {
     mode: 'onChange',
   });
 
+  const nicknameValue = watch('nickname');
   const emailValue = watch('email');
+
+  useEffect(() => {
+    if (!nicknameValue || nicknameValue.length < 2) return;
+    const timer = setTimeout(async () => {
+      const isSyntaxValid = await trigger('nickname');
+
+      if (isSyntaxValid) {
+        // todo: 닉네임 중복검사 api 요청
+        console.log('[API 요청] 닉네임 중복 검사:', nicknameValue);
+
+        // API 호출 시뮬레이션 (실제 api 연동 후 제거)
+        const isDuplicate = nicknameValue === '중복된닉네임'; // 테스트용
+
+        if (isDuplicate) {
+          setError('nickname', {
+            type: 'manual',
+            message: '이미 사용 중인 닉네임입니다.',
+          });
+        } else {
+          clearErrors('nickname');
+        }
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [nicknameValue, trigger, setError, clearErrors]);
 
   // 이메일 중복검사 블러
   const handleEmailBlur = async () => {
@@ -107,6 +134,15 @@ const RegisterPage = () => {
           placeholder="2~10자 이내"
           error={errors.nickname}
           {...register('nickname')}
+          bottomMessage={
+            !errors.nickname &&
+            nicknameValue?.length >= 2 && (
+              <div className="flex items-center gap-1 text-primary">
+                <Check size={12} />
+                <span className="text-xs">사용 가능한 닉네임입니다.</span>
+              </div>
+            )
+          }
         />
 
         {/* 비밀번호 */}
