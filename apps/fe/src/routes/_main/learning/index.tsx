@@ -194,7 +194,7 @@ const LearningPage = () => {
                     />
 
                     <div
-                      className={`mb-3 transition-colors group-hover:text-primary ${isSelected ? 'text-primary' : 'text-black'}`}
+                      className={`mb-3 transition-colors group-hover:text-primary ${isSelected ? `text-primary` : `text-black`}`}
                     >
                       <topic.Icon className="h-6 w-6" />
                     </div>
@@ -277,7 +277,7 @@ const LearningPage = () => {
           <button
             onClick={handleStartClick}
             disabled={isLoading}
-            className={`z-10 flex w-full items-center justify-center gap-2 rounded-lg px-6 py-4 font-medium text-white transition-colors md:w-auto md:py-3 ${isLoading ? 'cursor-not-allowed bg-gray-600' : 'bg-primary hover:bg-primary/80'} `}
+            className={`z-10 flex w-full items-center justify-center gap-2 rounded-lg px-6 py-4 font-medium text-white transition-colors md:w-auto md:py-3 ${isLoading ? `cursor-not-allowed bg-gray-600` : `bg-primary hover:bg-primary/80`} `}
           >
             {isLoading ? (
               <span>질문 생성 중...</span>
@@ -294,6 +294,6 @@ const LearningPage = () => {
   );
 };
 
-export const Route = createFileRoute('/learning/')({
+export const Route = createFileRoute('/_main/learning/')({
   component: LearningPage,
 });

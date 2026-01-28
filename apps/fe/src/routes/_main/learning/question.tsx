@@ -99,6 +99,6 @@ const QuestionPage = () => {
   );
 };
 
-export const Route = createFileRoute('/learning/question')({
+export const Route = createFileRoute('/_main/learning/question')({
   component: QuestionPage,
 });
