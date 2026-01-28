@@ -30,6 +30,7 @@ model User {
   nickname        String   @db.VarChar(50) @unique
   bio             String?  @db.VarChar(200)
   profileImageUrl String?  @map("profile_image_url") @db.VarChar(500)
+  currentRefreshToken String?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 

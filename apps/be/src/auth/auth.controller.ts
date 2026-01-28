@@ -1,10 +1,12 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Request, Res, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
   ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiOperation,
+  ApiResponse,
 } from '@nestjs/swagger';
 
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
@@ -13,6 +15,8 @@ import { type CreateUserDto, CreateUserSchema } from '@/users/schemas/create-use
 import { UserResponseSchema } from '@/users/schemas/user-response.schema';
 
 import { AuthService } from './auth.service';
+import { type LoginDto, LoginSchema } from './schemas/login.schema';
+import type { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -63,6 +67,32 @@ export class AuthController {
       nickname: newUser.nickname,
       profileImageUrl: newUser.profileImageUrl,
       createdAt: newUser.createdAt,
+    };
+  }
+
+  @UseGuards(AuthGuard('local'))
+  @Post('login')
+  @HttpCode(200)
+  @ApiOperation({ summary: '로그인', description: 'Access/Refresh Token 발급' })
+  @ApiBody({ schema: zodSchemaToOpenAPI(LoginSchema) })
+  @ApiResponse({ status: 200, description: '성공' })
+  async login(
+    @Request() req,
+    @Body(new ZodValidationPipe(LoginSchema)) loginDto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken, refreshToken } = await this.authService.login(req.user);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true, // JS에서 접근 불가능 (XSS 방어)
+      secure: process.env.NODE_ENV === 'production', // HTTPS에서만 전송 (배포 시 필수)
+      sameSite: 'lax', // CSRF 방어 (Strict는 UX 이슈가 있을 수 있어 보통 Lax 사용)
+      path: '/auth', // 모든 경로에서 유효
+      maxAge: 14 * 24 * 60 * 60 * 1000, // 14일 (밀리초 단위)
+    });
+
+    return {
+      accessToken,
     };
   }
 }
