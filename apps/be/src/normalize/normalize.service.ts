@@ -20,6 +20,14 @@ export class NormalizeService {
   }> {
     const originalText = rawText ?? '';
 
+    if (!originalText.trim()) {
+      return {
+        rawText: originalText,
+        preNormalizedText: '',
+        draftText: '',
+      };
+    }
+
     //  Pre-Normalization (rule-based, 음차만)
     const preNormalizedText = preNormalize(originalText);
 
@@ -35,14 +43,6 @@ export class NormalizeService {
         this.logger.warn('LLM cleanup failed, falling back to preNormalizedText', error);
         draftText = preNormalizedText;
       }
-    }
-
-    if (!originalText.trim()) {
-      return {
-        rawText: originalText,
-        preNormalizedText: '입력받은 음성이 없습니다.',
-        draftText: '입력받은 음성이 없습니다.',
-      };
     }
 
     return {

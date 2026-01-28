@@ -3,8 +3,10 @@
 export function shouldCallLlm(text: string): boolean {
   if (!text) return false;
 
-  // 너무 짧은 텍스트의 경우 LLM 호출 하더라도 변화 거의 없음
-  if (text.length < 50) return false;
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  if (trimmed.length < 30) return false;
 
   return true;
 }
