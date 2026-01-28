@@ -71,11 +71,6 @@ export class SessionsService {
 
     const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
 
-    // NOTE: 테스트를 위해서 일단 주석처리했습니다. 실 사용시 주석 해제하면 됩니다.
-    if (remainedCredit <= 0) {
-      //throw new BadRequestException('잔여 크레딧이 부족합니다.');
-    }
-
     /**
      * 세션 생성 + 첫 질문 비용 차감 (원자적 처리)
      */
@@ -86,13 +81,6 @@ export class SessionsService {
           category: dto.category,
           difficulty: dto.difficulty,
         },
-        tx,
-      );
-
-      await this.userCreditsRepository.consume(
-        userId,
-        'QUESTION_CONSUME', // TODO: CreditReason enum으로 교체
-        1,
         tx,
       );
 
@@ -108,7 +96,7 @@ export class SessionsService {
     return {
       sessionId: session.id,
       currentQuestionCount: session.currentQuestionCount,
-      remainedCredit: remainedCredit - 1,
+      remainedCredit: remainedCredit,
       question: {
         questionId: question.questionId,
         content: question.content,
@@ -151,15 +139,6 @@ export class SessionsService {
      */
     const remainedCredit = await this.userCreditsRepository.getTotalCredit(session.userId);
 
-    // NOTE: 테스트를 위해서 일단 주석처리했습니다. 실 사용시 주석 해제하면 됩니다.
-    if (remainedCredit <= 0) {
-      //await this.finishSession(sessionId);
-      /*throw new BadRequestException({
-        code: 'CREDIT_EXHAUSTED',
-        message: '잔여 크레딧이 부족하여 세션이 종료되었습니다.',
-      });*/
-    }
-
     const question = await this.questionService.pickOne(
       session.category as Domain,
       session.difficulty as Difficulty,
@@ -179,8 +158,6 @@ export class SessionsService {
 
     // 질문 제공 후 증가
     const updatedSession = await this.sessionsRepository.transaction(async (tx) => {
-      await this.userCreditsRepository.consume(session.userId, 'QUESTION_CONSUME', 1, tx);
-
       return this.sessionsRepository.incrementQuestionCount(sessionId, tx);
     });
     /**
@@ -193,7 +170,7 @@ export class SessionsService {
      */
     return {
       currentQuestionCount: updatedSession.currentQuestionCount,
-      remainedCredit: remainedCredit - 1,
+      remainedCredit: remainedCredit,
       question: {
         questionId: question.questionId,
         content: question.content,

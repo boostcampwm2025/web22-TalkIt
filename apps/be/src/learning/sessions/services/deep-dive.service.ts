@@ -35,22 +35,14 @@ export class DeepDiveService {
     }
 
     // 크레딧 확인
-    // NOTE: 테스트를 위해서 일단 주석처리했습니다. 실 사용시 주석 해제하면 됩니다.
     const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
-    if (remainedCredit <= 0) {
-      /*await this.sessionsService.finishSession(sessionId);
-      throw new BadRequestException({
-        code: 'CREDIT_EXHAUSTED',
-        message: '잔여 크레딧이 부족합니다.',
-      });*/
-    }
 
     const answer = await this.answerRepository.findByIdWithContext(answerId);
     if (!answer || answer.sessionId !== sessionId) {
       throw new BadRequestException('ANSWER_NOT_FOUND');
     }
 
-    // DeepDive 질문 생성 + 상태 변경 (트랜잭션)
+    // DeepDive 질문 생성
     const { extraQuestion, updatedSession } = await this.sessionsRepository.transaction(
       async (tx) => {
         const extraQuestion = await this.createExtraQuestionUseCase.execute({
@@ -59,20 +51,13 @@ export class DeepDiveService {
           answerContent: answer.answerText,
         });
 
-        await this.userCreditsRepository.consume(
-          userId,
-          'EXTRA_QUESTION_CONSUME', // TODO: Credit Reason은 Enum으로 정의하는거 고려
-          1,
-          tx,
-        );
-
         const updatedSession = await this.sessionsRepository.incrementQuestionCount(sessionId, tx);
 
         return { extraQuestion, updatedSession };
       },
     );
 
-    return this.present(extraQuestion, updatedSession, remainedCredit - 1);
+    return this.present(extraQuestion, updatedSession, remainedCredit);
   }
 
   private present(extraQuestion: any, session: any, remainedCredit: number) {
