@@ -45,7 +45,7 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { sub: user.id, email: user.email }; // 토큰에 담을 정보
+    const payload = { sub: user.id, nickname: user.nickname, email: user.email }; // 토큰에 담을 정보
 
     // Access Token 생성
     const accessToken = this.jwtService.sign(payload);
