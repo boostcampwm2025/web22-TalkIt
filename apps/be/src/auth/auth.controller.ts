@@ -30,7 +30,7 @@ import { JwtRefreshAuthGuard } from './guards/jwt-refresh-auth.guard';
 import { type LoginDto, LoginSchema } from './schemas/login.schema';
 import type { Response } from 'express';
 
-@Controller('auth')
+@Controller('/api/auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 

@@ -10,7 +10,7 @@ import {
 import { UsersService } from './users.service';
 
 @ApiTags('User')
-@Controller('users')
+@Controller('/api/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
