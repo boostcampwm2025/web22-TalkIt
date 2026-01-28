@@ -22,7 +22,17 @@ async function bootstrap() {
     .setTitle('Talkit API')
     .setDescription('Talkit 백엔드 API 문서')
     .setVersion('1.0')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: '로그인 후 받은 Access Token을 입력하세요.',
+        in: 'header',
+      },
+      'access-token',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
