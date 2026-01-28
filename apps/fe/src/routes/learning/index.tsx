@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { startSessionApi } from '@/apis/learning-api';
 import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constants/question';
@@ -16,6 +16,16 @@ const LearningPage = () => {
   const navigate = useNavigate();
 
   const setQuestion = useLearningSession((state) => state.setQuestion);
+
+  useEffect(() => {
+    if (!userInfo) {
+      navigate({ to: '/', replace: true });
+    }
+  }, [userInfo, navigate]);
+
+  if (!userInfo) {
+    return null; // todo: 혹은 <div className="...">로그인 페이지로 이동 중...</div>
+  }
 
   const { profile, progression, studyStats } = userInfo;
 
