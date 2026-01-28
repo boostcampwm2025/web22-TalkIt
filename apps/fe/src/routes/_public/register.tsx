@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
+import { checkEmailDuplicate, checkNicknameDuplicate, registerUser } from '@/apis/auth-api';
 import { AuthHeader } from '@/features/auth/components/AuthHeader';
 import { AuthLayout } from '@/features/auth/components/AuthLayout';
 import { FormInput } from '@/features/auth/components/FormInput';
 import { type CreateUserDto, CreateUserSchema } from '@/features/auth/schemas/register-schema';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, createFileRoute } from '@tanstack/react-router';
+import { type BackendErrorResponse } from '@repo/shared/types/error';
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
-import { Check } from 'lucide-react';
+import { isAxiosError } from 'axios';
+import { Check, Loader2 } from 'lucide-react';
 
 const RegisterPage = () => {
+  const navigate = useNavigate();
   const [emailChecked, setEmailChecked] = useState(false);
 
   const {
@@ -36,19 +40,21 @@ const RegisterPage = () => {
       const isSyntaxValid = await trigger('nickname');
 
       if (isSyntaxValid) {
-        // todo: 닉네임 중복검사 api 요청
-        console.log('[API 요청] 닉네임 중복 검사:', nicknameValue);
+        try {
+          const { isDuplicate } = await checkNicknameDuplicate(nicknameValue);
 
-        // API 호출 시뮬레이션 (실제 api 연동 후 제거)
-        const isDuplicate = nicknameValue === '중복된닉네임'; // 테스트용
-
-        if (isDuplicate) {
-          setError('nickname', {
-            type: 'manual',
-            message: '이미 사용 중인 닉네임입니다.',
-          });
-        } else {
-          clearErrors('nickname');
+          if (isDuplicate) {
+            setError('nickname', {
+              type: 'manual',
+              message: '이미 사용 중인 닉네임입니다.',
+            });
+          } else {
+            clearErrors('nickname');
+          }
+        } catch (error) {
+          // todo: 추후에 토스트 메시지 컴포넌트 구현한 후 alert에서 리팩토링 예정
+          console.error('닉네임 중복 확인 시스템 에러', error);
+          alert('닉네임 확인 중 오류가 발생했습니다.');
         }
       }
     }, 1000);
@@ -64,19 +70,22 @@ const RegisterPage = () => {
     const isValidFormat = await trigger('email');
     if (!isValidFormat) return;
 
-    // Todo: 실제 중복 검사 API 요청 구현
-    // API 결과 시뮬레이션
-    const isDuplicate = emailValue === 'duplicate@test.com'; // 테스트용
-
-    if (isDuplicate) {
-      setError('email', {
-        type: 'manual',
-        message: '이미 사용 중인 이메일입니다.',
-      });
-      setEmailChecked(false);
-    } else {
-      clearErrors('email');
-      setEmailChecked(true);
+    try {
+      const { isDuplicate } = await checkEmailDuplicate(emailValue);
+      if (isDuplicate) {
+        setError('email', {
+          type: 'manual',
+          message: '이미 사용 중인 이메일입니다.',
+        });
+        setEmailChecked(false);
+      } else {
+        clearErrors('email');
+        setEmailChecked(true);
+      }
+    } catch (error) {
+      console.error('이메일 중복 확인 시스템 에러', error);
+      // todo: 추후에 토스트 메시지 컴포넌트 구현한 후 alert에서 리팩토링 예정
+      alert('이메일 확인 중 오류가 발생했습니다.');
     }
   };
 
@@ -88,7 +97,7 @@ const RegisterPage = () => {
     onChange: () => setEmailChecked(false),
   });
 
-  const onSubmit = (data: CreateUserDto) => {
+  const onSubmit = async (data: CreateUserDto) => {
     if (!emailChecked) {
       setError('email', {
         type: 'manual',
@@ -97,8 +106,38 @@ const RegisterPage = () => {
       setFocus('email');
       return;
     }
-    // todo: 실제 API 연동 후 console.log 제거(lint 검사 때문에 넣었습니다)
-    console.log(data);
+
+    try {
+      await registerUser(data);
+      alert('회원가입이 완료되었습니다! 로그인해주세요.');
+      navigate({ to: '/login' });
+    } catch (error) {
+      // 백엔드에서 던진 에러라면 (서버에러 제외)
+      if (isAxiosError<BackendErrorResponse>(error) && error.response) {
+        const { status, data: errorData } = error.response;
+
+        // 409: 이미 가입된 유저
+        if (status === 409) {
+          alert(errorData.message || '이미 가입된 회원 정보가 존재합니다.');
+        }
+        // 400: 유효성 검증 (서버)
+        else if (status === 400 && errorData.errors) {
+          // 백엔드에서 내려준 필드별 에러를 폼에 표시
+          Object.entries(errorData.errors).forEach(([field, messages]) => {
+            setError(field as any, {
+              type: 'server',
+              message: messages[0],
+            });
+          });
+        } else {
+          // todo: 추후에 토스트 메시지 컴포넌트 구현한 후 alert에서 리팩토링 예정
+          alert(errorData.message || '회원가입 중 오류가 발생했습니다.');
+        }
+      } else {
+        // todo: 추후에 토스트 메시지 컴포넌트 구현한 후 alert에서 리팩토링 예정
+        alert('서버와 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      }
+    }
   };
 
   return (
@@ -185,9 +224,16 @@ const RegisterPage = () => {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-6 w-full rounded-lg bg-primary py-3 font-semibold text-white shadow-sm transition-colors hover:bg-primary/80 focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:outline-none disabled:bg-primary/30"
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 font-semibold text-white shadow-sm transition-colors hover:bg-primary/80 focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:outline-none disabled:bg-primary/30"
         >
-          가입하기
+          {isSubmitting ? (
+            <>
+              <Loader2 className="animate-spin" size={20} />
+              <span>가입 처리 중...</span>
+            </>
+          ) : (
+            '가입하기'
+          )}
         </button>
       </form>
 
