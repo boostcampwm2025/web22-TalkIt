@@ -6,12 +6,11 @@ import { cn } from '@/lib/utils';
 type FormInputProps = ComponentProps<'input'> & {
   label: string;
   error?: FieldError;
-  actionButton?: ReactNode;
   bottomMessage?: ReactNode;
 };
 
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, error, className, actionButton, bottomMessage, ...props }, ref) => {
+  ({ label, error, className, bottomMessage, ...props }, ref) => {
     return (
       <div className="space-y-1.5">
         <label className="text-sm font-semibold text-dark-gray">{label}</label>
@@ -25,8 +24,6 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             )}
             {...props}
           />
-          {/* 우측 버튼이 있을 경우 렌더링 (예: 중복확인) */}
-          {actionButton}
         </div>
 
         {/* 에러 메시지 */}

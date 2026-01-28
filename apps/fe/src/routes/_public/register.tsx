@@ -27,14 +27,39 @@ const RegisterPage = () => {
     mode: 'onChange',
   });
 
-  const handleCheckEmail = async () => {
-    const email = watch('email');
-    const isValidFormat = await trigger('email');
-    if (!isValidFormat || !email) return;
+  const emailValue = watch('email');
 
-    clearErrors('email');
-    setEmailChecked(true);
+  // 이메일 중복검사 블러
+  const handleEmailBlur = async () => {
+    if (!emailValue) return;
+
+    // 이메일 형식이 아니면 중복 검사 안 함
+    const isValidFormat = await trigger('email');
+    if (!isValidFormat) return;
+
+    // Todo: 실제 중복 검사 API 요청 구현
+    // API 결과 시뮬레이션
+    const isDuplicate = emailValue === 'duplicate@test.com'; // 테스트용
+
+    if (isDuplicate) {
+      setError('email', {
+        type: 'manual',
+        message: '이미 사용 중인 이메일입니다.',
+      });
+      setEmailChecked(false);
+    } else {
+      clearErrors('email');
+      setEmailChecked(true);
+    }
   };
+
+  const {
+    onBlur: rhfOnBlur,
+    ref,
+    ...emailRest
+  } = register('email', {
+    onChange: () => setEmailChecked(false),
+  });
 
   const onSubmit = (data: CreateUserDto) => {
     if (!emailChecked) {
@@ -60,17 +85,12 @@ const RegisterPage = () => {
           placeholder="example@email.com"
           type="email"
           error={errors.email}
-          {...register('email', { onChange: () => setEmailChecked(false) })}
-          // 중복확인 버튼 주입
-          actionButton={
-            <button
-              type="button"
-              onClick={handleCheckEmail}
-              className="rounded-lg border border-gray bg-white px-4 py-2.5 text-sm font-medium whitespace-nowrap text-dark-gray hover:bg-gray active:bg-gray"
-            >
-              중복확인
-            </button>
-          }
+          {...emailRest}
+          ref={ref}
+          onBlur={async (e) => {
+            rhfOnBlur(e);
+            await handleEmailBlur();
+          }}
           // 성공 메시지 주입
           bottomMessage={
             emailChecked && (
@@ -118,7 +138,7 @@ const RegisterPage = () => {
             />
             <label htmlFor="terms" className="text-sm text-dark-gray">
               <span className="cursor-pointer text-primary underline">이용약관</span> 및
-              <span className="cursor-pointer text-primary underline">개인정보처리방침</span>에
+              <span className="cursor-pointer text-primary underline"> 개인정보처리방침</span>에
               동의합니다.
             </label>
           </div>
