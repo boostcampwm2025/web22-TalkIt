@@ -7,9 +7,15 @@ import { AssessmentController } from './assessment.controller';
 import { AssessmentRepository } from './assessment.repository';
 import { AssessmentService } from './assessment.service';
 import { EvaluationModule } from './evaluation/evaluation.module';
-import { ASSESS_PUB, ASSESS_SUB, AssessmentPubSub } from './pubsub/assessment.pubsub';
 import { AssessmentSseController } from './sse/assessment.sse.controller';
-import { ASSESS_QUEUE, ASSESS_REDIS, AssessmentWorker } from './worker/assessment.worker';
+import { AssessmentQueueEventBus } from './worker/assessment.queue-events';
+import { AssessmentRedisShutdown } from './worker/assessment.redis-shutdown';
+import {
+  ASSESS_QUEUE,
+  ASSESS_REDIS,
+  ASSESS_REDIS_EVENTS,
+  AssessmentWorker,
+} from './worker/assessment.worker';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 
@@ -19,6 +25,7 @@ import IORedis from 'ioredis';
   providers: [
     AssessmentService,
     AssessmentRepository,
+
     // Redis connections
     {
       provide: ASSESS_REDIS,
@@ -28,29 +35,27 @@ import IORedis from 'ioredis';
       },
     },
     {
-      provide: ASSESS_PUB,
+      // QueueEvents는 Streams read 성격이라 connection 분리를 권장
+      provide: ASSESS_REDIS_EVENTS,
       useFactory: () => {
         const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
         return new IORedis(url, { maxRetriesPerRequest: null });
       },
     },
-    {
-      provide: ASSESS_SUB,
-      useFactory: () => {
-        const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
-        const client = new IORedis(url, { maxRetriesPerRequest: null });
-        client.setMaxListeners(1000);
-        return client;
-      },
-    },
+
     // BullMQ Queue
     {
       provide: ASSESS_QUEUE,
       inject: [ASSESS_REDIS],
       useFactory: (redis: IORedis) => new Queue('assessment', { connection: redis }),
     },
+
+    // Worker + Event Bus
     AssessmentWorker,
-    AssessmentPubSub,
+    AssessmentQueueEventBus,
+
+    // graceful shutdown for redis clients
+    AssessmentRedisShutdown,
   ],
 })
 export class AssessmentModule {}
