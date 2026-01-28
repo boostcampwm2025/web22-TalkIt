@@ -1,9 +1,19 @@
-import { Body, Controller, HttpCode, Post, Request, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Request,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
   ApiBody,
   ApiConflictResponse,
+  ApiCookieAuth,
   ApiCreatedResponse,
   ApiOperation,
   ApiResponse,
@@ -40,7 +50,7 @@ export class AuthController {
     description: '이미 존재하는 이메일 또는 닉네임',
     schema: {
       example: {
-        statusCode: 409,
+        code: 'ConflictException',
         message: '이미 존재하는 이메일입니다.',
       },
     },
@@ -49,8 +59,14 @@ export class AuthController {
     description: '유효성 검사 실패 (비밀번호 정규식 미준수 등)',
     schema: {
       example: {
-        statusCode: 400,
-        message: '비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다.',
+        code: 'BadRequestException',
+        message: '유효성 검사에 실패했습니다.',
+        errors: {
+          password: [
+            'Too small: expected string to have >=8 characters',
+            '비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다.',
+          ],
+        },
       },
     },
   })
@@ -75,7 +91,30 @@ export class AuthController {
   @HttpCode(200)
   @ApiOperation({ summary: '로그인', description: 'Access/Refresh Token 발급' })
   @ApiBody({ schema: zodSchemaToOpenAPI(LoginSchema) })
-  @ApiResponse({ status: 200, description: '성공' })
+  @ApiResponse({
+    status: 200,
+    description: '로그인 성공',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: {
+          type: 'string',
+          description: 'JWT Access Token',
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: '인증 실패',
+    schema: {
+      example: {
+        code: 'UnauthorizedException',
+        message: '이메일 또는 비밀번호가 일치하지 않습니다.',
+      },
+    },
+  })
   async login(
     @Request() req,
     @Body(new ZodValidationPipe(LoginSchema)) loginDto: LoginDto,
@@ -84,11 +123,11 @@ export class AuthController {
     const { accessToken, refreshToken } = await this.authService.login(req.user);
 
     res.cookie('refreshToken', refreshToken, {
-      httpOnly: true, // JS에서 접근 불가능 (XSS 방어)
-      secure: process.env.NODE_ENV === 'production', // HTTPS에서만 전송 (배포 시 필수)
-      sameSite: 'lax', // CSRF 방어 (Strict는 UX 이슈가 있을 수 있어 보통 Lax 사용)
-      path: '/auth', // 모든 경로에서 유효
-      maxAge: 14 * 24 * 60 * 60 * 1000, // 14일 (밀리초 단위)
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
     return {
