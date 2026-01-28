@@ -2,7 +2,7 @@ import {
   type QuestionDifficulty,
   type QuestionCategory,
   type AssessmentStatus,
-} from '../constants/learning';
+} from '../constants/learning.js';
 
 export type Question = {
   questionId?: number;
