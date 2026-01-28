@@ -1,3 +1,5 @@
+import { Category, Difficulty } from '@prisma/client';
+
 /**
  * TODO:
  * - 이 Port의 실제 책임 위치는 평가모듈 또는 user모듈이 적절함.
@@ -17,6 +19,17 @@ export interface UserAnswerRepositoryPort {
     answerText: string;
     questionId: number | null;
     extraQuestionId: number | null;
+  } | null>;
+
+  findByIdWithContext(answerId: number): Promise<{
+    id: number;
+    sessionId: number;
+    answerText: string;
+    questionId: number | null;
+    extraQuestionId: number | null;
+    category: Category;
+    difficulty: Difficulty;
+    depth: number;
   } | null>;
 }
 

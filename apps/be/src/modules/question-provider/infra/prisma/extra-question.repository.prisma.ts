@@ -53,6 +53,33 @@ export class ExtraQuestionRepositoryPrisma implements ExtraQuestionRepositoryPor
     };
   }
 
+  /**
+   * 부모 Answer가 가리키는 질문의 depth 조회
+   *
+   * - Normal Question 기반 Answer → depth = 0
+   * - ExtraQuestion 기반 Answer → 해당 ExtraQuestion.depth
+   */
+  async findParentDepthByAnswerId(parentAnswerId: number): Promise<number> {
+    const answer = await this.prisma.userAnswer.findUnique({
+      where: { id: parentAnswerId },
+      include: {
+        extraQuestion: true,
+      },
+    });
+
+    if (!answer) {
+      throw new Error('Parent answer not found');
+    }
+
+    // extraQuestion이 있으면 꼬리질문 기반 Answer
+    if (answer.extraQuestion) {
+      return answer.extraQuestion.depth;
+    }
+
+    // 없으면 Normal Question 기반 Answer
+    return 0;
+  }
+
   async save(data: {
     sessionId: number;
     parentAnswerId: number;

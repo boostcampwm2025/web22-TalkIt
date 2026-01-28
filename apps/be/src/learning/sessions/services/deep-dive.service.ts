@@ -3,9 +3,11 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { CreateExtraQuestionUseCase } from '@/modules/question-provider/application/create-extra-question.usecase';
 import { USER_ANSWER_REPOSITORY } from '@/modules/question-provider/infra/ports/user-answer.repository.port';
 import type { UserAnswerRepositoryPort } from '@/modules/question-provider/infra/ports/user-answer.repository.port';
+import { UserCreditsRepository } from '@/users/credits/user-credits.repository';
 
 import { SessionsRepository } from '../repository/sessions.repository';
 import { GuideBuilderService } from './guide-builder.service';
+import { SessionsService } from './sessions.service';
 
 @Injectable()
 export class DeepDiveService {
@@ -16,6 +18,8 @@ export class DeepDiveService {
 
     @Inject(USER_ANSWER_REPOSITORY)
     private readonly answerRepository: UserAnswerRepositoryPort,
+    private readonly sessionsService: SessionsService,
+    private readonly userCreditsRepository: UserCreditsRepository,
   ) {}
 
   async execute(params: { userId: number; sessionId: number; answerId: number }) {
@@ -26,28 +30,41 @@ export class DeepDiveService {
       throw new BadRequestException('INVALID_SESSION');
     }
 
-    const answer = await this.answerRepository.findById(answerId);
+    if (session.completedAt) {
+      throw new BadRequestException('SESSION_COMPLETED');
+    }
+
+    // 크레딧 확인
+    const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
+
+    const answer = await this.answerRepository.findByIdWithContext(answerId);
     if (!answer || answer.sessionId !== sessionId) {
       throw new BadRequestException('ANSWER_NOT_FOUND');
     }
 
-    const extraQuestion = await this.createExtraQuestionUseCase.execute({
-      sessionId,
-      parentAnswerId: answer.id,
-      answerContent: answer.answerText,
-    });
+    // DeepDive 질문 생성
+    const { extraQuestion, updatedSession } = await this.sessionsRepository.transaction(
+      async (tx) => {
+        const extraQuestion = await this.createExtraQuestionUseCase.execute({
+          sessionId,
+          parentAnswerId: answer.id,
+          answerContent: answer.answerText,
+        });
 
-    // 현재 질문 count 증가
-    await this.sessionsRepository.incrementQuestionCount(sessionId);
+        const updatedSession = await this.sessionsRepository.incrementQuestionCount(sessionId, tx);
 
-    return this.present(extraQuestion, session, 10);
+        return { extraQuestion, updatedSession };
+      },
+    );
+
+    return this.present(extraQuestion, updatedSession, remainedCredit);
   }
 
   private present(extraQuestion: any, session: any, remainedCredit: number) {
     const guide = this.guideBuilder.build(extraQuestion.mustInclude);
 
     return {
-      currentQuestionCount: session.currentQuestionCount + 1,
+      currentQuestionCount: session.currentQuestionCount,
       remainedCredit,
       question: {
         extraQuestionId: extraQuestion.id,

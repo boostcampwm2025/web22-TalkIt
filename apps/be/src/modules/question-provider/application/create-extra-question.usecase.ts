@@ -42,8 +42,15 @@ export class CreateExtraQuestionUseCase {
 
     /**
      * 부모 질문 컨텍스트 해석
+     * 부모 depth 조회
+     * - Normal Question → 0
+     * - ExtraQuestion → parent.depth
      */
     const parentContext = await this.questionContextResolver.resolveByAnswerId(parentAnswerId);
+    const parentDepth =
+      await this.extraQuestionRepository.findParentDepthByAnswerId(parentAnswerId);
+
+    const nextDepth = parentDepth + 1;
 
     /**
      * 꼬리질문 생성 (LLM 호출)
@@ -66,7 +73,7 @@ export class CreateExtraQuestionUseCase {
       category: parentContext.category,
       difficulty: parentContext.difficulty,
       timeLimitSec: 180,
-      depth: parentContext.depth + 1,
+      depth: nextDepth,
     });
 
     return extraQuestion;
