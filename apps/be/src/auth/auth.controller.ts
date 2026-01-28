@@ -19,12 +19,14 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 
+import { ActiveUser } from '@/common/decorators/active-user.decorator';
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
 import { zodSchemaToOpenAPI } from '@/common/utils/zod-to-openapi.util';
 import { type CreateUserDto, CreateUserSchema } from '@/users/schemas/create-user.schema';
 import { UserResponseSchema } from '@/users/schemas/user-response.schema';
 
 import { AuthService } from './auth.service';
+import { JwtRefreshAuthGuard } from './guards/jwt-refresh-auth.guard';
 import { type LoginDto, LoginSchema } from './schemas/login.schema';
 import type { Response } from 'express';
 
@@ -133,5 +135,102 @@ export class AuthController {
     return {
       accessToken,
     };
+  }
+
+  @Post('refresh')
+  @UseGuards(JwtRefreshAuthGuard)
+  @ApiCookieAuth('refresh-token')
+  @ApiOperation({
+    summary: '토큰 재발급 (Refresh)',
+    description: '쿠키의 Refresh Token을 이용해 새로운 토큰을 발급받습니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '재발급 성공 (새 Access Token 반환)',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: {
+          type: 'string',
+          description: '새로 발급된 JWT Access Token',
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: '유효하지 않거나 만료된 Refresh Token',
+    schema: {
+      example: {
+        code: 'UnauthorizedException',
+        message: 'Unauthorized',
+      },
+    },
+  })
+  async refresh(
+    @ActiveUser() user: ActiveUser & { refreshToken: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken, refreshToken } = await this.authService.rotateRefreshToken(
+      user.id,
+      user.refreshToken,
+    );
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return { accessToken };
+  }
+
+  @Post('logout')
+  @UseGuards(JwtRefreshAuthGuard)
+  @ApiCookieAuth('refresh-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: '로그아웃',
+    description: '서버의 Refresh Token을 삭제하고 클라이언트 쿠키를 만료시킵니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '로그아웃 성공',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: '성공적으로 로그아웃 되었습니다.',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: '유효하지 않거나 만료된 Refresh Token',
+    schema: {
+      example: {
+        code: 'UnauthorizedException',
+        message: 'Unauthorized',
+      },
+    },
+  })
+  async logout(@ActiveUser() user: ActiveUser, @Res({ passthrough: true }) res: Response) {
+    // DB에서 리프레시 토큰 삭제
+    await this.authService.logout(user.id);
+
+    // 클라이언트 쿠키 삭제
+    res.clearCookie('refreshToken', {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+
+    return { message: '성공적으로 로그아웃 되었습니다.' };
   }
 }
