@@ -23,20 +23,35 @@ const AnswerSection = () => {
     setIsEditing(false);
   };
 
+  const handleEditCancel = () => {
+    setIsEditing(false);
+  };
+
   return (
     <section className="relative overflow-hidden rounded-2xl border border-gray bg-white p-8 shadow-sm after:absolute after:top-0 after:left-0 after:h-full after:w-1 after:bg-primary">
       <h3 className="sr-only">음성 인식 결과</h3>
       <div className="flex items-center justify-between">
         <p className="text-xl font-bold">나의 답변</p>
         {!isSttLoading && (
-          <button
-            type="button"
-            className="rounded-md border border-gray px-3 py-1 text-sm text-dark-gray hover:bg-gray/20"
-            onClick={isEditing ? handleEditDone : handleEditStart}
-            disabled={isEditEmpty}
-          >
-            {isEditing ? '수정 완료' : '수정'}
-          </button>
+          <div className="flex gap-2">
+            {isEditing && (
+              <button
+                type="button"
+                className="rounded-md border border-gray px-3 py-1 text-sm text-dark-gray hover:bg-gray/20"
+                onClick={handleEditCancel}
+              >
+                수정 취소
+              </button>
+            )}
+            <button
+              type="button"
+              className="rounded-md border border-gray px-3 py-1 text-sm text-dark-gray hover:bg-gray/20"
+              onClick={isEditing ? handleEditDone : handleEditStart}
+              disabled={isEditEmpty}
+            >
+              {isEditing ? '수정 완료' : '수정'}
+            </button>
+          </div>
         )}
       </div>
       <div className="mt-4 rounded-md">
