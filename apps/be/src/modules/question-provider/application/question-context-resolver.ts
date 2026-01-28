@@ -44,7 +44,7 @@ export class QuestionContextResolver {
     const answer = await this.answerRepository.findById(answerId);
 
     if (!answer) {
-      throw new NotFoundException(`Answer not found. answerId=${answerId}`);
+      throw new Error(`ANSWER_NOT_FOUND: answerId=${answerId}`);
     }
 
     /**
@@ -54,7 +54,7 @@ export class QuestionContextResolver {
       const question = await this.questionRepository.findById(answer.questionId);
 
       if (!question) {
-        throw new NotFoundException(`Question not found. questionId=${answer.questionId}`);
+        throw new Error(`QUESTION_NOT_FOUND: questionId=${answer.questionId}`);
       }
 
       return {
@@ -72,9 +72,7 @@ export class QuestionContextResolver {
       const extraQuestion = await this.extraQuestionRepository.findById(answer.extraQuestionId);
 
       if (!extraQuestion) {
-        throw new NotFoundException(
-          `ExtraQuestion not found. extraQuestionId=${answer.extraQuestionId}`,
-        );
+        throw new Error(`EXTRA_QUESTION_NOT_FOUND: extraQuestionId=${answer.extraQuestionId}`);
       }
 
       return {
