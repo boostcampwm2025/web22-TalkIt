@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
@@ -6,6 +6,7 @@ import { type CreateUserDto } from '@/users/schemas/create-user.schema';
 import { UsersRepository } from '@/users/users.repository';
 import { UsersService } from '@/users/users.service';
 
+import { JwtPayload } from './types/jwt-payload-type';
 import bcrypt from 'bcrypt';
 
 @Injectable()
@@ -51,6 +52,35 @@ export class AuthService {
 
     return tokens;
   }
+
+  async rotateRefreshToken(userId: number, oldRefreshToken: string) {
+    const user = await this.usersRepository.findById(userId);
+
+    // 유저가 없거나, DB에 저장된 토큰이 없는 경우 (로그아웃 된 상태)
+    if (!user || !user.currentRefreshToken) {
+      throw new UnauthorizedException('Access Denied');
+    }
+
+    // 사용자가 보낸 토큰과 DB의 해시값 비교
+    const isRefreshTokenMatching = await bcrypt.compare(oldRefreshToken, user.currentRefreshToken);
+
+    if (!isRefreshTokenMatching) {
+      throw new UnauthorizedException('Invalid Refresh Token');
+    }
+
+    // 새로운 토큰 쌍 발급
+    const tokens = await this.getTokens(userId, user.nickname, user.email || '');
+
+    await this.updateRefreshToken(userId, tokens.refreshToken);
+
+    return tokens;
+  }
+
+  // 로그아웃
+  async logout(userId: number) {
+    await this.usersRepository.updateRefreshToken(userId, null);
+  }
+
   // 토큰 생성 헬퍼 함수
   private async getTokens(userId: number, nickname: string, email?: string) {
     const payload: JwtPayload = {
