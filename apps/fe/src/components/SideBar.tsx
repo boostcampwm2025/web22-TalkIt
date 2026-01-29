@@ -99,7 +99,7 @@ export const SideBar = () => {
               className="h-10 w-10 shrink-0 rounded-full border border-gray object-cover"
             />
           ) : (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray text-medium-gray">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray text-dark-gray">
               <User size={20} />
             </div>
           )}
