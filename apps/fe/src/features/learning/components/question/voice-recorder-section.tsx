@@ -39,7 +39,12 @@ const VoiceRecorderSection = ({ onRecordingComplete }: VoiceRecorderSectionProps
   return (
     <section className="flex flex-col items-center gap-6">
       <h3 className="sr-only">음성 답변</h3>
-      <PulsingMicButton isRecording={isRecording} stream={stream} onToggle={handleToggle} />
+      <PulsingMicButton
+        isRecording={isRecording}
+        disabled={phase === ANSWER_PHASE.STT_LOADING}
+        stream={stream}
+        onToggle={handleToggle}
+      />
       <p className="text-lg sm:text-2xl">
         <span className="text-dark-gray">남은 시간: </span>
         {formattedTime}
