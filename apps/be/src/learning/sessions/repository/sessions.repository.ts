@@ -70,7 +70,15 @@ export class SessionsRepository {
    * - getNextQuestion 등에서는 직접 호출하지 않고
    * - finishSession에서 단일 책임으로 호출
    */
-  async completeSession(id: number, tx?: Prisma.TransactionClient) {
+  async completeSession(
+    id: number,
+    resultData: {
+      totalScore: number;
+      totalTimeSec: number;
+      gainedXp: Prisma.InputJsonValue;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
     const client = tx ?? this.prisma;
 
     return client.session.update({
@@ -78,6 +86,9 @@ export class SessionsRepository {
       data: {
         status: 'COMPLETED',
         completedAt: new Date(),
+        totalScore: resultData.totalScore,
+        totalTimeSec: resultData.totalTimeSec,
+        gainedXp: resultData.gainedXp,
       },
     });
   }
