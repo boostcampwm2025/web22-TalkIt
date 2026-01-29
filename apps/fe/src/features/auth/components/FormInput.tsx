@@ -1,4 +1,4 @@
-import { type ComponentProps, type ReactNode, useState } from 'react';
+import { type ComponentProps, type ReactNode, useId, useState } from 'react';
 import type { FieldError } from 'react-hook-form';
 
 import { cn } from '@/lib/utils';
@@ -22,6 +22,9 @@ export const FormInput = ({
 }: FormInputProps) => {
   const [showPassword, setShowPassword] = useState(false);
 
+  const generatedId = useId();
+  const id = generatedId;
+
   // type이 password인 경우에만 토글 기능을 활성화
   const isPasswordType = type === 'password';
   const inputType = isPasswordType ? (showPassword ? 'text' : 'password') : type;
@@ -32,9 +35,12 @@ export const FormInput = ({
 
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-semibold text-dark-gray">{label}</label>
+      <label htmlFor={id} className="text-sm font-semibold text-dark-gray">
+        {label}
+      </label>
       <div className="relative flex gap-2">
         <input
+          id={id}
           ref={ref}
           type={inputType}
           className={cn(
