@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import useLearningSession from '@/lib/stores/learning-session';
 import { useUserStore } from '@/lib/stores/user-store';
@@ -16,276 +16,271 @@ type RewardModalProps = {
   onOpenChange: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-const RewardModal = forwardRef<HTMLDivElement, RewardModalProps>(
-  ({ data, isModalOpen, onOpenChange, ...props }, ref) => {
-    const {
-      currentXp,
-      requiredXpForNextLevel,
-      prevRequiredXpForNextLevel,
-      level,
-      gainedXp,
-      difficulty,
-      questions,
-    } = data;
+const RewardModal = ({ data, isModalOpen, onOpenChange, ...props }: RewardModalProps) => {
+  const {
+    currentXp,
+    requiredXpForNextLevel,
+    prevRequiredXpForNextLevel,
+    level,
+    gainedXp,
+    difficulty,
+    questions,
+  } = data;
 
-    // 세부 XP 합산
-    const totalGainedXp = useMemo(() => {
-      return gainedXp.baseXp + (gainedXp.difficultyBonus || 0) + (gainedXp.deepDiveBonus || 0);
-    }, [gainedXp]);
+  // 세부 XP 합산
+  const totalGainedXp = useMemo(() => {
+    return gainedXp.baseXp + (gainedXp.difficultyBonus || 0) + (gainedXp.deepDiveBonus || 0);
+  }, [gainedXp]);
 
-    // 레벨업 여부 및 퍼센트 계산
-    const { startPercent, endPercent, isLevelUp } = useMemo(() => {
-      // 학습 이전 경험치 (이번 획득분을 뺀 값)
-      const rawPrevXp = currentXp - totalGainedXp;
+  // 레벨업 여부 및 퍼센트 계산
+  const { startPercent, endPercent, isLevelUp } = useMemo(() => {
+    // 학습 이전 경험치 (이번 획득분을 뺀 값)
+    const rawPrevXp = currentXp - totalGainedXp;
 
-      if (rawPrevXp < 0) {
-        // [레벨업 발생 케이스]
-        // rawPrevXp가 음수라는 것은 이전 레벨에서 그만큼 부족했다는 뜻
-        const xpNeededToFinishPrevLevel = Math.abs(rawPrevXp);
+    if (rawPrevXp < 0) {
+      // [레벨업 발생 케이스]
+      // rawPrevXp가 음수라는 것은 이전 레벨에서 그만큼 부족했다는 뜻
+      const xpNeededToFinishPrevLevel = Math.abs(rawPrevXp);
 
-        // 이전 레벨에서의 시작점 = (이전레벨총량 - 부족했던양)
-        // prevRequiredXp를 사용하여 정확한 비율 계산 가능
-        // 예: prevReq 1500, 부족 300 => 시작점 1200 => 80%
-        const prevLevelStartXp = prevRequiredXpForNextLevel - xpNeededToFinishPrevLevel;
+      // 이전 레벨에서의 시작점 = (이전레벨총량 - 부족했던양)
+      // prevRequiredXp를 사용하여 정확한 비율 계산 가능
+      // 예: prevReq 1500, 부족 300 => 시작점 1200 => 80%
+      const prevLevelStartXp = prevRequiredXpForNextLevel - xpNeededToFinishPrevLevel;
 
-        const start = (prevLevelStartXp / prevRequiredXpForNextLevel) * 100;
-        const end = (currentXp / requiredXpForNextLevel) * 100;
-
-        return { isLevelUp: true, startPercent: start, endPercent: end };
-      }
-
-      // [일반 케이스]
-      const start = (rawPrevXp / requiredXpForNextLevel) * 100;
+      const start = (prevLevelStartXp / prevRequiredXpForNextLevel) * 100;
       const end = (currentXp / requiredXpForNextLevel) * 100;
 
-      return { isLevelUp: false, startPercent: start, endPercent: end };
-    }, [currentXp, requiredXpForNextLevel, prevRequiredXpForNextLevel, totalGainedXp]);
+      return { isLevelUp: true, startPercent: start, endPercent: end };
+    }
 
-    const remainXp = requiredXpForNextLevel - currentXp;
+    // [일반 케이스]
+    const start = (rawPrevXp / requiredXpForNextLevel) * 100;
+    const end = (currentXp / requiredXpForNextLevel) * 100;
 
-    // 리포트의 세션 평균 점수를 위한 계산
-    const averageScore = useMemo(() => {
-      if (!questions || questions.length === 0) return 0;
-      const sum = questions.reduce((acc, q) => acc + (q.score || 0), 0);
-      return Math.round(sum / questions.length);
-    }, [questions]);
+    return { isLevelUp: false, startPercent: start, endPercent: end };
+  }, [currentXp, requiredXpForNextLevel, prevRequiredXpForNextLevel, totalGainedXp]);
 
-    // XP 히스토리 렌더링을 위한 객체
-    // todo: 추후 constants로 분리 같은 수정 필요
-    const xpHistoryItems = useMemo(() => {
-      const items = [
-        {
-          id: 'basic',
-          label: '기본 XP',
-          amount: gainedXp.baseXp,
-          icon: '✅',
-          textColor: 'text-black',
-        },
-      ];
+  const remainXp = requiredXpForNextLevel - currentXp;
 
-      // 난이도 보너스
-      if (gainedXp.difficultyBonus && gainedXp.difficultyBonus > 0) {
-        items.push({
-          id: 'difficulty',
-          label: `[${difficulty}] 난이도 보너스`,
-          amount: gainedXp.difficultyBonus,
-          icon: '🔥',
-          textColor: 'text-black',
-        });
-      }
+  // 리포트의 세션 평균 점수를 위한 계산
+  const averageScore = useMemo(() => {
+    if (!questions || questions.length === 0) return 0;
+    const sum = questions.reduce((acc, q) => acc + (q.score || 0), 0);
+    return Math.round(sum / questions.length);
+  }, [questions]);
 
-      // 딥다이브(꼬리질문) 보너스
-      if (gainedXp.deepDiveBonus && gainedXp.deepDiveBonus > 0) {
-        items.push({
-          id: 'deepdive',
-          label: '딥다이브 학습',
-          amount: gainedXp.deepDiveBonus,
-          icon: '🌊',
-          textColor: 'text-black',
-        });
-      }
+  // XP 히스토리 렌더링을 위한 객체
+  // todo: 추후 constants로 분리 같은 수정 필요
+  const xpHistoryItems = useMemo(() => {
+    const items = [
+      {
+        id: 'basic',
+        label: '기본 XP',
+        amount: gainedXp.baseXp,
+        icon: '✅',
+        textColor: 'text-black',
+      },
+    ];
 
-      return items;
-    }, [gainedXp, difficulty]);
-    const navigate = useNavigate();
-    const fetchUserInfo = useUserStore((state) => state.fetchUserInfo);
+    // 난이도 보너스
+    if (gainedXp.difficultyBonus && gainedXp.difficultyBonus > 0) {
+      items.push({
+        id: 'difficulty',
+        label: `[${difficulty}] 난이도 보너스`,
+        amount: gainedXp.difficultyBonus,
+        icon: '🔥',
+        textColor: 'text-black',
+      });
+    }
 
-    useEffect(() => {
-      if (isModalOpen) return;
+    // 딥다이브(꼬리질문) 보너스
+    if (gainedXp.deepDiveBonus && gainedXp.deepDiveBonus > 0) {
+      items.push({
+        id: 'deepdive',
+        label: '딥다이브 학습',
+        amount: gainedXp.deepDiveBonus,
+        icon: '🌊',
+        textColor: 'text-black',
+      });
+    }
 
-      // 모달이 닫히는 시점에 실행 (사용자가 'X'를 누르거나, 다른 곳으로 이동해서 open이 false가 될 때)
+    return items;
+  }, [gainedXp, difficulty]);
+  const navigate = useNavigate();
+  const fetchUserInfo = useUserStore((state) => state.fetchUserInfo);
+
+  useEffect(() => {
+    if (isModalOpen) return;
+
+    // 모달이 닫히는 시점에 실행 (사용자가 'X'를 누르거나, 다른 곳으로 이동해서 open이 false가 될 때)
+    fetchUserInfo();
+  }, [isModalOpen, fetchUserInfo]);
+
+  useEffect(() => {
+    return () => {
+      // 모달 컴포넌트 자체가 사라질 때(페이지 이동 등) 최신 정보 갱신
       fetchUserInfo();
-    }, [isModalOpen, fetchUserInfo]);
-
-    useEffect(() => {
-      return () => {
-        // 모달 컴포넌트 자체가 사라질 때(페이지 이동 등) 최신 정보 갱신
-        fetchUserInfo();
-      };
-    }, [fetchUserInfo]);
-
-    const handleClose = () => {
-      useLearningSession.getState().resetQuestion();
-      onOpenChange(false);
-      navigate({ to: '/learning', replace: true });
     };
+  }, [fetchUserInfo]);
 
-    const hasRewards = questions && questions.length > 0;
+  const handleClose = () => {
+    useLearningSession.getState().resetQuestion();
+    onOpenChange(false);
+    navigate({ to: '/learning', replace: true });
+  };
 
-    return (
-      <Dialog.Root open={isModalOpen} onOpenChange={onOpenChange}>
-        <AnimatePresence>
-          <Dialog.Portal forceMount>
-            {/* 배경 (Backdrop) */}
-            <Dialog.Overlay className="fixed inset-0 z-99 bg-black/40 backdrop-blur-sm" />
-            <Dialog.Content asChild onPointerDownOutside={(e) => e.preventDefault()}>
-              <motion.article
-                ref={ref}
-                {...props}
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
-                className="fixed top-1/2 left-1/2 z-100 flex w-250 -translate-1/2 overflow-hidden rounded-3xl bg-white shadow-2xl"
-                role="dialog"
-                aria-labelledby="reward-title"
-              >
-                {/* 왼쪽 섹션 */}
-                <section className="flex flex-[1.2] flex-col justify-between p-10">
-                  <header>
-                    <Dialog.Title className="text-3xl font-extrabold text-black">
-                      {hasRewards ? '학습 성과 리포트' : '학습 세션 종료'}
-                    </Dialog.Title>
-                    <Dialog.Description className="mt-1 text-sm text-dark-gray">
-                      {hasRewards
-                        ? '오늘의 꾸준함이 모여 당신의 지식이 됩니다.'
-                        : '답변한 기록이 없어 이번 세션은 리워드가 지급되지 않습니다.'}
-                    </Dialog.Description>
-                  </header>
+  const hasRewards = questions && questions.length > 0;
 
-                  <section
-                    aria-label="레벨 및 경험치 현황"
-                    className="mt-3 flex items-center gap-8 rounded-2xl bg-gray p-6"
-                  >
-                    <div className="shrink-0">
-                      <LevelRing
-                        level={level}
-                        startPercent={startPercent}
-                        endPercent={endPercent}
-                        isLevelUp={isLevelUp}
-                        currentXp={currentXp}
-                        requiredXp={requiredXpForNextLevel}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-4xl font-black text-primary">
-                        +{hasRewards ? totalGainedXp : 0} XP
-                      </p>
-                      <p className="mt-1 text-xs font-medium text-dark-gray">
-                        {hasRewards ? (
-                          <>
-                            다음 레벨까지 <span className="text-black">{remainXp} XP</span>
-                          </>
-                        ) : (
-                          '다음 기회에 다시 도전해보세요!'
-                        )}
-                      </p>
-                    </div>
-                  </section>
+  return (
+    <Dialog.Root open={isModalOpen} onOpenChange={onOpenChange}>
+      <AnimatePresence>
+        <Dialog.Portal forceMount>
+          {/* 배경 (Backdrop) */}
+          <Dialog.Overlay className="fixed inset-0 z-99 bg-black/40 backdrop-blur-sm" />
+          <Dialog.Content asChild onPointerDownOutside={(e) => e.preventDefault()}>
+            <motion.article
+              {...props}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
+              className="fixed top-1/2 left-1/2 z-100 flex w-250 -translate-1/2 overflow-hidden rounded-3xl bg-white shadow-2xl"
+              role="dialog"
+              aria-labelledby="reward-title"
+            >
+              {/* 왼쪽 섹션 */}
+              <section className="flex flex-[1.2] flex-col justify-between p-10">
+                <header>
+                  <Dialog.Title className="text-3xl font-extrabold text-black">
+                    {hasRewards ? '학습 성과 리포트' : '학습 세션 종료'}
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-sm text-dark-gray">
+                    {hasRewards
+                      ? '오늘의 꾸준함이 모여 당신의 지식이 됩니다.'
+                      : '답변한 기록이 없어 이번 세션은 리워드가 지급되지 않습니다.'}
+                  </Dialog.Description>
+                </header>
 
-                  {!hasRewards && (
-                    <div className="my-6 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray py-8 text-dark-gray/40">
-                      <p className="text-sm font-medium">기록된 학습 데이터가 없습니다.</p>
-                    </div>
-                  )}
-
-                  {hasRewards && (
-                    <div className="mt-3 grid grid-cols-2 gap-4">
-                      {/* XP 획득 내역 */}
-                      <section className="flex flex-col gap-3">
-                        <h3 className="text-xs font-bold text-dark-gray">XP 획득 내역</h3>
-                        <ul className="flex flex-col gap-3">
-                          {xpHistoryItems.map((item) => (
-                            <li
-                              key={item.id}
-                              className="flex items-center justify-between rounded-2xl border border-gray/50 bg-white px-4 py-3 text-sm shadow-sm transition-transform hover:scale-[1.02]"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span>{item.icon}</span>
-                                <span className={`font-bold ${item.textColor}`}>{item.label}</span>
-                              </div>
-                              <span className="font-extrabold text-black">+{item.amount}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-
-                      {/* 최근 학습 성과 */}
-                      <section className="flex flex-col gap-3">
-                        <h3 className="text-xs font-bold text-dark-gray">학습 결과</h3>
-                        <div className="flex flex-col gap-2">
-                          <div className="flex flex-col justify-center rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 transition-colors hover:bg-primary/10">
-                            <span className="text-sm font-bold text-primary">평균 점수</span>
-                            <span className="mt-1 text-xl font-black text-primary">
-                              {averageScore}점
-                            </span>
-                          </div>
-
-                          <div className="flex flex-col justify-center rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 transition-colors hover:bg-primary/10">
-                            <span className="text-sm font-bold text-primary">총 해결 문제</span>
-                            <span className="mt-1 text-xl font-black text-primary">
-                              {questions ? questions.length : 0}문제
-                            </span>
-                          </div>
-                        </div>
-                      </section>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    className="mt-3 w-full cursor-pointer rounded-xl bg-primary py-4 text-lg font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/80 active:scale-[0.98]"
-                  >
-                    메인으로 돌아가기
-                  </button>
-                </section>
-
-                {/* 오른쪽 섹션: 시각 자료 (figure 사용) */}
-                <figure className="relative flex flex-[0.8] flex-col bg-linear-to-br from-gray to-pale-blue">
-                  <div className="absolute inset-0 h-full w-full">
-                    <FallingBooksScene questions={questions || []} />
+                <section
+                  aria-label="레벨 및 경험치 현황"
+                  className="mt-3 flex items-center gap-8 rounded-2xl bg-gray p-6"
+                >
+                  <div className="shrink-0">
+                    <LevelRing
+                      level={level}
+                      startPercent={startPercent}
+                      endPercent={endPercent}
+                      isLevelUp={isLevelUp}
+                      currentXp={currentXp}
+                      requiredXp={requiredXpForNextLevel}
+                    />
                   </div>
-                  {/* 3D 책 쌓기 캔버스 부분에 대한 캡션 */}
-                  <figcaption className="pointer-events-none absolute bottom-10 z-10 w-full text-center">
-                    <p className="mb-2 text-[10px] font-extrabold tracking-[0.2em] text-dark-gray">
-                      {hasRewards ? 'YOUR KNOWLEDGE STACK' : 'EMPTY STACK'}
+                  <div>
+                    <p className="text-4xl font-black text-primary">
+                      +{hasRewards ? totalGainedXp : 0} XP
                     </p>
-                    <p className="text-xs leading-relaxed text-dark-gray">
+                    <p className="mt-1 text-xs font-medium text-dark-gray">
                       {hasRewards ? (
                         <>
-                          오늘 답변한 질문들이 한 권의 책이 되어
-                          <br />
-                          당신만의 지식 서고에 차곡차곡 쌓였습니다.
+                          다음 레벨까지 <span className="text-black">{remainXp} XP</span>
                         </>
                       ) : (
-                        <>
-                          아직 쌓인 책이 없네요.
-                          <br />첫 번째 답변을 통해 서재를 채워보세요!
-                        </>
+                        '다음 기회에 다시 도전해보세요!'
                       )}
                     </p>
-                  </figcaption>
-                </figure>
-              </motion.article>
-            </Dialog.Content>
-          </Dialog.Portal>
-        </AnimatePresence>
-      </Dialog.Root>
-    );
-  },
-);
+                  </div>
+                </section>
 
-RewardModal.displayName = 'RewardModalContent';
+                {!hasRewards && (
+                  <div className="my-6 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray py-8 text-dark-gray/40">
+                    <p className="text-sm font-medium">기록된 학습 데이터가 없습니다.</p>
+                  </div>
+                )}
+
+                {hasRewards && (
+                  <div className="mt-3 grid grid-cols-2 gap-4">
+                    {/* XP 획득 내역 */}
+                    <section className="flex flex-col gap-3">
+                      <h3 className="text-xs font-bold text-dark-gray">XP 획득 내역</h3>
+                      <ul className="flex flex-col gap-3">
+                        {xpHistoryItems.map((item) => (
+                          <li
+                            key={item.id}
+                            className="flex items-center justify-between rounded-2xl border border-gray/50 bg-white px-4 py-3 text-sm shadow-sm transition-transform hover:scale-[1.02]"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{item.icon}</span>
+                              <span className={`font-bold ${item.textColor}`}>{item.label}</span>
+                            </div>
+                            <span className="font-extrabold text-black">+{item.amount}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+
+                    {/* 최근 학습 성과 */}
+                    <section className="flex flex-col gap-3">
+                      <h3 className="text-xs font-bold text-dark-gray">학습 결과</h3>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col justify-center rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 transition-colors hover:bg-primary/10">
+                          <span className="text-sm font-bold text-primary">평균 점수</span>
+                          <span className="mt-1 text-xl font-black text-primary">
+                            {averageScore}점
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col justify-center rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 transition-colors hover:bg-primary/10">
+                          <span className="text-sm font-bold text-primary">총 해결 문제</span>
+                          <span className="mt-1 text-xl font-black text-primary">
+                            {questions ? questions.length : 0}문제
+                          </span>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="mt-3 w-full cursor-pointer rounded-xl bg-primary py-4 text-lg font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/80 active:scale-[0.98]"
+                >
+                  메인으로 돌아가기
+                </button>
+              </section>
+
+              {/* 오른쪽 섹션: 시각 자료 (figure 사용) */}
+              <figure className="relative flex flex-[0.8] flex-col bg-linear-to-br from-gray to-pale-blue">
+                <div className="absolute inset-0 h-full w-full">
+                  <FallingBooksScene questions={questions || []} />
+                </div>
+                {/* 3D 책 쌓기 캔버스 부분에 대한 캡션 */}
+                <figcaption className="pointer-events-none absolute bottom-10 z-10 w-full text-center">
+                  <p className="mb-2 text-[10px] font-extrabold tracking-[0.2em] text-dark-gray">
+                    {hasRewards ? 'YOUR KNOWLEDGE STACK' : 'EMPTY STACK'}
+                  </p>
+                  <p className="text-xs leading-relaxed text-dark-gray">
+                    {hasRewards ? (
+                      <>
+                        오늘 답변한 질문들이 한 권의 책이 되어
+                        <br />
+                        당신만의 지식 서고에 차곡차곡 쌓였습니다.
+                      </>
+                    ) : (
+                      <>
+                        아직 쌓인 책이 없네요.
+                        <br />첫 번째 답변을 통해 서재를 채워보세요!
+                      </>
+                    )}
+                  </p>
+                </figcaption>
+              </figure>
+            </motion.article>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </AnimatePresence>
+    </Dialog.Root>
+  );
+};
 
 export default RewardModal;
