@@ -9,7 +9,7 @@ const PublicLayout = () => {
       <TopBar />
 
       {/* 콘텐츠 영역 */}
-      <main className="flex-1">
+      <main className="flex flex-1">
         <Outlet />
       </main>
 
