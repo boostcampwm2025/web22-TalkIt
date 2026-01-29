@@ -62,9 +62,9 @@ export class SessionsController {
     description: '잘못된 요청 (Enum 값 오류 또는 필수 값 누락)',
   })
   async createSession(
-    @Body(new ZodValidationPipe(CreateSessionSchema))
     @ActiveUser()
     user: { id: number },
+    @Body(new ZodValidationPipe(CreateSessionSchema))
     dto: CreateSessionDto,
   ) {
     const userId = user.id;
@@ -108,8 +108,8 @@ export class SessionsController {
     description: '유효하지 않은 세션이거나 잔여 크레딧 부족',
   })
   async getNextQuestion(
-    @Param('sessionId', ParseIntPipe) sessionId: number,
     @ActiveUser() user: { id: number },
+    @Param('sessionId', ParseIntPipe) sessionId: number,
   ) {
     return this.sessionsService.getNextQuestion(sessionId, user.id);
   }
@@ -133,10 +133,10 @@ export class SessionsController {
     description: '세션이 유효하지 않거나, 답변/크레딧이 없음',
   })
   async deepDive(
-    @Param('sessionId', ParseIntPipe) sessionId: number,
-    @Body(new ZodValidationPipe(DeepDiveRequestSchema))
     @ActiveUser()
     user: { id: number },
+    @Param('sessionId', ParseIntPipe) sessionId: number,
+    @Body(new ZodValidationPipe(DeepDiveRequestSchema))
     body: DeepDiveRequestDto,
   ) {
     const userId = user.id;
@@ -170,8 +170,8 @@ export class SessionsController {
     description: '이미 종료된 세션이거나 유효하지 않은 요청',
   })
   async finishSession(
-    @Param('sessionId', ParseIntPipe) sessionId: number,
     @ActiveUser() user: { id: number },
+    @Param('sessionId', ParseIntPipe) sessionId: number,
   ) {
     return this.sessionsService.finishSession(sessionId, user.id);
   }

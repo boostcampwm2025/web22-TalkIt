@@ -33,9 +33,9 @@ export class AssessmentController {
   @ApiAcceptedResponse({ description: '작업 수락됨' })
   @ApiBadRequestResponse({ description: '검증 실패 혹은 권한 오류' })
   async submitAssess(
+    @ActiveUser() user: { id: number },
     @Param('sessionId') sessionId: string,
     @Body(new ZodValidationPipe(AssessRequestSchema)) body: AssessRequestDto,
-    @ActiveUser() user: { id: number },
   ) {
     const userId = user.id;
     return this.service.submitAndAssess(userId, Number(sessionId), body);
@@ -46,7 +46,7 @@ export class AssessmentController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '평가 스냅샷 조회' })
   @ApiParam({ name: 'answerId', type: Number })
-  async getSnapshot(@Param('answerId') answerId: string, @ActiveUser() user: { id: number }) {
+  async getSnapshot(@ActiveUser() user: { id: number }, @Param('answerId') answerId: string) {
     const userId = user.id;
     return this.service.getSnapshot(userId, Number(answerId));
   }

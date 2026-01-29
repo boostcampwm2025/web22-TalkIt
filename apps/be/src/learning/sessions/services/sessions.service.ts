@@ -251,18 +251,17 @@ export class SessionsService {
     const totalTimeSec = answers.reduce((sum, ans) => sum + (ans.timeSpentSec || 0), 0);
 
     // 4. DB 트랜잭션 실행
-    const result = await this.prisma.$transaction(async (tx) => {
-      // 4-1. 세션 종료
-      await tx.session.update({
-        where: { id: sessionId, status: 'ACTIVE' },
-        data: {
-          status: 'COMPLETED',
-          completedAt: new Date(),
+    const result = await this.sessionsRepository.transaction(async (tx) => {
+      // 4-1. 세션 종료 (Repository 호출) ✅
+      await this.sessionsRepository.completeSession(
+        sessionId,
+        {
           totalScore,
           totalTimeSec,
           gainedXp: detail as unknown as Prisma.InputJsonValue,
         },
-      });
+        tx, // 트랜잭션 클라이언트 전달
+      );
 
       // 4-2. 유저 스탯 조회
       const userStats = await this.userStatsRepository.findStatsByUserId(session.userId, tx);
@@ -281,14 +280,14 @@ export class SessionsService {
       const levelInfo = await this.processLevelUp(currentLevel, currentTotalXp);
 
       // 4-6. 유저 스탯 저장
-      await this.userStatsRepository.upsertStats(
+      await this.userStatsRepository.updateStatsAtomic(
         session.userId,
         {
-          level: levelInfo.level,
-          currentXp: currentTotalXp, // 누적된 총 XP
-          totalSolvedQuestions: (userStats?.totalSolvedQuestions || 0) + answers.length,
+          newLevel: levelInfo.level,
           streakDays: newStreak,
-          totalStudyTimeSec: (userStats?.totalStudyTimeSec || 0) + totalTimeSec,
+          addedXp: totalGainedXp,
+          addedSolvedCount: answers.length,
+          addedStudyTime: totalTimeSec,
         },
         tx,
       );
