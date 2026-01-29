@@ -94,7 +94,16 @@ const FloatingStepBar = () => {
 
   return (
     <ActionBar>
-      <ActionBar.Button onClick={handleEndLearning} withDivider>
+      <ActionBar.Button
+        onClick={handleEndLearning}
+        withDivider
+        disabled={phase === ANSWER_PHASE.FEEDBACK_LOADING || phase === ANSWER_PHASE.STT_LOADING}
+        disabledReason={
+          phase === ANSWER_PHASE.FEEDBACK_LOADING
+            ? '피드백이 완료된 후 이용할 수 있어요'
+            : '음성 인식이 완료된 후 제출할 수 있어요'
+        }
+      >
         학습 종료
       </ActionBar.Button>
       {isFeedbackPhase ? (
