@@ -1,6 +1,9 @@
 import { useState } from 'react';
 
-import { Link } from '@tanstack/react-router';
+import { logoutUser } from '@/apis/auth-api';
+import { useAuthStore } from '@/lib/stores/user-auth-store';
+import { useUserStore } from '@/lib/stores/user-store';
+import { Link, useNavigate } from '@tanstack/react-router';
 
 import {
   AudioWaveform,
@@ -13,13 +16,6 @@ import {
   User,
 } from 'lucide-react';
 
-const MOCK_PROFILE = {
-  nickname: '김개발님',
-  level: 14,
-  xp: 850,
-  profileImage: 'https://s3.ap-northeast-2.amazonaws.com/talkit/profiles/user_123.png', // 예시 이미지
-};
-
 const NAV_ITEMS = [
   { to: '/learning', label: '학습하기', icon: BookOpen },
   { to: '/battle', label: '배틀 모드', icon: Swords },
@@ -30,6 +26,22 @@ const NAV_ITEMS = [
 // 사이드 바 컴포넌트
 export const SideBar = () => {
   const [isOpen, setIsOpen] = useState(true);
+  const navigate = useNavigate();
+
+  const { clearAuth } = useAuthStore();
+  const { userInfo, clearUserInfo } = useUserStore();
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser(); // API 호출
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      clearAuth(); // 인증 상태 초기화
+      clearUserInfo(); // 유저 정보 초기화
+      navigate({ to: '/' });
+    }
+  };
 
   return (
     <aside
@@ -80,25 +92,37 @@ export const SideBar = () => {
       <div className="border-t border-gray p-4">
         <div className={`flex items-center ${isOpen ? 'gap-3' : 'justify-center'}`}>
           {/* 프로필 이미지 */}
-          <img
-            src={MOCK_PROFILE.profileImage}
-            alt="Profile"
-            className="h-10 w-10 shrink-0 rounded-full border border-gray object-cover"
-          />
+          {userInfo?.profile.profileImage ? (
+            <img
+              src={userInfo.profile.profileImage}
+              alt="Profile"
+              className="h-10 w-10 shrink-0 rounded-full border border-gray object-cover"
+            />
+          ) : (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray text-medium-gray">
+              <User size={20} />
+            </div>
+          )}
 
           {/* 텍스트 정보 (열렸을 때만 표시) */}
           {isOpen && (
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              <span className="truncate text-sm font-bold text-black">{MOCK_PROFILE.nickname}</span>
+              <span className="truncate text-sm font-bold text-black">
+                {userInfo?.profile.nickname ?? '사용자'}
+              </span>
               <span className="truncate text-xs font-medium text-dark-gray">
-                Level {MOCK_PROFILE.level} • {MOCK_PROFILE.xp} XP
+                Level {userInfo?.progression.level ?? 1} • {userInfo?.progression.currentXp ?? 0} XP
               </span>
             </div>
           )}
 
           {/* 로그아웃 아이콘 */}
           {isOpen && (
-            <button className="cursor-pointer text-dark-gray transition-colors hover:text-alert">
+            <button
+              onClick={handleLogout}
+              className="cursor-pointer text-dark-gray transition-colors hover:text-alert"
+              title="로그아웃"
+            >
               <LogOut size={20} />
             </button>
           )}
