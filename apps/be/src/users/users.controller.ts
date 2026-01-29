@@ -1,11 +1,15 @@
-import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiOperation,
   ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+
+import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
+import { ActiveUser } from '@/common/decorators/active-user.decorator';
 
 import { UsersService } from './users.service';
 
@@ -56,5 +60,46 @@ export class UsersController {
 
     const isDuplicate = await this.usersService.checkDuplicate(type, value);
     return { isDuplicate };
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: '내 프로필 정보 조회',
+    description: '로그인한 사용자의 프로필, 통계(XP, 레벨), 소셜 정보를 조회합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '조회 성공',
+    schema: {
+      example: {
+        profile: {
+          nickname: 'TalkItTester',
+          profileImage: 'https://via.placeholder.com/150',
+          bio: '개발 중인 테스트 계정입니다.',
+        },
+        progression: {
+          level: 1,
+          currentXp: 0,
+          requiredXpForNextLevel: 1000,
+          lp: 0,
+        },
+        studyStats: {
+          solvedProblemCount: 0,
+          streak: 0,
+          totalStudyTime: 0,
+        },
+        social: {
+          followerCount: 0,
+          followingCount: 0,
+        },
+        remainingCredit: 0,
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: '인증 실패' })
+  async getMyProfile(@ActiveUser() user: { id: number }) {
+    return this.usersService.getMyProfile(user.id);
   }
 }
