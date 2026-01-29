@@ -1,11 +1,20 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
-import { AppModule } from '../../../app.module';
+import { ClovaModule } from '../../infra/clova/clova.module';
+import { PromptBuilder } from './prompt.builder';
 import { QuestionFactoryService } from './question-factory.service';
 import { ConceptLevel, Domain, QuestionDepth } from './types';
 
+@Module({
+  imports: [ConfigModule.forRoot({ isGlobal: true }), ClovaModule],
+  providers: [QuestionFactoryService, PromptBuilder],
+})
+class ScriptModule {}
+
 async function main() {
-  const app = await NestFactory.createApplicationContext(AppModule);
+  const app = await NestFactory.createApplicationContext(ScriptModule);
 
   const service = app.get(QuestionFactoryService);
 
