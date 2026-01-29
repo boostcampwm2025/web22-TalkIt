@@ -72,3 +72,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 
 .tanstack
+
+# Question Factory output
+output/
