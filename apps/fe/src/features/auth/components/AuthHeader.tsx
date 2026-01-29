@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
+
 import { AudioWaveform } from 'lucide-react';
 
 type AuthHeaderProps = {
-  title: string;
+  title: ReactNode;
   description: string;
 };
 
