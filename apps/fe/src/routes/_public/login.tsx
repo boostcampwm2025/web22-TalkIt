@@ -4,9 +4,9 @@ import { loginUser } from '@/apis/auth-api';
 import { AuthHeader } from '@/features/auth/components/AuthHeader';
 import { AuthLayout } from '@/features/auth/components/AuthLayout';
 import { FormInput } from '@/features/auth/components/FormInput';
-import { type LoginDto, LoginSchema } from '@/features/auth/schemas/login-schema';
 import { useAuthStore } from '@/lib/stores/user-auth-store';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { type LoginDto, LoginSchema } from '@repo/shared/schemas/auth';
 import type { BackendErrorResponse } from '@repo/shared/types/error';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 

@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, InternalServerErrorException } from '@nestjs/common';
 
-import { CreateUserDto } from './schemas/create-user.schema';
+import { CreateUserDto } from '@repo/shared/schemas/auth';
+
 import { UsersRepository } from './users.repository';
 import * as bcrypt from 'bcrypt';
 

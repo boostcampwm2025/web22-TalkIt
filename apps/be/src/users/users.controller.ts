@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiOperation,

@@ -22,7 +22,6 @@ const UserBase = z.object({
   }),
 });
 
-// 프론트용 로그인 스키마
 export const LoginSchema = UserBase.pick({
   email: true,
 }).extend({
@@ -32,16 +31,16 @@ export const LoginSchema = UserBase.pick({
 export type LoginDto = z.infer<typeof LoginSchema>;
 
 // 백엔드용 유저 생성 스키마
-export const CreateUserDtoSchema = z.object({
+export const CreateUserSchema = z.object({
   email: UserBase.shape.email,
   nickname: UserBase.shape.nickname,
   password: UserBase.shape.strictPassword,
 });
 
-export type CreateUserDto = z.infer<typeof CreateUserDtoSchema>;
+export type CreateUserDto = z.infer<typeof CreateUserSchema>;
 
 // 프론트엔드용 회원가입 스키마
-export const RegisterFormSchema = CreateUserDtoSchema.extend({
+export const RegisterFormSchema = CreateUserSchema.extend({
   confirmPassword: z.string().min(1, '비밀번호를 다시 입력해주세요.'),
   termsAgreed: z.literal(true, {
     message: '이용약관에 동의해주세요.',
