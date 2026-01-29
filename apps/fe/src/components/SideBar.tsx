@@ -36,12 +36,12 @@ export const SideBar = () => {
       className={`hidden h-full shrink-0 flex-col overflow-hidden border-r border-gray bg-white text-dark-gray transition-all duration-300 ease-in-out md:flex ${isOpen ? 'w-sidebar-open' : 'w-sidebar-close'}`}
     >
       <div className={`flex items-center gap-4 px-6 ${!isOpen ? `flex-col pt-3` : 'py-6'}`}>
-        <div className="flex flex-1 items-center gap-3 text-primary">
+        <Link to="/" className="flex flex-1 items-center gap-3 text-primary">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
             <AudioWaveform size={24} />
           </div>
           {isOpen && <span className="text-xl font-extrabold text-black">Talk It</span>}
-        </div>
+        </Link>
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="rounded-lg p-2 text-dark-gray transition-colors hover:bg-primary/10"

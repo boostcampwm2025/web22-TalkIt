@@ -5,8 +5,8 @@ import { checkEmailDuplicate, checkNicknameDuplicate, registerUser } from '@/api
 import { AuthHeader } from '@/features/auth/components/AuthHeader';
 import { AuthLayout } from '@/features/auth/components/AuthLayout';
 import { FormInput } from '@/features/auth/components/FormInput';
-import { type CreateUserDto, CreateUserSchema } from '@/features/auth/schemas/register-schema';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { type RegisterFormDto, RegisterFormSchema } from '@repo/shared/schemas/auth';
 import { type BackendErrorResponse } from '@repo/shared/types/error';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
@@ -26,8 +26,8 @@ const RegisterPage = () => {
     trigger,
     setFocus,
     formState: { errors, isSubmitting },
-  } = useForm<CreateUserDto>({
-    resolver: zodResolver(CreateUserSchema),
+  } = useForm<RegisterFormDto>({
+    resolver: zodResolver(RegisterFormSchema),
     mode: 'onChange',
   });
 
@@ -97,7 +97,7 @@ const RegisterPage = () => {
     onChange: () => setEmailChecked(false),
   });
 
-  const onSubmit = async (data: CreateUserDto) => {
+  const onSubmit = async (data: RegisterFormDto) => {
     if (!emailChecked) {
       setError('email', {
         type: 'manual',

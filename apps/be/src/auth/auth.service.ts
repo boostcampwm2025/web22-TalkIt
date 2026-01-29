@@ -2,9 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
-import { type CreateUserDto } from '@/users/schemas/create-user.schema';
 import { UsersRepository } from '@/users/users.repository';
 import { UsersService } from '@/users/users.service';
+import { type CreateUserDto } from '@repo/shared/schemas/auth';
 
 import { JwtPayload } from './types/jwt-payload-type';
 import bcrypt from 'bcrypt';

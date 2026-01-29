@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     "./constants/*": "./constants/*.ts",
-    "./types/*": "./types/*.ts"
+    "./types/*": "./types/*.ts",
+    "./schemas/*": "./schemas/*.ts"
   },
   "scripts": {
     "lint": "eslint src/",
@@ -15,5 +16,9 @@
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^8.4.0",
+    "zod": "^4.3.5"
   }
 }

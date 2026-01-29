@@ -22,12 +22,12 @@ import {
 import { ActiveUser } from '@/common/decorators/active-user.decorator';
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
 import { zodSchemaToOpenAPI } from '@/common/utils/zod-to-openapi.util';
-import { type CreateUserDto, CreateUserSchema } from '@/users/schemas/create-user.schema';
 import { UserResponseSchema } from '@/users/schemas/user-response.schema';
+import { type CreateUserDto, CreateUserSchema } from '@repo/shared/schemas/auth';
+import { type LoginDto, LoginSchema } from '@repo/shared/schemas/auth';
 
 import { AuthService } from './auth.service';
 import { JwtRefreshAuthGuard } from './guards/jwt-refresh-auth.guard';
-import { type LoginDto, LoginSchema } from './schemas/login.schema';
 import type { Response } from 'express';
 
 @Controller('/api/auth')

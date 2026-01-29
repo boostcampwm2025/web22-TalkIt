@@ -1,4 +1,5 @@
-import type { CreateUserDto } from '@/features/auth/schemas/register-schema';
+import type { LoginDto, RegisterFormDto } from '@repo/shared/schemas/auth';
+import type { AuthResponseDto } from '@repo/shared/types/user';
 
 import axiosInstance from './http';
 
@@ -29,10 +30,16 @@ export const checkNicknameDuplicate = async (nickname: string) => {
 };
 
 // 회원가입
-export const registerUser = async (data: CreateUserDto) => {
+export const registerUser = async (data: RegisterFormDto) => {
   // 프론트에서만 사용되는 입력 빼고 payload로 추출
   const { confirmPassword, termsAgreed, ...payload } = data;
 
   const { data: responseData } = await axiosInstance.post<void>('/auth/register', payload);
+  return responseData;
+};
+
+// 로그인
+export const loginUser = async (data: LoginDto) => {
+  const { data: responseData } = await axiosInstance.post<AuthResponseDto>('/auth/login', data);
   return responseData;
 };
