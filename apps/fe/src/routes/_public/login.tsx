@@ -1,25 +1,62 @@
 import { useForm } from 'react-hook-form';
 
+import { loginUser } from '@/apis/auth-api';
 import { AuthHeader } from '@/features/auth/components/AuthHeader';
 import { AuthLayout } from '@/features/auth/components/AuthLayout';
 import { FormInput } from '@/features/auth/components/FormInput';
 import { type LoginDto, LoginSchema } from '@/features/auth/schemas/login-schema';
+import { useAuthStore } from '@/lib/stores/user-auth-store';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, createFileRoute } from '@tanstack/react-router';
+import type { BackendErrorResponse } from '@repo/shared/types/error';
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
+import { isAxiosError } from 'axios';
 import { Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
+  const navigate = useNavigate();
+
+  const setAccessToken = useAuthStore((state) => state.setAccessToken);
+
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<LoginDto>({
     resolver: zodResolver(LoginSchema),
     mode: 'onSubmit',
   });
 
-  const onSubmit = () => {};
+  const onSubmit = async (data: LoginDto) => {
+    try {
+      const { accessToken } = await loginUser(data);
+
+      // 스토어에 토큰 저장
+      setAccessToken(accessToken);
+
+      // 메인 페이지로 이동
+      await navigate({ to: '/', replace: true });
+    } catch (error) {
+      if (isAxiosError<BackendErrorResponse>(error) && error.response) {
+        const { status } = error.response;
+
+        // 401 Unauthorized: 이메일 또는 비밀번호 불일치
+        if (status === 401) {
+          setError('password', {
+            type: 'manual',
+            message: '이메일 또는 비밀번호가 일치하지 않습니다.',
+          });
+        } else {
+          // 500 등 기타 서버 에러
+          alert('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        }
+      } else {
+        // 네트워크 에러 등
+        alert('서버와 연결할 수 없습니다.');
+      }
+    }
+  };
   return (
     <AuthLayout>
       <AuthHeader
