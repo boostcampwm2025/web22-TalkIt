@@ -99,7 +99,7 @@ export const TopBar = () => {
 
               {/* 드롭다운 메뉴 본문 */}
               {isDropdownOpen && (
-                <div className="ring-opacity-5 animate-in fade-in zoom-in-95 absolute right-0 mt-2 w-48 origin-top-right rounded-xl border border-gray bg-white py-1 shadow-lg ring-1 ring-black duration-100">
+                <div className="ring-opacity-5 animate-in fade-in zoom-in-95 absolute right-0 mt-2 w-48 origin-top-right rounded-xl border border-gray bg-white py-1 shadow-lg ring-1 ring-dark-gray duration-100">
                   <div className="border-b border-gray px-4 py-3 sm:hidden">
                     <p className="truncate text-sm font-medium text-black">
                       {userInfo?.profile.nickname ?? '사용자'}
