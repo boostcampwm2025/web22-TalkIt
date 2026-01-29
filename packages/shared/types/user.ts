@@ -29,3 +29,15 @@ export type UserInfoResponseDto = {
   social: Social;
   remainingCredit: number;
 };
+
+export type AuthResponseDto = {
+  accessToken: string;
+};
+
+export type RegisterResponseDto = {
+  id: number;
+  email: string;
+  nickname: string;
+  profileImageUrl: string;
+  createdAt: string;
+};
