@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { Difficulty, Domain } from '@/common/enums/learning.enum';
 import { PrismaService } from '@/infra/database/prisma.service';
@@ -62,7 +67,10 @@ export class SessionsService {
     const question = await this.questionService.pickOne(dto.category, dto.difficulty);
 
     if (!question) {
-      throw new BadRequestException('선택한 주제와 난이도에 해당하는 질문이 존재하지 않습니다.');
+      throw new NotFoundException({
+        code: 'QUESTION_NOT_FOUND',
+        message: '선택한 주제와 난이도에 해당하는 질문이 없습니다.',
+      });
     }
 
     /**
@@ -123,7 +131,10 @@ export class SessionsService {
     const session = await this.sessionsRepository.findById(sessionId);
 
     if (!session) {
-      throw new NotFoundException('학습 세션을 찾을 수 없습니다.');
+      throw new NotFoundException({
+        code: 'SESSION_NOT_FOUND',
+        message: '세션을 찾을 수 없습니다.',
+      });
     }
 
     /**
@@ -131,7 +142,10 @@ export class SessionsService {
      */
 
     if (session.completedAt) {
-      throw new BadRequestException('이미 종료된 학습 세션입니다.');
+      throw new ConflictException({
+        code: 'SESSION_COMPLETED',
+        message: '이미 종료된 학습 세션입니다.',
+      });
     }
 
     /**
@@ -150,7 +164,7 @@ export class SessionsService {
        */
 
       await this.finishSession(sessionId);
-      throw new BadRequestException({
+      throw new ConflictException({
         code: 'SESSION_COMPLETED',
         message: '더 이상 제공할 질문이 없어 세션이 종료되었습니다.',
       });

@@ -82,7 +82,21 @@ export class SessionsRecordService {
         sttText: normalizeResult.draftText,
       };
     } catch (error) {
-      this.logger.error('ERROR in record process', error);
+      if (error instanceof NotFoundException) {
+        // 의도된 도메인 에러 → warn
+        this.logger.warn('Domain error in record process', {
+          sessionId,
+          code: (error.getResponse() as any)?.code,
+        });
+        throw error;
+      }
+
+      // 진짜 장애
+      this.logger.error('Unexpected error in record process', {
+        sessionId,
+        error: error instanceof Error ? error.stack : error,
+      });
+
       throw error;
     } finally {
       if (objectKey) {
