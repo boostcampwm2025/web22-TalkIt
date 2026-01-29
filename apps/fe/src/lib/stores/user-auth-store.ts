@@ -1,5 +1,6 @@
 import { refreshAccessTokenApi } from '@/apis/auth-api';
 
+import { useUserStore } from './user-store';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
@@ -35,6 +36,7 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isInitializing: false, // 확인 완료 (성공)
           });
+          useUserStore.getState().fetchUserInfo();
         } catch (error) {
           set({
             accessToken: null,

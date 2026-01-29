@@ -1,3 +1,4 @@
+import { getUserInfoApi } from '@/apis/user-api';
 import type { UserInfoResponseDto } from '@repo/shared/types/user';
 
 import { create } from 'zustand';
@@ -8,6 +9,7 @@ type UserState = {
   setUserInfo: (info: UserInfoResponseDto) => void;
   clearUserInfo: () => void;
   updateCredit: (amount: number) => void;
+  fetchUserInfo: () => Promise<void>;
 };
 
 // 사용자 정보 상태 전역 상태 store
@@ -25,6 +27,15 @@ export const useUserStore = create<UserState>()(
           false,
           'user/updateCredit',
         ),
+
+      fetchUserInfo: async () => {
+        try {
+          const data = await getUserInfoApi();
+          set({ userInfo: data });
+        } catch (error) {
+          console.error('Failed to fetch user info:', error);
+        }
+      },
     }),
     { name: 'UserStore' },
   ),
