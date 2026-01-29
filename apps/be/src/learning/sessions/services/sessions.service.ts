@@ -124,7 +124,7 @@ export class SessionsService {
    * - 종료 조건 감지만 담당 (종료 처리는 finishSession에 위임)
    */
 
-  async getNextQuestion(sessionId: number) {
+  async getNextQuestion(sessionId: number, userId: number) {
     /**
      * 1. 세션 조회
      */
@@ -148,10 +148,14 @@ export class SessionsService {
       });
     }
 
+    if (session.userId !== userId) {
+      throw new BadRequestException({ code: 'FORBIDDEN', message: '세션 소유자가 아닙니다.' });
+    }
+
     /**
      * 3. 유저 잔여 크레딧 조회 (UserCredit ledger SUM)
      */
-    const remainedCredit = await this.userCreditsRepository.getTotalCredit(session.userId);
+    const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
 
     const question = await this.questionService.pickOne(
       session.category as Domain,
@@ -163,7 +167,7 @@ export class SessionsService {
        * 더 이상 질문이 없다면 세션 종료 처리
        */
 
-      await this.finishSession(sessionId);
+      await this.finishSession(sessionId, userId);
       throw new ConflictException({
         code: 'SESSION_COMPLETED',
         message: '더 이상 제공할 질문이 없어 세션이 종료되었습니다.',
@@ -200,9 +204,9 @@ export class SessionsService {
    * 세션 종료 및 리워드(XP, 레벨, 스트릭) 정산을 수행하는 메인 메서드
    * - 세션 종료는 반드시 이 메서드를 통해서만 수행
    */
-  async finishSession(sessionId: number): Promise<FinishSessionResponseDto> {
+  async finishSession(sessionId: number, userId: number): Promise<FinishSessionResponseDto> {
     // 1. 검증 및 데이터 로드
-    const { session, answers } = await this.validateAndLoadSession(sessionId);
+    const { session, answers } = await this.validateAndLoadSession(sessionId, userId);
 
     // ✅ 중도 포기 처리 (답변 0개)
     if (answers.length === 0) {
@@ -218,7 +222,7 @@ export class SessionsService {
       });
 
       // 유저의 기존 스탯 정보를 가져옴 (경험치 변화 없음)
-      const userStats = await this.userStatsRepository.findStatsByUserId(session.userId);
+      const userStats = await this.userStatsRepository.findStatsByUserId(userId);
       const currentLevel = userStats?.level || 1;
       const currentTotalXp = userStats?.currentXp || 0;
 
@@ -298,10 +302,14 @@ export class SessionsService {
   /**
    * 세션 및 답변 데이터를 조회하고, 종료 가능 여부를 검증하는 메서드
    */
-  private async validateAndLoadSession(sessionId: number) {
+  private async validateAndLoadSession(sessionId: number, userId: number) {
     const session = await this.sessionsRepository.findById(sessionId);
     if (!session) throw new NotFoundException('세션을 찾을 수 없습니다.');
     if (session.status === 'COMPLETED') throw new BadRequestException('이미 종료된 세션입니다.');
+
+    if (session.userId !== userId) {
+      throw new BadRequestException({ code: 'FORBIDDEN', message: '세션 소유자가 아닙니다.' });
+    }
 
     const answers = await this.prisma.userAnswer.findMany({
       where: { sessionId },

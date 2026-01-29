@@ -1,6 +1,7 @@
-import { Body, Controller, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiNoContentResponse,
   ApiOperation,
@@ -9,6 +10,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
+import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
+import { ActiveUser } from '@/common/decorators/active-user.decorator';
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
 import { zodSchemaToOpenAPI } from '@/common/utils/zod-to-openapi.util';
 
@@ -27,6 +30,8 @@ export class SessionsController {
   ) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: '학습 세션 생성 및 첫 질문 제공',
     description: '주제와 난이도를 선택하여 학습 세션을 생성하고 첫 질문을 반환합니다.',
@@ -58,13 +63,17 @@ export class SessionsController {
   })
   async createSession(
     @Body(new ZodValidationPipe(CreateSessionSchema))
+    @ActiveUser()
+    user: { id: number },
     dto: CreateSessionDto,
   ) {
-    const userId = 1; // TODO: 추후 인증 연동
+    const userId = user.id;
     return this.sessionsService.createSession(userId, dto);
   }
 
   @Post(':sessionId/next-question')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: '다음 질문 제공',
     description: '진행 중인 학습 세션에서 다음 질문을 제공합니다.',
@@ -98,11 +107,17 @@ export class SessionsController {
   @ApiBadRequestResponse({
     description: '유효하지 않은 세션이거나 잔여 크레딧 부족',
   })
-  async getNextQuestion(@Param('sessionId', ParseIntPipe) sessionId: number) {
-    return this.sessionsService.getNextQuestion(sessionId);
+  async getNextQuestion(
+    @Param('sessionId', ParseIntPipe) sessionId: number,
+    @ActiveUser() user: { id: number },
+  ) {
+    return this.sessionsService.getNextQuestion(sessionId, user.id);
   }
+
   // 꼬리질문(Deep Dive) 요청
   @Post(':sessionId/deep-dive')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: '꼬리질문(Deep Dive) 생성',
     description: '사용자 답변을 기반으로 꼬리질문을 생성합니다.',
@@ -120,9 +135,11 @@ export class SessionsController {
   async deepDive(
     @Param('sessionId', ParseIntPipe) sessionId: number,
     @Body(new ZodValidationPipe(DeepDiveRequestSchema))
+    @ActiveUser()
+    user: { id: number },
     body: DeepDiveRequestDto,
   ) {
-    const userId = 1; // TODO: auth
+    const userId = user.id;
 
     return this.deepDiveService.execute({
       userId,
@@ -133,6 +150,8 @@ export class SessionsController {
 
   // 세션 종료 요청
   @Post(':sessionId/finish')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: '학습 세션 종료 및 리워드 정산',
     description: '세션을 종료하고 획득한 경험치, 레벨 정보, 답변 결과 목록을 반환합니다.',
@@ -150,7 +169,10 @@ export class SessionsController {
   @ApiBadRequestResponse({
     description: '이미 종료된 세션이거나 유효하지 않은 요청',
   })
-  async finishSession(@Param('sessionId', ParseIntPipe) sessionId: number) {
-    return this.sessionsService.finishSession(sessionId);
+  async finishSession(
+    @Param('sessionId', ParseIntPipe) sessionId: number,
+    @ActiveUser() user: { id: number },
+  ) {
+    return this.sessionsService.finishSession(sessionId, user.id);
   }
 }

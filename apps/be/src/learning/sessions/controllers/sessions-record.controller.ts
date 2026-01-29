@@ -5,10 +5,20 @@ import {
   Param,
   Post,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
+
+import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
 
 import {
   type RecordSessionAnswerDto,
@@ -24,6 +34,8 @@ export class SessionsRecordController {
   constructor(private readonly sessionsRecordService: SessionsRecordService) {}
 
   @Post(':sessionId/record')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: '세션 답변 녹음 제출',
     description: '음성 파일(audioFile)과 답변 메타데이터를 업로드합니다.',
