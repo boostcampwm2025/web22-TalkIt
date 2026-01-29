@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { Category, Difficulty } from '@prisma/client';
 
@@ -44,7 +49,10 @@ export class QuestionContextResolver {
     const answer = await this.answerRepository.findById(answerId);
 
     if (!answer) {
-      throw new Error(`ANSWER_NOT_FOUND: answerId=${answerId}`);
+      throw new NotFoundException({
+        code: 'ANSWER_NOT_FOUND',
+        message: `Answer not found. answerId=${answerId}`,
+      });
     }
 
     /**
@@ -54,7 +62,10 @@ export class QuestionContextResolver {
       const question = await this.questionRepository.findById(answer.questionId);
 
       if (!question) {
-        throw new Error(`QUESTION_NOT_FOUND: questionId=${answer.questionId}`);
+        throw new NotFoundException({
+          code: 'QUESTION_NOT_FOUND',
+          message: `Question not found. questionId=${answer.questionId}`,
+        });
       }
 
       return {
@@ -72,7 +83,10 @@ export class QuestionContextResolver {
       const extraQuestion = await this.extraQuestionRepository.findById(answer.extraQuestionId);
 
       if (!extraQuestion) {
-        throw new Error(`EXTRA_QUESTION_NOT_FOUND: extraQuestionId=${answer.extraQuestionId}`);
+        throw new NotFoundException({
+          code: 'EXTRA_QUESTION_NOT_FOUND',
+          message: `Extra question not found. extraQuestionId=${answer.extraQuestionId}`,
+        });
       }
 
       return {
@@ -87,6 +101,9 @@ export class QuestionContextResolver {
      * 데이터 무결성 오류
      * (questionId, extraQuestionId 둘 다 null)
      */
-    throw new Error(`Invalid answer relation. answerId=${answerId} has no question reference.`);
+    throw new InternalServerErrorException({
+      code: 'INVALID_ANSWER_RELATION',
+      message: `Invalid answer relation. answerId=${answerId} has no question reference.`,
+    });
   }
 }
