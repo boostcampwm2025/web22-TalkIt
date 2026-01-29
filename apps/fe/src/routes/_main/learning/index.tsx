@@ -137,7 +137,9 @@ const LearningPage = () => {
               </div>
               <div>
                 <p className="mb-1 text-sm text-dark-gray">총 학습 시간</p>
-                <p className="text-2xl font-bold text-primary">{studyStats?.totalStudyTime}분</p>
+                <p className="text-2xl font-bold text-primary">
+                  {Math.round((studyStats?.totalStudyTime ?? 0) / 60)}분
+                </p>
               </div>
             </div>
           </div>
@@ -151,7 +153,9 @@ const LearningPage = () => {
           </div>
           <div className="flex flex-col justify-center rounded-2xl border border-gray bg-white p-5 shadow-sm">
             <p className="mb-2 text-sm text-dark-gray">총 학습 시간</p>
-            <p className="text-lg font-bold text-primary">{studyStats?.totalStudyTime}분</p>
+            <p className="text-lg font-bold text-primary">
+              {Math.round((studyStats?.totalStudyTime ?? 0) / 60)}분
+            </p>
           </div>
         </section>
 
