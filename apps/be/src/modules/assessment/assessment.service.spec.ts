@@ -38,7 +38,7 @@ describe('AssessmentService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new AssessmentService(repo, worker, userCreditsRepo, sessionsService);
+    service = new AssessmentService(repo, worker, userCreditsRepo);
   });
 
   describe('submitAndAssess', () => {

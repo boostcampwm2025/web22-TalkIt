@@ -27,7 +27,7 @@ describe('AssessmentSseController - 스냅샷 DTO 매핑', () => {
 
     const ctrl = new AssessmentSseController(bus as any, repo);
 
-    const obs = ctrl.sse('123');
+    const obs = ctrl.sse({ id: 1 }, 1, '123');
     const sub = (obs as any).subscribe({
       next: (evt: any) => {
         const data: any = evt.data;
