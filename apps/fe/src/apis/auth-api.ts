@@ -48,3 +48,9 @@ export const loginUser = async (data: LoginDto) => {
 export const logoutUser = async () => {
   await axiosInstance.post('/auth/logout');
 };
+
+// 토큰 재발급
+export const refreshAccessTokenApi = async () => {
+  const { data } = await axiosInstance.post<AuthResponseDto>('/auth/refresh');
+  return data;
+};

@@ -1,5 +1,6 @@
 import { Footer } from '@/components/Footer';
 import { TopBar } from '@/components/TopBar';
+import { useAuthStore } from '@/lib/stores/user-auth-store';
 import { Outlet, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 
@@ -40,4 +41,13 @@ const RootLayout = () => {
 export const Route = createRootRoute({
   component: RootLayout,
   notFoundComponent: NotFoundComponent,
+
+  beforeLoad: async () => {
+    const { isInitializing, checkAuth } = useAuthStore.getState();
+
+    // 아직 초기화가 안 되었다면(앱 최초 실행) 체크 시도
+    if (isInitializing) {
+      await checkAuth();
+    }
+  },
 });
