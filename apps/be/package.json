@@ -26,7 +26,9 @@
     "db:logs": "docker compose -f docker/docker-compose.mysql.yml logs -f mysql",
     "cache:up": "docker compose -f docker/docker-compose.redis.yml up -d",
     "cache:down": "docker compose -f docker/docker-compose.redis.yml down",
-    "cache:logs": "docker compose -f docker/docker-compose.redis.yml logs -f redis"
+    "cache:logs": "docker compose -f docker/docker-compose.redis.yml logs -f redis",
+    "cache:clear-qpool": "ts-node scripts/redis-clear-qpool.ts",
+    "cache:nuke": "docker compose -f docker/docker-compose.redis.yml down -v --remove-orphans && rm -rf docker/redis-data && docker compose -f docker/docker-compose.redis.yml up -d"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.4.0",

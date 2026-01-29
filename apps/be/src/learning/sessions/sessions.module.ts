@@ -34,6 +34,6 @@ import { SessionsService } from './services/sessions.service';
     StreakCalculatorService,
     XpCalculatorService,
   ],
-  exports: [DeepDiveService],
+  exports: [DeepDiveService, SessionsService],
 })
 export class SessionsModule {}

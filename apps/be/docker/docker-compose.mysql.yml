@@ -11,7 +11,7 @@ services:
     ports:
       - "3307:3306" # 호스트 3307 → 컨테이너 3306
     volumes:
-      - ./mysql-data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpass"]
       interval: 5s
@@ -22,3 +22,5 @@ services:
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_0900_ai_ci
 
+volumes:
+  mysql_data: {}

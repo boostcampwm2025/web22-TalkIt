@@ -191,6 +191,7 @@ model UserAnswer {
   answerText   String   @map("answer_text") @db.Text
   timeSpentSec Int      @map("time_spent_sec")
   overallScore Int?     @map("overall_score")
+  evaluationJson Json?  @map("evaluation_json")
   feedbackJson Json?    @map("feedback_json")
   createdAt    DateTime @default(now()) @map("created_at")
 
