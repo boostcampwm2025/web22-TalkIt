@@ -8,6 +8,7 @@ const AnswerSection = () => {
   const [editText, setEditText] = useState('');
 
   const isSttLoading = phase === ANSWER_PHASE.STT_LOADING;
+  const isSttDone = phase === ANSWER_PHASE.STT_DONE;
   const isEditEmpty = isEditing && !editText.trim();
 
   const shouldShow = phase !== ANSWER_PHASE.IDLE && phase !== ANSWER_PHASE.RECORDING;
@@ -32,7 +33,7 @@ const AnswerSection = () => {
       <h3 className="sr-only">음성 인식 결과</h3>
       <div className="flex items-center justify-between">
         <p className="text-xl font-bold">나의 답변</p>
-        {!isSttLoading && (
+        {isSttDone && (
           <div className="flex gap-2">
             {isEditing && (
               <button
