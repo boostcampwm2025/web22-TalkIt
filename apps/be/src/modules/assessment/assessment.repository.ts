@@ -109,6 +109,13 @@ export class AssessmentRepository {
     });
   }
 
+  async setAnswerEvaluation(answerId: number, evaluation: Prisma.InputJsonValue) {
+    return this.prisma.userAnswer.update({
+      where: { id: answerId },
+      data: { evaluationJson: evaluation },
+    });
+  }
+
   async setAnswerFeedback(answerId: number, feedback: Prisma.InputJsonValue) {
     return this.prisma.userAnswer.update({
       where: { id: answerId },

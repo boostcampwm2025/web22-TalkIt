@@ -8,11 +8,29 @@ import {
 } from '@nestjs/common';
 
 import { AssessmentStatus } from '@prisma/client';
-// 공유 타입 의존: FE/BE 일관 응답 스키마를 위해 shared DTO를 사용합니다.
-import type { AssessResponseDTO, GetFeedbackResponseDTO } from '@repo/shared/types/learning';
 
 import { AssessmentRepository } from './assessment.repository';
 import { AssessmentWorker } from './worker/assessment.worker';
+
+// 공유 타입 의존: FE/BE 일관 응답 스키마를 위해 shared DTO를 사용합니다.
+// Local DTOs (decoupled from @repo/shared)
+export type AssessResponseDTO = {
+  jobId: number;
+  answerId: number;
+  status: string; // AssessmentStatus literal at runtime
+};
+
+export type GetFeedbackResponseDTO = {
+  answerId: number;
+  question: string;
+  answer: string;
+  overallScore: number;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+  xp: number;
+  remainingToken: number;
+};
 
 @Injectable()
 export class AssessmentService {
@@ -31,7 +49,7 @@ export class AssessmentService {
       timeSpentSec: number;
     },
   ): Promise<AssessResponseDTO> {
-    // NOTE: 반환 타입을 shared의 AssessResponseDTO로 고정하여 API 계약을 명확히 합니다.
+    // NOTE: 반환 타입을 로컬 AssessResponseDTO로 고정하여 API 계약을 명확히 합니다.
     const session = await this.repo.findSessionById(sessionId);
     if (!session) {
       throw new NotFoundException({
@@ -79,7 +97,7 @@ export class AssessmentService {
     };
   }
 
-  // NOTE: 스냅샷 응답도 shared의 GetFeedbackResponseDTO로 고정
+  // NOTE: 스냅샷 응답도 로컬 GetFeedbackResponseDTO로 고정
   async getSnapshot(userId: number, answerId: number): Promise<GetFeedbackResponseDTO> {
     const answer = await this.repo.getAnswerWithRelations(answerId);
     if (!answer)
@@ -123,7 +141,11 @@ export class AssessmentService {
     // 가능하면 shared 영역에 명세 타입을 두고(예: @repo/shared) 동일 타입을 참조하세요.
     type FeedbackJson = {
       accurate?: unknown;
-      improvement?: unknown;
+      weakness?: unknown;
+      suggestions?: unknown;
+      improvement?: unknown; // legacy key for suggestions
+      unanswered?: unknown; // legacy keys to be merged into weakness
+      confused?: unknown; // legacy keys to be merged into weakness
       keywords?: unknown;
     } | null;
     const feedback: FeedbackJson = (answer as any).feedbackJson ?? null;
@@ -131,10 +153,15 @@ export class AssessmentService {
     const toStringArray = (v: unknown): string[] =>
       Array.isArray(v) ? v.map((x) => String(x)) : [];
 
-    // 현재 피드백은 accurate(강점), improvement(개선점) 배열을 가정합니다.
-    // FeedbackJson 형식이 변경되면 이 부분의 키/매핑 로직을 함께 업데이트해야 합니다.
+    // 현재 피드백은 accurate/weakness/suggestions 형태를 우선 사용하고,
+    // 레거시 키(unanswered/confused/improvement)도 병합하여 대응합니다.
     const strengths = toStringArray(feedback?.accurate);
-    const suggestions = toStringArray(feedback?.improvement);
+    const weaknesses = [
+      ...toStringArray(feedback?.weakness),
+      ...toStringArray(feedback?.unanswered),
+      ...toStringArray(feedback?.confused),
+    ];
+    const suggestions = toStringArray(feedback?.suggestions ?? feedback?.improvement);
     const questionContent = String(
       (answer as any).question?.content ?? (answer as any).extraQuestion?.content ?? '',
     );
@@ -161,7 +188,7 @@ export class AssessmentService {
       answer: String((answer as any).answerText ?? ''),
       overallScore: Number((answer as any).overallScore ?? 0),
       strengths,
-      weaknesses: [], // 현재 피드백 구조상 약점(weaknesses)은 분리 데이터가 없어 빈 배열 유지
+      weaknesses,
       suggestions,
       xp,
       remainingToken: 0, // 토큰 잔여량 추적 미구현으로 0 반환
