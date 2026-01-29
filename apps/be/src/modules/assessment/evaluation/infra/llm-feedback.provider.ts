@@ -2,154 +2,129 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { ClovaService } from '@/infra/clova/clova.service';
 
-import type { IssuesPayload } from '../domain/issues.schema';
-import { FeedbackSystemPromptV3, FeedbackUserPromptV3, GoldenSystemPrompt, GoldenUserPrompt } from '../prompt/prompt.template';
+import { FeedbackSystemPrompt, FeedbackUserPrompt } from '../prompt/prompt.template';
 import { LlmGoldenProvider } from './llm-golden.provider';
 
 @Injectable()
 export class LlmFeedbackProvider {
   private readonly logger = new Logger(LlmFeedbackProvider.name);
 
-  constructor(private readonly clova: ClovaService, private readonly golden: LlmGoldenProvider) {}
+  constructor(
+    private readonly clova: ClovaService,
+    private readonly golden: LlmGoldenProvider,
+  ) {}
 
   async build(params: {
     questionSummary: string;
     answerText: string;
-    issues: IssuesPayload;
-  }): Promise<{ accurate: string[]; improvement: string[]; keywords: string[] }> {
+    issues: { issues: any[]; meta?: any };
+  }): Promise<{ accurate: string[]; weakness: string[]; suggestions: string[] }> {
     const { questionSummary, answerText, issues } = params;
 
     const apiKey = (process.env.CLOVA_API_KEY ?? '').trim();
     if (!apiKey) {
-      return this.fallbackFromIssues(issues);
+      return this.fallback(issues);
     }
 
-    const issuesJson = JSON.stringify(issues);
-    const attempts = Math.max(1, Number(process.env.ASSESS_FEEDBACK_RETRIES ?? '2'));
-    let lastErr: any = null;
-    for (let i = 0; i < attempts; i++) {
-      const reinforce = i > 0 ? '\n\n[IMPORTANT]\n이전 응답은 JSON 문법 오류였습니다. 반드시 유효한 JSON만 한 줄로 출력하세요.' : '';
-      // 1) Golden 생성 (비용 우선 X: 매번 호출)
-      let goldenJson = '';
-      try {
-        const golden = await this.golden.generate({ questionSummary });
-        goldenJson = JSON.stringify(golden);
-      } catch (e) {
-        this.logger.warn(`Golden generation failed: ${(e as any)?.message ?? e}`);
-        goldenJson = JSON.stringify({ definition: questionSummary, key_points: [] });
-      }
+    // Optionally provide golden as extra context
+    let goldenJson = '';
+    try {
+      const golden = await this.golden.generate({ questionSummary });
+      goldenJson = JSON.stringify(golden);
+    } catch (e) {
+      this.logger.warn(`Golden generation failed for feedback: ${(e as any)?.message ?? e}`);
+      goldenJson = JSON.stringify({ definition: questionSummary, key_points: [] });
+    }
 
-      const messages = [
-        { role: 'system' as const, content: FeedbackSystemPromptV3 },
-        {
-          role: 'user' as const,
-          content: FeedbackUserPromptV3(questionSummary, goldenJson, answerText) + reinforce,
-        },
-      ];
+    const messages = [
+      { role: 'system' as const, content: FeedbackSystemPrompt },
+      {
+        role: 'user' as const,
+        content: FeedbackUserPrompt(
+          questionSummary,
+          goldenJson,
+          JSON.stringify(issues),
+          answerText,
+        ),
+      },
+    ];
+
+    const out = await this.clova.chat(messages, {
+      temperature: 0,
+      maxCompletionTokens: 10000,
+      stream: false,
+      thinking: { effort: 'high' },
+    });
+    const text = (out.content ?? '').trim();
+    try {
+      const parsed = JSON.parse(text);
+      return this.normalizeFeedback(parsed);
+    } catch {
       try {
-        const out = await this.clova.chat(messages, {
-          temperature: 0,
-          maxCompletionTokens: 500,
-          stream: false,
-        });
-        const text = (out.content ?? '').trim();
-        let parsed: any;
-        try {
-          parsed = JSON.parse(text);
-        } catch {
-          const cleaned = this.prepareLikelyJson(text);
-          parsed = JSON.parse(cleaned);
-        }
-        const accurate = Array.isArray(parsed.accurate)
-          ? parsed.accurate.map(String).slice(0, 3)
-          : [];
-        const improvement = Array.isArray(parsed.improvement)
-          ? parsed.improvement.map(String).slice(0, 5)
-          : [];
-        const keywords = Array.isArray(parsed.keywords)
-          ? parsed.keywords.map(String).slice(0, 5)
-          : [];
-        return { accurate, improvement, keywords };
-      } catch (e) {
-        lastErr = e;
-        continue;
+        const parsed = JSON.parse(this.prepareLikelyJson(text));
+        return this.normalizeFeedback(parsed);
+      } catch (e2) {
+        this.logger.warn(`Feedback parse failed, fallback used: ${(e2 as any)?.message ?? e2}`);
+        return this.fallback(issues);
       }
     }
-    this.logger.warn(`Clova feedback failed, fallback used: ${(lastErr as any)?.message ?? lastErr}`);
-    return this.fallbackFromIssues(issues);
   }
 
-  /**
-   * LLM 출력이 마크다운 코드블록, 스마트 따옴표, 트레일링 콤마 등으로 오염됐을 때
-   * 합리적인 범위에서 복구 시도 후 JSON 파싱에 재사용할 수 있게 정리합니다.
-   */
+  private fallback(issues: { issues: any[] }) {
+    const accurate: string[] = [];
+    const weakness: string[] = [];
+    const suggestions: string[] = [];
+    for (const i of issues?.issues ?? []) {
+      const t = String(i?.type ?? '');
+      const target = String(i?.target ?? '').trim();
+      if (t === 'strength') {
+        accurate.push(
+          target ? `${target}을 정확하게 설명했어요.` : '핵심 개념을 정확하게 설명했어요.',
+        );
+      } else if (t === 'missing' || t === 'unclear' || t === 'misconception') {
+        if (target) weakness.push(`${target}에 대한 설명을 보완해 주세요.`);
+        if (target)
+          suggestions.push(
+            `‘${target}’의 핵심 정의를 한두 문장으로 정리하고 왜 중요한지 간단한 예시와 함께 보충해 보세요.`,
+          );
+      }
+    }
+    return {
+      accurate: accurate.slice(0, 3),
+      weakness: weakness.slice(0, 5),
+      suggestions: suggestions.slice(0, 5),
+    };
+  }
+
+  // Normalize various feedback shapes into { accurate, weakness, suggestions }
+  private normalizeFeedback(v: any): {
+    accurate: string[];
+    weakness: string[];
+    suggestions: string[];
+  } {
+    const toArr = (x: any) => (Array.isArray(x) ? x.map((s) => String(s)) : []);
+    const accurate = toArr(v?.accurate);
+    // Merge legacy keys if present
+    const weakness = [...toArr(v?.weakness), ...toArr(v?.unanswered), ...toArr(v?.confused)];
+    const suggestions = toArr(v?.suggestions ?? v?.improvement);
+    return { accurate, weakness, suggestions };
+  }
+
   private prepareLikelyJson(s: string): string {
     let t = String(s ?? '').trim();
-
-    // 코드블록 백틱 제거
     if (t.startsWith('```')) {
       t = t
         .replace(/^```[a-zA-Z0-9_-]*\n?/, '')
         .replace(/```\s*$/, '')
         .trim();
     }
-
-    // 스마트 따옴표 → 일반 큰따옴표로 치환
     t = t.replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"').replace(/[\u2018\u2019\u2032]/g, "'");
-
-    // JSON 본문 추출: 첫 '{'부터 마지막 '}'까지
     const first = t.indexOf('{');
     const last = t.lastIndexOf('}');
     if (first !== -1 && last !== -1 && last > first) {
       t = t.slice(first, last + 1);
     }
-
-    // 흔한 오타: 트레일링 콤마 제거
     t = t.replace(/,\s*([}\]])/g, '$1');
-
     return t.trim();
-  }
-
-  private fallbackFromIssues(issues: IssuesPayload): {
-    accurate: string[];
-    improvement: string[];
-    keywords: string[];
-  } {
-    const accurate: string[] = [];
-    const improvement: string[] = [];
-    const keywords = new Set<string>();
-
-    for (const i of issues.issues) {
-      if (i.type === 'strength') {
-        if (i.target) accurate.push(`'${i.target}' 개념을 정확히 설명했습니다.`);
-        else accurate.push('핵심 개념을 정확히 설명했습니다.');
-      } else if (i.type === 'missing') {
-        if (i.target) improvement.push(`'${i.target}' 부분이 누락되어 보완이 필요합니다.`);
-        if (i.target) keywords.add(i.target);
-      } else if (i.type === 'misconception') {
-        const t = i.target ?? '해당 개념';
-        improvement.push(`'${t}'에 오해가 있어 올바른 정의와 차이를 다시 정리해 주세요.`);
-        if (i.target) keywords.add(i.target);
-      } else if (i.type === 'wrong-example') {
-        improvement.push('예시가 개념을 정확히 뒷받침하지 못해 적절한 사례로 교체가 필요합니다.');
-      } else if (i.type === 'unclear') {
-        improvement.push('서론-전개-결론 구조로 핵심을 먼저 제시하면 더 명료합니다.');
-      }
-    }
-
-    // 오프토픽 가드: 모든 mustInclude가 누락된 경우(추정)
-    if (
-      issues.meta?.offTopic ||
-      ((issues.meta?.mustIncludeMissing?.length ?? 0) > 0 &&
-        (issues.meta?.mustIncludeMatched?.length ?? 0) === 0)
-    ) {
-      improvement.unshift('질문과의 관련성이 매우 낮거나 부적절한 지시가 감지되었습니다. 질문의 핵심 키워드를 중심으로 답변을 재구성하세요.');
-    }
-
-    return {
-      accurate: accurate.slice(0, 3),
-      improvement: improvement.slice(0, 5),
-      keywords: Array.from(keywords).slice(0, 5),
-    };
   }
 }
