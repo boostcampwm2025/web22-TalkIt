@@ -1,3 +1,5 @@
+import { refreshAccessTokenApi } from '@/apis/auth-api';
+import { getUserInfoApi } from '@/apis/user-api';
 import { SideBar, SideBarMobile } from '@/components/SideBar';
 import { useAuthStore } from '@/lib/stores/user-auth-store';
 import { useUserStore } from '@/lib/stores/user-store';
@@ -30,8 +32,8 @@ export const Route = createFileRoute('/_main')({
 
     if (!authStore.isAuthenticated) {
       try {
-        // checkAuth는 내부적으로 API를 호출하고 Store를 업데이트함
-        await authStore.checkAuth();
+        const { accessToken } = await refreshAccessTokenApi();
+        authStore.setAccessToken(accessToken);
       } catch (error) {
         // 토큰 갱신 실패 시 로그인 페이지로 리다이렉트
         throw redirect({
@@ -50,9 +52,14 @@ export const Route = createFileRoute('/_main')({
 
     if (!userStore.userInfo) {
       try {
-        await userStore.fetchUserInfo();
+        const userData = await getUserInfoApi();
+        userStore.setUserInfo(userData);
       } catch (error) {
         console.error('Failed to fetch user info:', error);
+        // 유저 정보를 가져오지 못하면 정상적인 서비스 이용이 어려우므로 로그아웃 처리
+        authStore.clearAuth();
+        userStore.clearUserInfo();
+        throw redirect({ to: '/login' });
       }
     }
   },

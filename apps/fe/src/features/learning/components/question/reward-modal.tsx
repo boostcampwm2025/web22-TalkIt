@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 
+import { getUserInfoApi } from '@/apis/user-api';
 import useLearningSession from '@/lib/stores/learning-session';
 import { useUserStore } from '@/lib/stores/user-store';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -26,6 +27,7 @@ const RewardModal = ({ data, isModalOpen, onOpenChange, ...props }: RewardModalP
     difficulty,
     questions,
   } = data;
+  const userStore = useUserStore.getState();
 
   // 세부 XP 합산
   const totalGainedXp = useMemo(() => {
@@ -107,21 +109,28 @@ const RewardModal = ({ data, isModalOpen, onOpenChange, ...props }: RewardModalP
     return items;
   }, [gainedXp, difficulty]);
   const navigate = useNavigate();
-  const fetchUserInfo = useUserStore((state) => state.fetchUserInfo);
+  const refreshUserData = async () => {
+    try {
+      const userdata = await getUserInfoApi();
+      userStore.setUserInfo(userdata);
+    } catch (error) {
+      console.error('리워드 정산 후 유저 정보 동기화 실패:', error);
+    }
+  };
 
   useEffect(() => {
-    if (isModalOpen) return;
-
-    // 모달이 닫히는 시점에 실행 (사용자가 'X'를 누르거나, 다른 곳으로 이동해서 open이 false가 될 때)
-    fetchUserInfo();
-  }, [isModalOpen, fetchUserInfo]);
-
-  useEffect(() => {
+    // Cleanup: 페이지 이동 등으로 모달이 사라질 때 강제 동기화
     return () => {
-      // 모달 컴포넌트 자체가 사라질 때(페이지 이동 등) 최신 정보 갱신
-      fetchUserInfo();
+      refreshUserData();
     };
-  }, [fetchUserInfo]);
+  }, []);
+
+  useEffect(() => {
+    // 사용자가 '메인으로 돌아가기' 등을 눌러 명시적으로 닫았을 때
+    if (!isModalOpen) {
+      refreshUserData();
+    }
+  }, [isModalOpen]);
 
   const handleClose = () => {
     useLearningSession.getState().resetQuestion();
