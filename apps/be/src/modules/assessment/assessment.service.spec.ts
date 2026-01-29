@@ -20,6 +20,16 @@ describe('AssessmentService', () => {
     getAssessmentJobByAnswerId: jest.fn(),
   } as any;
 
+  const userCreditsRepo = {
+    // AssessmentService 안에서 실제로 쓰는 메서드만 mock 하면 됨
+    getTotalCredit: jest.fn(),
+  } as any;
+
+  const sessionsService = {
+    // 실제로 AssessmentService에서 호출하는 메서드만 있으면 됨
+    finishSession: jest.fn(),
+  } as any;
+
   const worker = {
     enqueue: jest.fn(),
   } as any;
@@ -28,7 +38,7 @@ describe('AssessmentService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new AssessmentService(repo, worker);
+    service = new AssessmentService(repo, worker, userCreditsRepo, sessionsService);
   });
 
   describe('submitAndAssess', () => {
@@ -48,6 +58,7 @@ describe('AssessmentService', () => {
 
     it('성공 시 답변/잡 생성 후 큐에 등록하고 DTO를 반환한다', async () => {
       repo.findSessionById.mockResolvedValue({ id: 10, userId: 1 });
+      userCreditsRepo.getTotalCredit.mockResolvedValue(10);
       repo.createAnswerAndJob.mockResolvedValue({ answer: { id: 100 }, job: { id: 200 } });
       worker.enqueue.mockResolvedValue(undefined);
 

@@ -55,4 +55,49 @@ export class UserCreditsRepository {
       },
     });
   }
+
+  /**
+   * 조건부 차감
+   *
+   * 전제:
+   * - worker 트랜잭션 안에서 호출
+   *
+   * 보장:
+   * - 잔액 부족 시 차감 안되도록
+   * - 차감 + DONE을 같은 트랜잭션으로 묶을 수 있음
+   *
+   * 비보장(의도적):
+   * - 동일 userId에 대한 완전한 동시 차감 직렬화
+   *   (이건 구조 변경이 필요)
+   */
+  async consumeIfEnough(
+    userId: number,
+    reason: string,
+    amount: number = 1,
+    tx: Prisma.TransactionClient,
+  ) {
+    // 현재 잔액 조회
+    const result = await tx.$queryRaw<{ total: number }[]>`
+    SELECT IFNULL(SUM(amount), 0) AS total
+    FROM user_credits
+    WHERE user_id = ${userId}
+  `;
+
+    const total = Number(result[0]?.total ?? 0);
+
+    if (total < amount) {
+      throw new Error('CREDIT_EXHAUSTED');
+    }
+
+    // 차감 기록 (INSERT)
+    // - InnoDB write lock
+    // - 트랜잭션 안이므로 DONE과 원자적으로 묶임
+    return tx.userCredit.create({
+      data: {
+        userId,
+        amount: -amount,
+        reason,
+      },
+    });
+  }
 }

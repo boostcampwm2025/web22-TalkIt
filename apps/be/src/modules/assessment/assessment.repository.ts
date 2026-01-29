@@ -122,4 +122,9 @@ export class AssessmentRepository {
       data: { feedbackJson: feedback },
     });
   }
+
+  // 트랜잭션 헬퍼
+  async withTransaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) {
+    return this.prisma.$transaction(fn);
+  }
 }

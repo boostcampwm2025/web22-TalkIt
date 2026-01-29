@@ -17,13 +17,20 @@ class FakeQueue {
 }
 
 describe('AssessmentWorker.enqueue idempotency', () => {
+  const mockUserCreditsRepository = {} as any;
   it('should not add a job if the same jobId already exists', async () => {
     const repo = {} as unknown as AssessmentRepository;
     const orchestrator = {} as unknown as EvaluationOrchestratorService;
     const queue = new FakeQueue(new Set(['answer-123'])) as any;
     const redis = {} as any;
 
-    const worker = new AssessmentWorker(repo, orchestrator, queue, redis);
+    const worker = new AssessmentWorker(
+      repo,
+      orchestrator,
+      mockUserCreditsRepository,
+      queue,
+      redis,
+    );
 
     await worker.enqueue(123);
     expect(queue.added.length).toBe(0);
@@ -35,7 +42,13 @@ describe('AssessmentWorker.enqueue idempotency', () => {
     const queue = new FakeQueue() as any;
     const redis = {} as any;
 
-    const worker = new AssessmentWorker(repo, orchestrator, queue, redis);
+    const worker = new AssessmentWorker(
+      repo,
+      orchestrator,
+      mockUserCreditsRepository,
+      queue,
+      redis,
+    );
 
     await worker.enqueue(456);
     await worker.enqueue(456);

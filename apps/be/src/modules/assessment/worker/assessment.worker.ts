@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
+import { UserCreditsRepository } from '@/users/credits/user-credits.repository';
 import { AssessmentStatus } from '@prisma/client';
 
 import { AssessmentRepository } from '../assessment.repository';
@@ -28,6 +29,7 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly repo: AssessmentRepository,
     private readonly orchestrator: EvaluationOrchestratorService,
+    private readonly userCreditsRepository: UserCreditsRepository,
     @Inject(ASSESS_QUEUE) private readonly queue: Queue,
     @Inject(ASSESS_REDIS) private readonly redis: IORedis,
   ) {}
@@ -122,10 +124,29 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
         error: null,
       });
 
-      // DONE
-      await this.repo.updateAssessmentJob(jobRow.id, {
-        status: AssessmentStatus.DONE,
-        finishedAt: new Date(),
+      // ===== TRANSACTION: credit consume + DONE =====
+      await this.repo.withTransaction(async (tx) => {
+        // answer → userId
+        const answer = await tx.userAnswer.findUnique({
+          where: { id: answerId },
+          select: { userId: true },
+        });
+
+        if (!answer) {
+          throw new Error('ANSWER_NOT_FOUND');
+        }
+
+        // credit consume (조건부)
+        await this.userCreditsRepository.consumeIfEnough(answer.userId, 'FEEDBACK_CONSUME', 1, tx);
+
+        // DONE
+        await tx.assessmentJob.update({
+          where: { id: jobRow.id },
+          data: {
+            status: AssessmentStatus.DONE,
+            finishedAt: new Date(),
+          },
+        });
       });
       await this.progress(job, {
         jobId: jobRow.id,

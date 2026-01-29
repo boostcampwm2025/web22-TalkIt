@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 
 import { ClovaModule } from '@/infra/clova/clova.module';
 import { DatabaseModule } from '@/infra/database/database.module';
+import { SessionsModule } from '@/learning/sessions/sessions.module';
+import { UsersModule } from '@/users/users.module';
 
 import { AssessmentController } from './assessment.controller';
 import { AssessmentRepository } from './assessment.repository';
@@ -20,7 +22,7 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 
 @Module({
-  imports: [DatabaseModule, ClovaModule, EvaluationModule],
+  imports: [DatabaseModule, ClovaModule, EvaluationModule, UsersModule, SessionsModule],
   controllers: [AssessmentController, AssessmentSseController],
   providers: [
     AssessmentService,
