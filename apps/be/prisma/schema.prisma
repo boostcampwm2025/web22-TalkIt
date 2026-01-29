@@ -27,9 +27,10 @@ enum Difficulty {
 model User {
   id              Int      @id @default(autoincrement())
   email           String?  @unique
-  nickname        String   @db.VarChar(50)
+  nickname        String   @db.VarChar(50) @unique
   bio             String?  @db.VarChar(200)
   profileImageUrl String?  @map("profile_image_url") @db.VarChar(500)
+  currentRefreshToken String?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -190,6 +191,7 @@ model UserAnswer {
   answerText   String   @map("answer_text") @db.Text
   timeSpentSec Int      @map("time_spent_sec")
   overallScore Int?     @map("overall_score")
+  evaluationJson Json?  @map("evaluation_json")
   feedbackJson Json?    @map("feedback_json")
   createdAt    DateTime @default(now()) @map("created_at")
 
