@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import { ENV } from '@/constants/env';
+import { useAuthStore } from '@/lib/stores/user-auth-store';
 import type { AssessmentStatus } from '@repo/shared/constants/learning';
 import type { AssessmentStreamEventDTO } from '@repo/shared/types/learning';
 
+import { EventSourcePolyfill } from 'event-source-polyfill';
+
 type UseAssessmentStreamProps = {
+  sessionId: number | null;
   answerId: number | null;
   onStatusChange?: (status: AssessmentStatus) => void;
   onError?: (error: string) => void;
@@ -16,12 +20,14 @@ type UseAssessmentStreamReturn = {
 };
 
 export const useAssessmentStream = ({
+  sessionId,
   answerId,
   onStatusChange,
   onError,
   onDone,
 }: UseAssessmentStreamProps): UseAssessmentStreamReturn => {
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const eventSourceRef = useRef<EventSource | EventSourcePolyfill | null>(null);
+  const accessToken = useAuthStore((state) => state.accessToken);
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -31,10 +37,16 @@ export const useAssessmentStream = ({
   }, []);
 
   useEffect(() => {
-    if (!answerId) return;
-
-    const url = `${ENV.API_URL}/learning/answers/${answerId}/assess/stream`;
-    const eventSource = new EventSource(url);
+    console.log('SSE Hook Attempt:', { sessionId, answerId, hasToken: !!accessToken });
+    if (!sessionId || !answerId || !accessToken) return;
+    console.log('🚀 SSE Connecting...');
+    const url = `${ENV.API_URL}/learning/${sessionId}/answers/${answerId}/assess/stream`;
+    const eventSource = new EventSourcePolyfill(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      heartbeatTimeout: 60 * 1000,
+    });
     eventSourceRef.current = eventSource;
 
     eventSource.onmessage = (event) => {
@@ -71,7 +83,7 @@ export const useAssessmentStream = ({
     return () => {
       disconnect();
     };
-  }, [answerId, onStatusChange, onError, onDone, disconnect]);
+  }, [answerId, onStatusChange, onError, onDone, disconnect, accessToken, sessionId]);
 
   return {
     disconnect,

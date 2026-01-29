@@ -20,19 +20,19 @@ export class UserStatsRepository {
   }
 
   /**
-   * 유저의 학습 통계 정보를 갱신하거나 새로 생성하는 메서드 (Upsert)
+   * 유저의 학습 통계 정보를 절대값을 덮어쓰지 않고, '증가량(delta)'을 받아서 처리하도록 변경
    * @param userId 유저 ID
    * @param data 업데이트할 데이터 (레벨, 경험치, 총 문제 수)
    * @param tx (Optional) 외부 트랜잭션 클라이언트
    */
-  async upsertStats(
+  async updateStatsAtomic(
     userId: number,
     data: {
-      level: number;
-      currentXp: number;
-      totalSolvedQuestions: number;
-      streakDays?: number;
-      totalStudyTimeSec?: number;
+      addedXp: number;
+      addedSolvedCount: number;
+      addedStudyTime: number;
+      newLevel: number;
+      streakDays: number;
     },
     tx?: Prisma.TransactionClient,
   ) {
@@ -41,20 +41,20 @@ export class UserStatsRepository {
     return client.userStats.upsert({
       where: { userId },
       update: {
-        level: data.level,
-        currentXp: data.currentXp,
-        totalSolvedQuestions: data.totalSolvedQuestions,
-        ...(data.streakDays !== undefined && { streakDays: data.streakDays }),
-        ...(data.totalStudyTimeSec !== undefined && { totalStudyTimeSec: data.totalStudyTimeSec }),
+        level: data.newLevel,
+        currentXp: { increment: data.addedXp },
+        totalSolvedQuestions: { increment: data.addedSolvedCount },
+        totalStudyTimeSec: { increment: data.addedStudyTime },
+        streakDays: data.streakDays,
         updatedAt: new Date(),
       },
       create: {
         userId,
-        level: data.level,
-        currentXp: data.currentXp,
-        totalSolvedQuestions: data.totalSolvedQuestions,
-        streakDays: data.streakDays ?? 1,
-        totalStudyTimeSec: data.totalStudyTimeSec ?? 0,
+        currentXp: data.addedXp,
+        totalSolvedQuestions: data.addedSolvedCount,
+        totalStudyTimeSec: data.addedStudyTime,
+        level: data.newLevel,
+        streakDays: data.streakDays,
       },
     });
   }

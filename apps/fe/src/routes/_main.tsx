@@ -1,4 +1,7 @@
+import { refreshAccessTokenApi } from '@/apis/auth-api';
+import { getUserInfoApi } from '@/apis/user-api';
 import { SideBar, SideBarMobile } from '@/components/SideBar';
+import { useAuthStore } from '@/lib/stores/user-auth-store';
 import { useUserStore } from '@/lib/stores/user-store';
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router';
 
@@ -22,19 +25,42 @@ const MainLayout = () => {
 };
 
 export const Route = createFileRoute('/_main')({
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     // 1. Zustand 스토어에서 직접 상태를 가져옵니다 (Hook 아님)
-    const userInfo = useUserStore.getState().userInfo;
+    const authStore = useAuthStore.getState();
+    const userStore = useUserStore.getState();
 
-    // 2. 인증되지 않은 경우 로그인 페이지로 리다이렉트
-    if (!userInfo) {
+    if (!authStore.isAuthenticated) {
+      try {
+        const { accessToken } = await refreshAccessTokenApi();
+        authStore.setAccessToken(accessToken);
+      } catch (error) {
+        // 토큰 갱신 실패 시 로그인 페이지로 리다이렉트
+        throw redirect({
+          to: '/login',
+          search: { redirect: location.href },
+        });
+      }
+    }
+
+    if (!useAuthStore.getState().isAuthenticated) {
       throw redirect({
-        to: '/login', // 로그인 페이지 경로
-        search: {
-          // 로그인 후 원래 페이지로 돌아오기 위해 현재 경로를 저장
-          redirect: location.href,
-        },
+        to: '/login',
+        search: { redirect: location.href },
       });
+    }
+
+    if (!userStore.userInfo) {
+      try {
+        const userData = await getUserInfoApi();
+        userStore.setUserInfo(userData);
+      } catch (error) {
+        console.error('Failed to fetch user info:', error);
+        // 유저 정보를 가져오지 못하면 정상적인 서비스 이용이 어려우므로 로그아웃 처리
+        authStore.clearAuth();
+        userStore.clearUserInfo();
+        throw redirect({ to: '/login' });
+      }
     }
   },
   component: MainLayout,

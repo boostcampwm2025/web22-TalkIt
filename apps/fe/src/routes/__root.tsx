@@ -1,6 +1,9 @@
+import { refreshAccessTokenApi } from '@/apis/auth-api';
+import { getUserInfoApi } from '@/apis/user-api';
 import { Footer } from '@/components/Footer';
 import { TopBar } from '@/components/TopBar';
 import { useAuthStore } from '@/lib/stores/user-auth-store';
+import { useUserStore } from '@/lib/stores/user-store';
 import { Outlet, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 
@@ -43,11 +46,28 @@ export const Route = createRootRoute({
   notFoundComponent: NotFoundComponent,
 
   beforeLoad: async () => {
-    const { isInitializing, checkAuth } = useAuthStore.getState();
+    const authStore = useAuthStore.getState();
+    const userStore = useUserStore.getState();
 
-    // 아직 초기화가 안 되었다면(앱 최초 실행) 체크 시도
-    if (isInitializing) {
-      await checkAuth();
+    if (!authStore.isInitializing) return;
+
+    try {
+      // 인증 갱신 API 호출 (Store 외부에서 수행)
+      const { accessToken } = await refreshAccessTokenApi();
+
+      // 인증 상태 업데이트
+      authStore.setAccessToken(accessToken);
+
+      // 인증 성공 시 유저 정보까지 연속해서 로드
+      if (accessToken) {
+        const userData = await getUserInfoApi();
+        userStore.setUserInfo(userData);
+      }
+    } catch (error) {
+      // 인증 실패(비로그인 등) 시 로딩 상태 해제 및 데이터 클리어
+      console.warn('인증 초기화 실패:', error);
+      authStore.finishInitializing();
+      userStore.clearUserInfo();
     }
   },
 });
