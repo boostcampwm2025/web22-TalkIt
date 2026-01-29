@@ -370,6 +370,9 @@ importers:
 
   packages/shared:
     dependencies:
+      '@asteasolutions/zod-to-openapi':
+        specifier: ^8.4.0
+        version: 8.4.0(zod@4.3.5)
       zod:
         specifier: ^4.3.5
         version: 4.3.5
