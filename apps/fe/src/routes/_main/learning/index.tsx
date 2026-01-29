@@ -11,7 +11,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Flame, ListFilter, Mic, TrendingUp } from 'lucide-react';
 
 const LearningPage = () => {
-  const userInfo = useUserStore((state) => state.userInfo);
+  const userInfo = useUserStore((state) => state.userInfo)!;
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -137,7 +137,9 @@ const LearningPage = () => {
               </div>
               <div>
                 <p className="mb-1 text-sm text-dark-gray">총 학습 시간</p>
-                <p className="text-2xl font-bold text-primary">{studyStats?.totalStudyTime}분</p>
+                <p className="text-2xl font-bold text-primary">
+                  {Math.round((studyStats?.totalStudyTime ?? 0) / 60)}분
+                </p>
               </div>
             </div>
           </div>
@@ -151,7 +153,9 @@ const LearningPage = () => {
           </div>
           <div className="flex flex-col justify-center rounded-2xl border border-gray bg-white p-5 shadow-sm">
             <p className="mb-2 text-sm text-dark-gray">총 학습 시간</p>
-            <p className="text-lg font-bold text-primary">{studyStats?.totalStudyTime}분</p>
+            <p className="text-lg font-bold text-primary">
+              {Math.round((studyStats?.totalStudyTime ?? 0) / 60)}분
+            </p>
           </div>
         </section>
 
@@ -184,7 +188,7 @@ const LearningPage = () => {
                     />
 
                     <div
-                      className={`mb-3 transition-colors group-hover:text-primary ${isSelected ? 'text-primary' : 'text-black'}`}
+                      className={`mb-3 transition-colors group-hover:text-primary ${isSelected ? `text-primary` : `text-black`}`}
                     >
                       <topic.Icon className="h-6 w-6" />
                     </div>
@@ -267,7 +271,7 @@ const LearningPage = () => {
           <button
             onClick={handleStartClick}
             disabled={isLoading}
-            className={`z-10 flex w-full items-center justify-center gap-2 rounded-lg px-6 py-4 font-medium text-white transition-colors md:w-auto md:py-3 ${isLoading ? 'cursor-not-allowed bg-gray-600' : 'bg-primary hover:bg-primary/80'} `}
+            className={`z-10 flex w-full items-center justify-center gap-2 rounded-lg px-6 py-4 font-medium text-white transition-colors md:w-auto md:py-3 ${isLoading ? `cursor-not-allowed bg-gray-600` : `bg-primary hover:bg-primary/80`} `}
           >
             {isLoading ? (
               <span>질문 생성 중...</span>
@@ -284,6 +288,6 @@ const LearningPage = () => {
   );
 };
 
-export const Route = createFileRoute('/learning/')({
+export const Route = createFileRoute('/_main/learning/')({
   component: LearningPage,
 });

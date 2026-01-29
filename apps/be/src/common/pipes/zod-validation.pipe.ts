@@ -1,17 +1,21 @@
-import { BadRequestException, PipeTransform } from '@nestjs/common';
+import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { ZodType } from 'zod';
+import { ZodSchema } from 'zod';
 
-export class ZodValidationPipe<T> implements PipeTransform {
-  constructor(private readonly schema: ZodType<T>) {}
+@Injectable()
+export class ZodValidationPipe implements PipeTransform {
+  constructor(private readonly schema: ZodSchema) {}
 
-  transform(value: unknown): T {
+  transform(value: unknown) {
     const result = this.schema.safeParse(value);
 
     if (!result.success) {
+      // zod의 flatten()을 사용하여 에러를 필드별로 그룹화
+      const { fieldErrors } = result.error.flatten();
+
       throw new BadRequestException({
-        message: 'Validation failed',
-        errors: result.error.flatten(),
+        message: '유효성 검사에 실패했습니다.',
+        errors: fieldErrors,
       });
     }
 

@@ -5,9 +5,12 @@ import '@/common/utils/zod-openapi';
 
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './src/common/filters/http-exception.filter';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(cookieParser());
 
   app.useGlobalFilters(new HttpExceptionFilter());
   app.enableCors({
@@ -19,7 +22,17 @@ async function bootstrap() {
     .setTitle('Talkit API')
     .setDescription('Talkit 백엔드 API 문서')
     .setVersion('1.0')
-    // .addBearerAuth() // JWT 쓰면 추후 설정
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: '로그인 후 받은 Access Token을 입력하세요.',
+        in: 'header',
+      },
+      'access-token',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

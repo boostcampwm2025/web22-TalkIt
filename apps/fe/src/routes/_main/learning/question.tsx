@@ -39,6 +39,7 @@ const QuestionPageContent = () => {
   }, [answerId, setFeedback, setPhase, setRemainedCredit]);
 
   useAssessmentStream({
+    sessionId,
     answerId,
     onStatusChange: setAssessmentStatus,
     onDone: handleFeedbackDone,
@@ -71,18 +72,22 @@ const QuestionPageContent = () => {
     return null;
   }
 
+  const sessionKey = question.questionId
+    ? `question-${question.questionId}`
+    : `extra-question-${question.extraQuestionId}`;
+
   return (
     <div className="relative mx-auto flex min-h-screen max-w-250 flex-col gap-8 p-6 sm:p-10">
       <QuestionHeader />
-      <QuestionContent key={`question-content-${question?.questionId}`} />
+      <QuestionContent key={`question-content-${sessionKey}`} />
       <VoiceRecorderSection
-        key={`voice-recorder-section-${question?.questionId}`}
+        key={`voice-recorder-section-${sessionKey}`}
         onRecordingComplete={handleRecordingComplete}
       />
       <AnswerSection />
       <FeedbackSection />
       <div className="flex-1" />
-      <FloatingStepBar key={`floating-step-bar-${question?.questionId}`} />
+      <FloatingStepBar key={`floating-step-bar-${sessionKey}`} />
     </div>
   );
 };
@@ -95,6 +100,6 @@ const QuestionPage = () => {
   );
 };
 
-export const Route = createFileRoute('/learning/question')({
+export const Route = createFileRoute('/_main/learning/question')({
   component: QuestionPage,
 });

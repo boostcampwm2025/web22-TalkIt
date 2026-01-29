@@ -1,7 +1,7 @@
-import PrepareImage from '@/assets/prepare2.png';
+import PrepareImage from '@/assets/prepare.png';
 import { createFileRoute } from '@tanstack/react-router';
 
-const RouteComponent = () => {
+const BattlePage = () => {
   return (
     <div
       style={{
@@ -19,7 +19,7 @@ const RouteComponent = () => {
         src={PrepareImage}
         alt="준비중 마스코트"
         style={{
-          width: '320px',
+          width: '500px',
           height: 'auto',
           objectFit: 'contain',
         }}
@@ -36,6 +36,6 @@ const RouteComponent = () => {
   );
 };
 
-export const Route = createFileRoute('/ranking/')({
-  component: RouteComponent,
+export const Route = createFileRoute('/_main/battle/')({
+  component: BattlePage,
 });

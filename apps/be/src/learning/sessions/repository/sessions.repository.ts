@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '@/infra/database/prisma.service';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class SessionsRepository {
@@ -10,8 +10,10 @@ export class SessionsRepository {
   /**
    * 세션 ID로 세션 조회
    */
-  async findById(id: number) {
-    return this.prisma.session.findUnique({
+  async findById(id: number, tx?: Prisma.TransactionClient) {
+    const client = tx ?? this.prisma;
+
+    return client.session.findUnique({
       where: { id },
     });
   }
@@ -33,14 +35,22 @@ export class SessionsRepository {
 
   /**
    * 새 세션 생성
+   * - createSession 단계에서 첫 질문이 이미 제공되므로
+   * - currentQuestionCount는 1부터 시작한다.
    */
-  async createSession(data: { userId: number; category: string; difficulty: string }) {
-    return this.prisma.session.create({
+  async createSession(
+    data: { userId: number; category: string; difficulty: string },
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+
+    return client.session.create({
       data: {
         userId: data.userId,
         status: 'ACTIVE',
         category: data.category,
         difficulty: data.difficulty,
+        currentQuestionCount: 1,
       },
     });
   }
@@ -57,98 +67,47 @@ export class SessionsRepository {
 
   /**
    * 세션 완료 처리
+   * - getNextQuestion 등에서는 직접 호출하지 않고
+   * - finishSession에서 단일 책임으로 호출
    */
-  async completeSession(id: number) {
-    return this.prisma.session.update({
+  async completeSession(
+    id: number,
+    resultData: {
+      totalScore: number;
+      totalTimeSec: number;
+      gainedXp: Prisma.InputJsonValue;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+
+    return client.session.update({
       where: { id },
       data: {
         status: 'COMPLETED',
         completedAt: new Date(),
+        totalScore: resultData.totalScore,
+        totalTimeSec: resultData.totalTimeSec,
+        gainedXp: resultData.gainedXp,
       },
     });
   }
 
   /**
    * 세션 내 질문 count 증가 처리
+   * - 트랜잭션 대응
+   * - 증가된 session row를 반환
    */
-  async incrementQuestionCount(sessionId: number): Promise<void> {
-    await this.prisma.session.update({
+  async incrementQuestionCount(sessionId: number, tx?: Prisma.TransactionClient) {
+    const client = tx ?? this.prisma;
+
+    return client.session.update({
       where: { id: sessionId },
       data: {
         currentQuestionCount: {
           increment: 1,
         },
       },
-    });
-  }
-
-  /**
-   * 사용자 답변 저장
-   */
-  async saveAnswer(data: {
-    sessionId: number;
-    userId: number;
-    questionId: number;
-    answerText: string;
-    timeSpentSec: number;
-    overallScore?: number;
-    feedbackJson?: Prisma.InputJsonValue;
-  }) {
-    return this.prisma.userAnswer.create({
-      data: {
-        sessionId: data.sessionId,
-        userId: data.userId,
-        questionId: data.questionId,
-        answerText: data.answerText,
-        timeSpentSec: data.timeSpentSec,
-        overallScore: data.overallScore ?? 0,
-        feedbackJson: data.feedbackJson ?? {},
-      },
-    });
-  }
-
-  /**
-   * 세션의 모든 답변 조회
-   */
-  async findAnswersBySessionId(sessionId: number) {
-    return this.prisma.userAnswer.findMany({
-      where: { sessionId },
-      include: {
-        question: {
-          select: {
-            id: true,
-            content: true,
-            category: true,
-            difficulty: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
-  }
-
-  /**
-   * 답변 ID로 답변 조회
-   */
-  async findAnswerById(id: number) {
-    return this.prisma.userAnswer.findUnique({
-      where: { id },
-      include: {
-        question: true,
-        session: true,
-      },
-    });
-  }
-
-  /**
-   * 답변 업데이트
-   */
-  async updateAnswer(id: number, data: Prisma.UserAnswerUpdateInput) {
-    return this.prisma.userAnswer.update({
-      where: { id },
-      data,
     });
   }
 

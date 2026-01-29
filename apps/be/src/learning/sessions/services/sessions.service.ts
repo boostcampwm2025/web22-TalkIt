@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { Difficulty, Domain } from '@/common/enums/learning.enum';
 import { PrismaService } from '@/infra/database/prisma.service';
@@ -37,6 +42,14 @@ export class SessionsService {
     private readonly streakCalculator: StreakCalculatorService,
   ) {}
 
+  /**
+   * 세션 생성 + 첫 질문 제공
+   *
+   * 규칙:
+   * - 세션 생성과 첫 질문 비용 차감은 하나의 트랜잭션
+   * - createSession 시점에 currentQuestionCount = 1
+   */
+
   async createSession(userId: number, dto: CreateSessionDto) {
     /**
      * 이미 진행 중인 세션 체크
@@ -54,8 +67,33 @@ export class SessionsService {
     const question = await this.questionService.pickOne(dto.category, dto.difficulty);
 
     if (!question) {
-      throw new BadRequestException('선택한 주제와 난이도에 해당하는 질문이 존재하지 않습니다.');
+      throw new NotFoundException({
+        code: 'QUESTION_NOT_FOUND',
+        message: '선택한 주제와 난이도에 해당하는 질문이 없습니다.',
+      });
     }
+
+    /**
+     * 유저의 잔여 크레딧 조회
+     */
+
+    const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
+
+    /**
+     * 세션 생성 + 첫 질문 비용 차감 (원자적 처리)
+     */
+    const session = await this.sessionsRepository.transaction(async (tx) => {
+      const createdSession = await this.sessionsRepository.createSession(
+        {
+          userId,
+          category: dto.category,
+          difficulty: dto.difficulty,
+        },
+        tx,
+      );
+
+      return createdSession;
+    });
 
     /**
      * mustInclude 키워드를 기반으로
@@ -63,19 +101,10 @@ export class SessionsService {
      */
     const guide = this.guideBuilder.build(question.mustInclude);
 
-    /**
-     * 세션 생성 (Repository 타입과 정확히 일치)
-     */
-    const session = await this.sessionsRepository.createSession({
-      userId,
-      category: dto.category,
-      difficulty: dto.difficulty,
-    });
-
     return {
       sessionId: session.id,
-      currentQuestionCount: 1,
-      remainedCredit: 20,
+      currentQuestionCount: session.currentQuestionCount,
+      remainedCredit: remainedCredit,
       question: {
         questionId: question.questionId,
         content: question.content,
@@ -87,14 +116,25 @@ export class SessionsService {
     };
   }
 
-  async getNextQuestion(sessionId: number) {
+  /**
+   * 다음 질문 조회
+   *
+   * 규칙:
+   * - 질문 제공 시점에 크레딧 차감 + questionCount 증가
+   * - 종료 조건 감지만 담당 (종료 처리는 finishSession에 위임)
+   */
+
+  async getNextQuestion(sessionId: number, userId: number) {
     /**
      * 1. 세션 조회
      */
     const session = await this.sessionsRepository.findById(sessionId);
 
     if (!session) {
-      throw new NotFoundException('학습 세션을 찾을 수 없습니다.');
+      throw new NotFoundException({
+        code: 'SESSION_NOT_FOUND',
+        message: '세션을 찾을 수 없습니다.',
+      });
     }
 
     /**
@@ -102,17 +142,20 @@ export class SessionsService {
      */
 
     if (session.completedAt) {
-      throw new BadRequestException('이미 종료된 학습 세션입니다.');
+      throw new ConflictException({
+        code: 'SESSION_COMPLETED',
+        message: '이미 종료된 학습 세션입니다.',
+      });
+    }
+
+    if (session.userId !== userId) {
+      throw new BadRequestException({ code: 'FORBIDDEN', message: '세션 소유자가 아닙니다.' });
     }
 
     /**
      * 3. 유저 잔여 크레딧 조회 (UserCredit ledger SUM)
      */
-    /*const remainedCredit = await this.userCreditsRepository.getTotalCredit(session.userId);
-
-    if (remainedCredit <= 0) {
-      throw new BadRequestException('잔여 크레딧이 부족합니다.');
-    }*/
+    const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
 
     const question = await this.questionService.pickOne(
       session.category as Domain,
@@ -123,20 +166,18 @@ export class SessionsService {
       /**
        * 더 이상 질문이 없다면 세션 종료 처리
        */
-      /**
-       * TODO: 세션 종료 처리
-       *
-       * - status를 COMPLETED로 변경
-       * - completedAt 기록
-       * - 최종 점수 / XP 계산 (향후)
-       * - 세션 요약 리포트 생성 (향후)
-       * - 더이상 질문이 없다는 건, 알려줘야하지 않을까?
-       */
+
+      await this.finishSession(sessionId, userId);
+      throw new ConflictException({
+        code: 'SESSION_COMPLETED',
+        message: '더 이상 제공할 질문이 없어 세션이 종료되었습니다.',
+      });
     }
 
     // 질문 제공 후 증가
-    await this.sessionsRepository.incrementQuestionCount(sessionId);
-
+    const updatedSession = await this.sessionsRepository.transaction(async (tx) => {
+      return this.sessionsRepository.incrementQuestionCount(sessionId, tx);
+    });
     /**
      * 5. 답변 가이드 생성
      */
@@ -146,8 +187,8 @@ export class SessionsService {
      * 6. 응답 반환
      */
     return {
-      currentQuestionCount: session.currentQuestionCount + 1,
-      remainedCredit: 20,
+      currentQuestionCount: updatedSession.currentQuestionCount,
+      remainedCredit: remainedCredit,
       question: {
         questionId: question.questionId,
         content: question.content,
@@ -161,10 +202,11 @@ export class SessionsService {
 
   /**
    * 세션 종료 및 리워드(XP, 레벨, 스트릭) 정산을 수행하는 메인 메서드
+   * - 세션 종료는 반드시 이 메서드를 통해서만 수행
    */
-  async finishSession(sessionId: number): Promise<FinishSessionResponseDto> {
+  async finishSession(sessionId: number, userId: number): Promise<FinishSessionResponseDto> {
     // 1. 검증 및 데이터 로드
-    const { session, answers } = await this.validateAndLoadSession(sessionId);
+    const { session, answers } = await this.validateAndLoadSession(sessionId, userId);
 
     // ✅ 중도 포기 처리 (답변 0개)
     if (answers.length === 0) {
@@ -180,7 +222,7 @@ export class SessionsService {
       });
 
       // 유저의 기존 스탯 정보를 가져옴 (경험치 변화 없음)
-      const userStats = await this.userStatsRepository.findStatsByUserId(session.userId);
+      const userStats = await this.userStatsRepository.findStatsByUserId(userId);
       const currentLevel = userStats?.level || 1;
       const currentTotalXp = userStats?.currentXp || 0;
 
@@ -209,18 +251,17 @@ export class SessionsService {
     const totalTimeSec = answers.reduce((sum, ans) => sum + (ans.timeSpentSec || 0), 0);
 
     // 4. DB 트랜잭션 실행
-    const result = await this.prisma.$transaction(async (tx) => {
-      // 4-1. 세션 종료
-      await tx.session.update({
-        where: { id: sessionId, status: 'ACTIVE' },
-        data: {
-          status: 'COMPLETED',
-          completedAt: new Date(),
+    const result = await this.sessionsRepository.transaction(async (tx) => {
+      // 4-1. 세션 종료 (Repository 호출) ✅
+      await this.sessionsRepository.completeSession(
+        sessionId,
+        {
           totalScore,
           totalTimeSec,
           gainedXp: detail as unknown as Prisma.InputJsonValue,
         },
-      });
+        tx, // 트랜잭션 클라이언트 전달
+      );
 
       // 4-2. 유저 스탯 조회
       const userStats = await this.userStatsRepository.findStatsByUserId(session.userId, tx);
@@ -239,14 +280,14 @@ export class SessionsService {
       const levelInfo = await this.processLevelUp(currentLevel, currentTotalXp);
 
       // 4-6. 유저 스탯 저장
-      await this.userStatsRepository.upsertStats(
+      await this.userStatsRepository.updateStatsAtomic(
         session.userId,
         {
-          level: levelInfo.level,
-          currentXp: currentTotalXp, // 누적된 총 XP
-          totalSolvedQuestions: (userStats?.totalSolvedQuestions || 0) + answers.length,
+          newLevel: levelInfo.level,
           streakDays: newStreak,
-          totalStudyTimeSec: (userStats?.totalStudyTimeSec || 0) + totalTimeSec,
+          addedXp: totalGainedXp,
+          addedSolvedCount: answers.length,
+          addedStudyTime: totalTimeSec,
         },
         tx,
       );
@@ -260,10 +301,14 @@ export class SessionsService {
   /**
    * 세션 및 답변 데이터를 조회하고, 종료 가능 여부를 검증하는 메서드
    */
-  private async validateAndLoadSession(sessionId: number) {
+  private async validateAndLoadSession(sessionId: number, userId: number) {
     const session = await this.sessionsRepository.findById(sessionId);
     if (!session) throw new NotFoundException('세션을 찾을 수 없습니다.');
     if (session.status === 'COMPLETED') throw new BadRequestException('이미 종료된 세션입니다.');
+
+    if (session.userId !== userId) {
+      throw new BadRequestException({ code: 'FORBIDDEN', message: '세션 소유자가 아닙니다.' });
+    }
 
     const answers = await this.prisma.userAnswer.findMany({
       where: { sessionId },

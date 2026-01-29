@@ -1,7 +1,7 @@
 import PrepareImage from '@/assets/prepare.png';
 import { createFileRoute } from '@tanstack/react-router';
 
-const BattlePage = () => {
+const MyPage = () => {
   return (
     <div
       style={{
@@ -36,6 +36,6 @@ const BattlePage = () => {
   );
 };
 
-export const Route = createFileRoute('/battle/')({
-  component: BattlePage,
+export const Route = createFileRoute('/_main/mypage/')({
+  component: MyPage,
 });
