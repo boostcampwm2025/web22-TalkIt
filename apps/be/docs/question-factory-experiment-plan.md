@@ -11,12 +11,12 @@
 
 ```
 question-factory (베이스 - 공통 인프라)
-├── question-factory/approach-1  (도메인만 전달)
-├── question-factory/approach-2  (용어 목록 + LLM 자율 난이도)
-├── question-factory/approach-3  (용어 + 개념 난이도 전달)
-├── question-factory/approach-4  (용어 + 개념 난이도 + 난이도 기준 전달)
-├── question-factory/approach-5  (교과서/커리큘럼 기반)
-└── question-factory/approach-6  (Bloom's Taxonomy 기반)
+├── qf/approach-1  (도메인만 전달)
+├── qf/approach-2  (용어 목록 + LLM 자율 난이도)
+├── qf/approach-3  (용어 + 개념 난이도 전달)
+├── qf/approach-4  (용어 + 개념 난이도 + 난이도 기준 전달)
+├── qf/approach-5  (교과서/커리큘럼 기반)
+└── qf/approach-6  (Bloom's Taxonomy 기반)
 ```
 
 모든 브랜치는 `question-factory`에서 분기한다.
@@ -50,7 +50,7 @@ output/question-bank/
 
 LLM에게 도메인(OS, Network 등)만 주고, 어떤 주제를 어떤 난이도로 만들지 전부 자율에 맡긴다.
 
-**브랜치**: `question-factory/approach-1`
+**브랜치**: `qf/approach-1`
 
 **LLM에게 전달하는 정보**:
 
@@ -85,7 +85,7 @@ docs: approach-1 실험 결과 기록
 
 미리 정의한 용어 목록을 전달하고, 각 용어에 대해 LLM이 난이도를 자율 판단하여 질문을 생성한다.
 
-**브랜치**: `question-factory/approach-2`
+**브랜치**: `qf/approach-2`
 
 **LLM에게 전달하는 정보**:
 
@@ -121,7 +121,7 @@ docs: approach-2 실험 결과 기록
 
 용어와 함께 해당 용어의 개념 난이도(Basic/Intermediate/Advanced)를 명시하여 전달한다.
 
-**브랜치**: `question-factory/approach-3`
+**브랜치**: `qf/approach-3`
 
 **LLM에게 전달하는 정보**:
 
@@ -158,7 +158,7 @@ docs: approach-3 실험 결과 기록
 
 방안 3에 더해, 각 난이도가 구체적으로 무엇을 의미하는지 기준을 프롬프트에 포함한다.
 
-**브랜치**: `question-factory/approach-4`
+**브랜치**: `qf/approach-4`
 
 **LLM에게 전달하는 정보**:
 
@@ -196,7 +196,7 @@ docs: approach-4 실험 결과 기록
 
 CS 교과서 목차 구조를 프롬프트에 포함하여, 해당 챕터 범위의 질문을 생성한다.
 
-**브랜치**: `question-factory/approach-5`
+**브랜치**: `qf/approach-5`
 
 **LLM에게 전달하는 정보**:
 
@@ -233,7 +233,7 @@ docs: approach-5 실험 결과 기록
 처음부터 Bloom's Taxonomy 인지 수준을 기반으로 질문을 생성한다.
 이 방안은 단독 생성 방안이자, 방안 1~5의 검증 단계로도 사용된다.
 
-**브랜치**: `question-factory/approach-6`
+**브랜치**: `qf/approach-6`
 
 **Bloom's Taxonomy 매핑**:
 
@@ -319,15 +319,97 @@ QF_DOMAIN=Network QF_TERM=TCP QF_COUNT=3 pnpm generate:questions
 
 ---
 
-## 결과 비교 기준
+## 비교 실험 방식 (OS 도메인 기준)
 
-각 방안의 결과물을 다음 기준으로 비교한다:
+### 실험 개요
 
-| 기준               | 설명                                                   |
-| ------------------ | ------------------------------------------------------ |
-| **다양성**         | 같은 도메인 내 질문들이 서로 다른 주제/관점을 다루는가 |
-| **난이도 구분**    | Basic/Intermediate/Advanced가 실제로 구분되는가        |
-| **질문 품질**      | 면접에서 실제로 물어볼 만한 질문인가                   |
-| **중복률**         | 의미적으로 동일한 질문이 몇 개나 생성되었는가          |
-| **Bloom's 정합성** | 질문의 인지 수준이 지정된 난이도와 일치하는가          |
-| **토큰 사용량**    | 생성에 소비된 입력/출력 토큰 수 (비용 효율성)          |
+OS 도메인을 기준으로 6가지 방안의 질문 생성 품질을 비교한다.
+각 방안별로 동일한 조건(30개 질문)으로 생성한 뒤, 자동 비교 스크립트 + 수동 샘플링으로 평가한다.
+
+### 1단계: 대량 생성
+
+각 approach 브랜치에서 OS 도메인에 대해 **난이도 3개 × 10개 = 30개**씩 생성한다.
+
+```bash
+cd apps/be
+QF_BULK=true QF_COUNT=10 QF_DOMAIN=OS pnpm generate:questions
+```
+
+이 명령은 Basic 10개, Intermediate 10개, Advanced 10개를 순차 생성하여
+`output/question-bank/{approach}/` 폴더에 저장한다.
+
+**생성 결과 파일 구조**:
+
+```
+output/question-bank/
+├── approach-1/
+│   ├── OS-Basic-{datetime}-draft.json        (10개)
+│   ├── OS-Intermediate-{datetime}-draft.json (10개)
+│   └── OS-Advanced-{datetime}-draft.json     (10개)
+├── approach-2/
+│   └── ...
+├── ...
+└── approach-6/
+    ├── OS-Basic-{datetime}-final.json        (approach-6은 final만)
+    ├── OS-Intermediate-{datetime}-final.json
+    └── OS-Advanced-{datetime}-final.json
+```
+
+### 2단계: 자동 비교 스크립트
+
+`compare-report.script.ts`를 실행하여 전 approach의 결과를 자동 분석한다.
+
+```bash
+pnpm compare:questions
+```
+
+**자동 비교 항목**:
+
+| 항목                    | 측정 방법                           | 비교 포인트                                       |
+| ----------------------- | ----------------------------------- | ------------------------------------------------- |
+| **질문 수**             | 파일별 questions 배열 길이 합산     | 요청 수(30) 대비 실제 생성 수                     |
+| **난이도 분포**         | concept_level별 카운트              | Basic:Intermediate:Advanced = 10:10:10에 가까운가 |
+| **Bloom's 수준 분포**   | bloom_level별 카운트                | 6단계가 골고루 분포되는가                         |
+| **토픽 커버리지**       | topic_id의 고유 값 수               | OS의 주요 토픽을 얼마나 다양하게 다루는가         |
+| **중복 쌍**             | Jaccard 유사도 >= 0.7인 질문 쌍 수  | 낮을수록 좋음                                     |
+| **토큰 사용량**         | meta.tokenUsage.totalTokens 합산    | 같은 품질이면 적을수록 좋음                       |
+| **Bloom's 검증 통과율** | verifyResults에서 verdict=pass 비율 | 높을수록 난이도 정합성이 좋음                     |
+
+**리포트 출력**: `output/question-bank/compare-report.md`에 마크다운 형태로 저장된다.
+
+### 3단계: 수동 샘플링 평가
+
+자동 비교로 확인하기 어려운 항목을 수동으로 평가한다.
+각 approach에서 **난이도별 2개씩 총 6개**를 랜덤 추출하여 다음을 확인한다:
+
+| 평가 항목       | 판단 기준                                            |
+| --------------- | ---------------------------------------------------- |
+| **면접 적합성** | 실제 CS 면접에서 물어볼 만한 질문인가? (1~5점)       |
+| **난이도 체감** | Basic은 쉽고, Advanced는 어렵게 느껴지는가? (1~5점)  |
+| **질문 명확성** | 질문 의도가 명확하고, 답변 범위가 적절한가? (1~5점)  |
+| **의미적 중복** | 자동으로 잡지 못한 의미적 중복이 있는가? (있음/없음) |
+
+### 비교 기준 요약
+
+| 기준               | 설명                                                   | 측정 방법                                       |
+| ------------------ | ------------------------------------------------------ | ----------------------------------------------- |
+| **다양성**         | 같은 도메인 내 질문들이 서로 다른 주제/관점을 다루는가 | 토픽 커버리지 수 (자동)                         |
+| **난이도 구분**    | Basic/Intermediate/Advanced가 실제로 구분되는가        | Bloom's 검증 통과율 (자동) + 난이도 체감 (수동) |
+| **질문 품질**      | 면접에서 실제로 물어볼 만한 질문인가                   | 면접 적합성 점수 (수동)                         |
+| **중복률**         | 의미적으로 동일한 질문이 몇 개나 생성되었는가          | Jaccard 중복 쌍 (자동) + 의미적 중복 (수동)     |
+| **Bloom's 정합성** | 질문의 인지 수준이 지정된 난이도와 일치하는가          | 검증 통과율 (자동)                              |
+| **토큰 효율성**    | 같은 품질 대비 토큰 소비가 적은가                      | totalTokens (자동)                              |
+
+### OS 토픽 기대 범위
+
+생성된 질문이 아래 토픽들을 커버하는지 확인한다:
+
+| 카테고리      | 주요 토픽                                                                   |
+| ------------- | --------------------------------------------------------------------------- |
+| 프로세스 관리 | Process, Thread, Context Switch, Scheduling (FCFS, SJF, RR, Priority)       |
+| 동기화        | Mutex, Semaphore, Deadlock, Race Condition, Monitor                         |
+| 메모리 관리   | Paging, Segmentation, Virtual Memory, Page Replacement (LRU, FIFO, Optimal) |
+| 파일 시스템   | File System, Directory, Inode, Disk Scheduling                              |
+| I/O           | Interrupt, DMA, Buffering, Spooling                                         |
+
+**커버리지 목표**: 최소 3개 카테고리 이상의 토픽이 포함되어야 함
