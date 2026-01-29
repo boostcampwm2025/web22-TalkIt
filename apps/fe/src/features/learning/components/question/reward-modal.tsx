@@ -1,6 +1,7 @@
-import { forwardRef, useMemo } from 'react';
+import { forwardRef, useEffect, useMemo } from 'react';
 
 import useLearningSession from '@/lib/stores/learning-session';
+import { useUserStore } from '@/lib/stores/user-store';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
 import { useNavigate } from '@tanstack/react-router';
@@ -107,9 +108,25 @@ const RewardModal = forwardRef<HTMLDivElement, RewardModalProps>(
       return items;
     }, [gainedXp, difficulty]);
     const navigate = useNavigate();
+    const fetchUserInfo = useUserStore((state) => state.fetchUserInfo);
+
+    useEffect(() => {
+      if (isModalOpen) return;
+
+      // 모달이 닫히는 시점에 실행 (사용자가 'X'를 누르거나, 다른 곳으로 이동해서 open이 false가 될 때)
+      fetchUserInfo();
+    }, [isModalOpen, fetchUserInfo]);
+
+    useEffect(() => {
+      return () => {
+        // 모달 컴포넌트 자체가 사라질 때(페이지 이동 등) 최신 정보 갱신
+        fetchUserInfo();
+      };
+    }, [fetchUserInfo]);
 
     const handleClose = () => {
       useLearningSession.getState().resetQuestion();
+      onOpenChange(false);
       navigate({ to: '/learning', replace: true });
     };
 
