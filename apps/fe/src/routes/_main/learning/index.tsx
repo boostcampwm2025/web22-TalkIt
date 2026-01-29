@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { startSessionApi } from '@/apis/learning-api';
 import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constants/question';
@@ -11,21 +11,11 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Flame, ListFilter, Mic, TrendingUp } from 'lucide-react';
 
 const LearningPage = () => {
-  const userInfo = useUserStore((state) => state.userInfo);
+  const userInfo = useUserStore((state) => state.userInfo)!;
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const setQuestion = useLearningSession((state) => state.setQuestion);
-
-  useEffect(() => {
-    if (!userInfo) {
-      navigate({ to: '/', replace: true });
-    }
-  }, [userInfo, navigate]);
-
-  if (!userInfo) {
-    return null; // todo: 혹은 <div className="...">로그인 페이지로 이동 중...</div>
-  }
 
   const { profile, progression, studyStats } = userInfo;
 

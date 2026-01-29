@@ -1,7 +1,6 @@
-// routes/_main.tsx
 import { SideBar, SideBarMobile } from '@/components/SideBar';
-// 경로에 맞게 수정
-import { Outlet, createFileRoute } from '@tanstack/react-router';
+import { useUserStore } from '@/lib/stores/user-store';
+import { Outlet, createFileRoute, redirect } from '@tanstack/react-router';
 
 const MainLayout = () => {
   return (
@@ -23,5 +22,20 @@ const MainLayout = () => {
 };
 
 export const Route = createFileRoute('/_main')({
+  beforeLoad: ({ location }) => {
+    // 1. Zustand 스토어에서 직접 상태를 가져옵니다 (Hook 아님)
+    const userInfo = useUserStore.getState().userInfo;
+
+    // 2. 인증되지 않은 경우 로그인 페이지로 리다이렉트
+    if (!userInfo) {
+      throw redirect({
+        to: '/login', // 로그인 페이지 경로
+        search: {
+          // 로그인 후 원래 페이지로 돌아오기 위해 현재 경로를 저장
+          redirect: location.href,
+        },
+      });
+    }
+  },
   component: MainLayout,
 });
