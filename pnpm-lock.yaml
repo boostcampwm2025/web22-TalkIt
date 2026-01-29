@@ -366,6 +366,10 @@ importers:
         version: 8.49.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.2)
 
   packages/shared:
+    dependencies:
+      zod:
+        specifier: ^4.3.5
+        version: 4.3.5
     devDependencies:
       '@repo/eslint-config':
         specifier: workspace:*
