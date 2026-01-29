@@ -1,30 +1,46 @@
-import { Controller, Param, Sse } from '@nestjs/common';
+import { Controller, Param, ParseIntPipe, Sse, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+
+import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
+import { ActiveUser } from '@/common/decorators/active-user.decorator';
 
 import { AssessmentRepository } from '../assessment.repository';
 import { AssessmentPubSub } from '../pubsub/assessment.pubsub';
-import { Observable, Subject } from 'rxjs';
+import { Observable } from 'rxjs';
 
 type SseEvent = MessageEvent;
 
 @ApiTags('Learning - Assessment')
-@Controller('/api/learning/answers')
+@Controller('/api/learning')
 export class AssessmentSseController {
   constructor(
     private readonly pubsub: AssessmentPubSub,
     private readonly repo: AssessmentRepository,
   ) {}
 
-  @Sse(':answerId/assess/stream')
+  @Sse(':sessionId/answers/:answerId/assess/stream')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '평가 진행 상황 SSE 스트림' })
   @ApiParam({ name: 'answerId', type: Number })
-  sse(@Param('answerId') answerIdParam: string): Observable<SseEvent> {
+  sse(
+    @ActiveUser() user: { id: number },
+    @Param('sessionId', ParseIntPipe) sessionId: number,
+    @Param('answerId') answerIdParam: string,
+  ): Observable<SseEvent> {
     const answerId = Number(answerIdParam);
-    const userId = 1; // TODO: JWT 연동 시 교체 및 소유권 검사
+    const userId = user.id;
 
     return new Observable<SseEvent>((subscriber) => {
       let cleanup: (() => void) | null = null;
       (async () => {
+        const session = await this.repo.findSessionById(sessionId);
+
+        if (!session || session.userId !== userId) {
+          subscriber.next({ data: { error: 'FORBIDDEN_SESSION' } } as any);
+          subscriber.complete();
+          return;
+        }
+
         const answer = await this.repo.getAnswerWithRelations(answerId);
         if (!answer || answer.userId !== userId) {
           subscriber.next({ data: { error: 'FORBIDDEN' } } as any);

@@ -39,6 +39,7 @@ const QuestionPageContent = () => {
   }, [answerId, setFeedback, setPhase, setRemainedCredit]);
 
   useAssessmentStream({
+    sessionId,
     answerId,
     onStatusChange: setAssessmentStatus,
     onDone: handleFeedbackDone,
