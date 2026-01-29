@@ -18,9 +18,9 @@ export class AssessmentSseController {
     private readonly repo: AssessmentRepository,
   ) {}
 
-  @Sse(':answerId/assess/stream')
+  // @Sse(':answerId/assess/stream')
   @ApiOperation({ summary: '평가 진행 상황 SSE 스트림 (BullMQ QueueEvents 기반)' })
-  //@Sse(':sessionId/answers/:answerId/assess/stream')
+  @Sse(':sessionId/answers/:answerId/assess/stream')
   @UseGuards(JwtAuthGuard)
   //@ApiOperation({ summary: '평가 진행 상황 SSE 스트림' })
   @ApiParam({ name: 'answerId', type: Number })

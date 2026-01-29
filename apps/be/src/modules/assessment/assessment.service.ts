@@ -7,6 +7,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 
+import { UserCreditsRepository } from '@/users/credits/user-credits.repository';
 import { AssessmentStatus } from '@prisma/client';
 
 import { AssessmentRepository } from './assessment.repository';
@@ -37,6 +38,7 @@ export class AssessmentService {
   constructor(
     private readonly repo: AssessmentRepository,
     private readonly worker: AssessmentWorker,
+    private readonly userCreditsRepository: UserCreditsRepository,
   ) {}
 
   async submitAndAssess(
@@ -181,6 +183,8 @@ export class AssessmentService {
       }
     })();
 
+    const remainingToken = await this.userCreditsRepository.getTotalCredit(userId);
+
     return {
       // shared DTO 스키마에 맞춰 필드를 매핑합니다.
       answerId: answer.id,
@@ -191,7 +195,7 @@ export class AssessmentService {
       weaknesses,
       suggestions,
       xp,
-      remainingToken: 0, // 토큰 잔여량 추적 미구현으로 0 반환
+      remainingToken: remainingToken,
     };
   }
 }
