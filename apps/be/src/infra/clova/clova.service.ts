@@ -89,17 +89,13 @@ export class ClovaService {
     }
 
     // HTTP 성공이지만 논리 실패
-    if (json?.status?.code && json.status.code !== '20000') {
-      throw new HttpException(
-        {
-          statusCode: 500,
-          message: 'CLOVA logical failure',
-          clovaCode: json.status.code,
-          clovaMessage: json.status.message,
-          requestId,
-        },
-        500,
-      );
+    const clovaStatus = json?.status?.code?.toString();
+    if (clovaStatus && clovaStatus !== '20000') {
+      console.warn('[CLOVA WARNING]', {
+        clovaStatus,
+        message: json?.status?.message,
+        requestId,
+      });
     }
 
     if (!res.ok) {

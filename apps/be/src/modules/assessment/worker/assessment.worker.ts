@@ -10,10 +10,9 @@ import IORedis from 'ioredis';
 
 export const ASSESS_QUEUE = Symbol('ASSESS_QUEUE');
 export const ASSESS_REDIS = Symbol('ASSESS_REDIS');
-export const ASSESS_REDIS_EVENTS = Symbol('ASSESS_REDIS_EVENTS'); // module에서 같이 씀
+export const ASSESS_REDIS_EVENTS = Symbol('ASSESS_REDIS_EVENTS');
 
 type ProgressPayload = {
-  // 합의된 SSE DTO 정합성 유지를 위해 DB jobId(숫자)를 포함
   jobId: number;
   answerId: number;
   status: AssessmentStatus;
@@ -35,7 +34,13 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    const concurrency = Number(process.env.ASSESS_WORKER_CONCURRENCY ?? '2');
+    /**
+     * FIX:
+     * CLOVA는 QPS 제한이 엄격함
+     * job 1개당 CLOVA 호출이 2회 이상이므로
+     * concurrency=1 이 사실상 안전한 기본값
+     */
+    const concurrency = Number(process.env.ASSESS_WORKER_CONCURRENCY ?? '1');
 
     this.worker = new Worker(
       this.queue.name,
@@ -46,7 +51,6 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
       { connection: this.redis, concurrency },
     );
 
-    // 운영에서 원인 추적이 쉬워짐
     this.worker.on('error', (err) => {
       this.logger.error(`Worker error: ${err?.message ?? err}`, err?.stack);
     });
@@ -54,30 +58,39 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
 
   async enqueue(answerId: number) {
     const opts: JobsOptions = {
-      // SSE에서 answerId로 jobId를 역추적하기 위해 고정 id 사용
       jobId: `answer-${answerId}`,
       removeOnComplete: true,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 1000 },
+
+      /**
+       * FIX:
+       * rate limit(429) 발생 시
+       * 1~2초 재시도는 의미 없음 → 계속 429
+       * 최소 10~15초 대기 필요
+       */
+      attempts: 5,
+      backoff: {
+        type: 'fixed',
+        delay: 15_000,
+      },
     };
-    // 중복 작업 방지(idempotency): 동일 jobId가 이미 존재하면 재등록하지 않음
+
     const existing = await this.queue.getJob(String(opts.jobId));
     if (existing) return;
+
     await this.queue.add('assess', { answerId }, opts);
   }
 
   private async progress(job: Job, payload: ProgressPayload) {
-    // BullMQ progress 이벤트로 흘러가며 QueueEvents에서 수신 가능
     await job.updateProgress(payload);
   }
 
   private async processJob(job: Job, answerId: number) {
     const jobRow = await this.repo.getAssessmentJobByAnswerId(answerId);
+
     if (!jobRow) {
       this.logger.warn(`Job not found for answer ${answerId}`);
-      // job 자체는 끝내되, SSE쪽은 DB snapshot으로 처리하도록 둠
       await this.progress(job, {
-        jobId: -1, // 알 수 없는 경우 -1 (클라이언트는 스냅샷으로 보정)
+        jobId: -1,
         answerId,
         status: AssessmentStatus.FAILED,
         timestamp: new Date().toISOString(),
@@ -87,8 +100,7 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      // EVALUATING
-      this.logger.log(`[job:status] jobId=${jobRow.id}, answerId=${answerId}, status=EVALUATING`);
+      // ================== EVALUATING ==================
       await this.repo.updateAssessmentJob(jobRow.id, {
         status: AssessmentStatus.EVALUATING,
         startedAt: new Date(),
@@ -98,52 +110,44 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
         answerId,
         status: AssessmentStatus.EVALUATING,
         timestamp: new Date().toISOString(),
-        error: null,
       });
 
       await this.orchestrator.evaluate(answerId);
 
-      // FEEDBACKING
-      this.logger.log(`[job:status] jobId=${jobRow.id}, answerId=${answerId}, status=FEEDBACKING`);
-      await this.repo.updateAssessmentJob(jobRow.id, { status: AssessmentStatus.FEEDBACKING });
+      // ================== FEEDBACKING ==================
+      await this.repo.updateAssessmentJob(jobRow.id, {
+        status: AssessmentStatus.FEEDBACKING,
+      });
       await this.progress(job, {
         jobId: jobRow.id,
         answerId,
         status: AssessmentStatus.FEEDBACKING,
         timestamp: new Date().toISOString(),
-        error: null,
       });
 
       await this.orchestrator.buildFeedback(answerId);
 
-      // REWARDING (지금은 상태만 찍고 실제 보상 로직은 추후)
-      this.logger.log(`[job:status] jobId=${jobRow.id}, answerId=${answerId}, status=REWARDING`);
-      await this.repo.updateAssessmentJob(jobRow.id, { status: AssessmentStatus.REWARDING });
+      // ================== REWARDING ==================
+      await this.repo.updateAssessmentJob(jobRow.id, {
+        status: AssessmentStatus.REWARDING,
+      });
       await this.progress(job, {
         jobId: jobRow.id,
         answerId,
         status: AssessmentStatus.REWARDING,
         timestamp: new Date().toISOString(),
-        error: null,
       });
 
-      // ===== TRANSACTION: credit consume + DONE =====
-      this.logger.log(`[job:tx] start jobId=${jobRow.id}, answerId=${answerId}`);
+      // ================== DONE (TX) ==================
       await this.repo.withTransaction(async (tx) => {
-        // answer → userId
         const answer = await tx.userAnswer.findUnique({
           where: { id: answerId },
           select: { userId: true },
         });
+        if (!answer) throw new Error('ANSWER_NOT_FOUND');
 
-        if (!answer) {
-          throw new Error('ANSWER_NOT_FOUND');
-        }
-
-        // credit consume (조건부)
         await this.userCreditsRepository.consumeIfEnough(answer.userId, 'FEEDBACK_CONSUME', 1, tx);
 
-        // DONE
         await tx.assessmentJob.update({
           where: { id: jobRow.id },
           data: {
@@ -152,20 +156,31 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
           },
         });
       });
-      this.logger.log(`[job:status] jobId=${jobRow.id}, answerId=${answerId}, status=DONE`);
+
       await this.progress(job, {
         jobId: jobRow.id,
         answerId,
         status: AssessmentStatus.DONE,
         timestamp: new Date().toISOString(),
-        error: null,
       });
 
-      // completed 이벤트 returnvalue로도 SSE에 내려보낼 수 있음
       return { answerId, jobDbId: jobRow.id };
     } catch (e: any) {
       const message = e?.message ?? 'unknown_error';
 
+      /**
+       * FIX (가장 중요):
+       * CLOVA rate limit(429)는 실패가 아님
+       * → 상태 변경 x
+       * → progress x
+       * → 그냥 throw 해서 BullMQ retry/backoff 맡김
+       */
+      if (e?.status === 429 || e?.response?.statusCode === 429) {
+        this.logger.warn(`[job:rate-limit] jobId=${jobRow.id}, answerId=${answerId}`);
+        throw e;
+      }
+
+      // 진짜 실패만 FAILED 처리
       await this.repo.updateAssessmentJob(jobRow.id, {
         status: AssessmentStatus.FAILED,
         error: message,
@@ -180,13 +195,11 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
         error: message,
       });
 
-      // 실패는 throw로 넘겨야 BullMQ failed 이벤트도 발생
       throw e;
     }
   }
 
   async onModuleDestroy() {
-    // 종료 시 예외가 나더라도 안전하게 무시하고 로그만 남김
     try {
       await this.worker?.close();
     } catch (e: any) {
