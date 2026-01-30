@@ -88,6 +88,7 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
 
     try {
       // EVALUATING
+      this.logger.log(`[job:status] jobId=${jobRow.id}, answerId=${answerId}, status=EVALUATING`);
       await this.repo.updateAssessmentJob(jobRow.id, {
         status: AssessmentStatus.EVALUATING,
         startedAt: new Date(),
@@ -103,6 +104,7 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
       await this.orchestrator.evaluate(answerId);
 
       // FEEDBACKING
+      this.logger.log(`[job:status] jobId=${jobRow.id}, answerId=${answerId}, status=FEEDBACKING`);
       await this.repo.updateAssessmentJob(jobRow.id, { status: AssessmentStatus.FEEDBACKING });
       await this.progress(job, {
         jobId: jobRow.id,
@@ -115,6 +117,7 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
       await this.orchestrator.buildFeedback(answerId);
 
       // REWARDING (지금은 상태만 찍고 실제 보상 로직은 추후)
+      this.logger.log(`[job:status] jobId=${jobRow.id}, answerId=${answerId}, status=REWARDING`);
       await this.repo.updateAssessmentJob(jobRow.id, { status: AssessmentStatus.REWARDING });
       await this.progress(job, {
         jobId: jobRow.id,
@@ -125,6 +128,7 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
       });
 
       // ===== TRANSACTION: credit consume + DONE =====
+      this.logger.log(`[job:tx] start jobId=${jobRow.id}, answerId=${answerId}`);
       await this.repo.withTransaction(async (tx) => {
         // answer → userId
         const answer = await tx.userAnswer.findUnique({
@@ -148,6 +152,7 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
           },
         });
       });
+      this.logger.log(`[job:status] jobId=${jobRow.id}, answerId=${answerId}, status=DONE`);
       await this.progress(job, {
         jobId: jobRow.id,
         answerId,

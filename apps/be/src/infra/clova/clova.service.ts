@@ -1,8 +1,6 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { z } from 'zod';
-
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 type ThinkingEffort = 'none' | 'low' | 'medium' | 'high';
 
@@ -10,7 +8,7 @@ type ChatOptions = {
   maxCompletionTokens?: number;
   temperature?: number;
   thinking?: { effort: ThinkingEffort };
-  stream?: boolean; // 혹시 지원되는 경우 명시적으로 false
+  stream?: boolean;
 };
 
 @Injectable()
@@ -34,7 +32,6 @@ export class ClovaService {
       maxCompletionTokens: options.maxCompletionTokens ?? 400,
       temperature: options.temperature ?? 0.2,
       thinking: options.thinking ?? { effort: 'low' },
-      // 안전하게 명시 (지원되면 JSON으로 고정, 미지원이면 무시될 수 있음)
       stream: options.stream ?? false,
     };
 
@@ -51,64 +48,59 @@ export class ClovaService {
     const contentType = res.headers.get('content-type') ?? '';
     const rawText = await res.text();
 
-    // Minimal schema for Clova chat-completions response
-    const usageSchema = z
-      .object({
-        outputTokens: z.number().optional(),
-        completionTokens: z.number().optional(),
-        totalTokens: z.number().optional(),
-        tokens: z.number().optional(),
-      })
-      .partial();
+    if (!rawText) {
+      throw new HttpException(
+        {
+          statusCode: 502,
+          message: 'Empty CLOVA response',
+          requestId,
+        },
+        502,
+      );
+    }
 
-    const messageSchema = z.object({
-      role: z.union([z.literal('system'), z.literal('user'), z.literal('assistant')]).optional(),
-      // 일부 응답은 content가 문자열이 아닌 배열 형태([{ type, text }])로 올 수 있어 any 허용
-      content: z.any().optional(),
-    });
-
-    const clovaSchema = z.object({
-      result: z
-        .object({
-          message: messageSchema.optional(),
-          usage: usageSchema.optional(),
-        })
-        .optional(),
-      usage: usageSchema.optional(),
-    });
-
-    let parsedJson: unknown;
+    let json: any;
     try {
-      parsedJson = JSON.parse(rawText);
+      json = JSON.parse(rawText);
     } catch (e) {
       throw new HttpException(
         {
-          statusCode: res.status,
-          message: e instanceof Error ? e.message : 'CLOVA response parse failed',
+          statusCode: 502,
+          message: 'CLOVA response is not valid JSON',
           requestId,
           contentType,
           rawTextPreview: rawText.slice(0, 500),
         },
-        res.ok ? 500 : res.status,
+        502,
       );
     }
 
-    const safe = clovaSchema.safeParse(parsedJson);
-    if (!safe.success) {
+    // 최상위 형태 가드
+    if (typeof json !== 'object' || json === null || Array.isArray(json)) {
       throw new HttpException(
         {
-          statusCode: res.status,
-          message: 'CLOVA response validation failed',
+          statusCode: 502,
+          message: 'Invalid CLOVA response shape',
           requestId,
-          contentType,
           rawTextPreview: rawText.slice(0, 500),
-          issues: safe.error.issues,
         },
-        res.ok ? 500 : res.status,
+        502,
       );
     }
 
-    const json = safe.data as any;
+    // HTTP 성공이지만 논리 실패
+    if (json?.status?.code && json.status.code !== '20000') {
+      throw new HttpException(
+        {
+          statusCode: 500,
+          message: 'CLOVA logical failure',
+          clovaCode: json.status.code,
+          clovaMessage: json.status.message,
+          requestId,
+        },
+        500,
+      );
+    }
 
     if (!res.ok) {
       throw new HttpException(
@@ -122,18 +114,36 @@ export class ClovaService {
       );
     }
 
-    // content 추출: 문자열 또는 배열([{ text }]) 모두 대응
-    const contentRaw = json?.result?.message?.content ?? json?.choices?.[0]?.message?.content;
-    let content: string | undefined = undefined;
+    // content 추출 (문자열 / 배열 대응)
+    const contentRaw =
+      json?.result?.message?.content ??
+      json?.result?.messages?.[0]?.content ??
+      json?.choices?.[0]?.message?.content;
+
+    let content: string | undefined;
+
     if (typeof contentRaw === 'string') {
       content = contentRaw;
     } else if (Array.isArray(contentRaw)) {
-      try {
-        content = contentRaw.map((p: any) => (typeof p?.text === 'string' ? p.text : '')).join('');
-      } catch {
-        content = undefined;
-      }
+      content = contentRaw.map((p: any) => (typeof p?.text === 'string' ? p.text : '')).join('');
     }
-    return { requestId, content, raw: json };
+
+    if (!content) {
+      throw new HttpException(
+        {
+          statusCode: 502,
+          message: 'CLOVA response has no content',
+          finishReason: json?.result?.finishReason,
+          requestId,
+        },
+        502,
+      );
+    }
+
+    return {
+      requestId,
+      content,
+      raw: json, // 디버깅용
+    };
   }
 }
