@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Gemini-Generated-Image-1valf71valf71val.png](https://i.postimg.cc/VvvHKk1n/Gemini-Generated-Image-1valf71valf71val.png)](https://postimg.cc/ctqmHZvL)
+[![Gemini-Generated-Image-1valf71valf71val.png](https://i.postimg.cc/DzF4VC00/Gemini-Generated-Image-1valf71valf71val.png)](https://postimg.cc/PC35YQmn)
 
 <a href="https://www.notion.so/Web22-2c3d2bdba92980ac820aed84d0d4e12d?source=copy_link">팀 노션</a>
 &nbsp;|&nbsp;
