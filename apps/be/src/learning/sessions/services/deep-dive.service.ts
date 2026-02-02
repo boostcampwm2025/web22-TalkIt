@@ -42,6 +42,12 @@ export class DeepDiveService {
 
     // 크레딧 확인
     const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
+    if (remainedCredit <= 0) {
+      throw new ConflictException({
+        code: 'INSUFFICIENT_CREDIT',
+        message: '잔여 크레딧이 부족하여 더 이상 질문을 진행할 수 없습니다.',
+      });
+    }
 
     const answer = await this.answerRepository.findByIdWithContext(answerId);
     if (!answer || answer.sessionId !== sessionId) {

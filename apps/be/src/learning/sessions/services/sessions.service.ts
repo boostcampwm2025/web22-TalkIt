@@ -79,8 +79,15 @@ export class SessionsService {
 
     const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
 
+    if (remainedCredit <= 0) {
+      throw new ConflictException({
+        code: 'INSUFFICIENT_CREDIT',
+        message: '잔여 크레딧이 부족하여 세션을 진행할 수 없습니다.',
+      });
+    }
+
     /**
-     * 세션 생성 + 첫 질문 비용 차감 (원자적 처리)
+     * 세션 생성
      */
     const session = await this.sessionsRepository.transaction(async (tx) => {
       const createdSession = await this.sessionsRepository.createSession(
@@ -156,6 +163,13 @@ export class SessionsService {
      * 3. 유저 잔여 크레딧 조회 (UserCredit ledger SUM)
      */
     const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
+
+    if (remainedCredit <= 0) {
+      throw new ConflictException({
+        code: 'INSUFFICIENT_CREDIT',
+        message: '잔여 크레딧이 부족하여 더 이상 질문을 진행할 수 없습니다.',
+      });
+    }
 
     const question = await this.questionService.pickOne(
       session.category as Domain,
