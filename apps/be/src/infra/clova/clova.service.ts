@@ -12,6 +12,7 @@ type ChatOptions = {
   thinking?: { effort: ThinkingEffort };
   stream?: boolean; // 혹시 지원되는 경우 명시적으로 false
   responseFormat?: { type: 'json'; schema: any };
+  noThinking?: boolean; // 강제로 thinking 파라미터를 보내지 않음
 };
 
 @Injectable()
@@ -45,23 +46,16 @@ export class ClovaService {
     if (options.responseFormat?.type === 'json') {
       body.responseFormat = { type: 'json', schema: options.responseFormat.schema };
     } else {
-      body.thinking = options.thinking ?? { effort: 'medium' };
+      if (!options.noThinking) {
+        body.thinking = options.thinking ?? { effort: 'medium' };
+      }
     }
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-        'X-NCP-CLOVASTUDIO-REQUEST-ID': requestId,
-      },
-      body: JSON.stringify(body),
-    });
-
-    const contentType = res.headers.get('content-type') ?? '';
-    const rawText = await res.text();
-
-    // Minimal schema for Clova chat-completions response
+    // 재시도 로직 포함: Invalid parameter 응답 시 문제 필드 제거 후 1회 재시도
+    let res: Response | null = null;
+    let contentType = '';
+    let rawText = '';
+    let json: any = undefined;
     const usageSchema = z
       .object({
         outputTokens: z.number().optional(),
@@ -73,11 +67,9 @@ export class ClovaService {
 
     const messageSchema = z.object({
       role: z.union([z.literal('system'), z.literal('user'), z.literal('assistant')]).optional(),
-      // 일부 응답은 content가 문자열이 아닌 배열 형태([{ type, text }])로 올 수 있어 any 허용
       content: z.any().optional(),
     });
 
-    // 문서 기준: status는 항상 존재, result는 Any(없거나 null일 수 있음)
     const clovaSchema = z.object({
       status: z
         .object({
@@ -89,69 +81,105 @@ export class ClovaService {
       usage: usageSchema.optional(),
     });
 
-    let parsedJson: unknown;
-    try {
-      parsedJson = JSON.parse(rawText);
-    } catch (e) {
-      throw new HttpException(
-        {
-          statusCode: res.status,
-          message: e instanceof Error ? e.message : 'CLOVA response parse failed',
-          requestId,
-          contentType,
-          rawTextPreview: rawText.slice(0, 500),
+    for (let attempt = 0; attempt < 2; attempt++) {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'X-NCP-CLOVASTUDIO-REQUEST-ID': requestId,
         },
-        res.ok ? 500 : res.status,
-      );
-    }
+        body: JSON.stringify(body),
+      });
 
-    // 우선 JSON을 관용적으로 파싱한 뒤, status.code로 성공/실패 판단
-    const parsed = clovaSchema.safeParse(parsedJson);
-    const json = parsed.success ? parsed.data : (parsedJson as any);
+      contentType = res.headers.get('content-type') ?? '';
+      rawText = await res.text();
 
-    const bodyStatusCode: string | undefined = json?.status?.code
-      ? String(json.status.code)
-      : undefined;
-
-    // HTTP가 2xx여도 본문 status.code가 실패(예: 42901)일 수 있어 우선적으로 확인
-    if (bodyStatusCode && bodyStatusCode !== '20000') {
-      const httpFromBody = /^\d{3}/.test(bodyStatusCode) ? Number(bodyStatusCode.slice(0, 3)) : 400;
-      const retryAfter = res.headers.get('retry-after') ?? undefined;
-      throw new HttpException(
-        {
-          statusCode: httpFromBody,
-          message: json?.status?.message ?? 'CLOVA error',
-          clovaStatus: json?.status,
-          requestId,
-          retryAfter,
-        },
-        httpFromBody,
-      );
-    }
-
-    // 스키마 미스매치 로그는 성공 케이스에서만 디버그 플래그 시 제한적으로 출력
-    if (!parsed.success && process.env.CLOVA_SCHEMA_DEBUG === '1') {
+      let parsedJson: unknown;
       try {
-        const issues = parsed.error.issues?.slice?.(0, 5);
-        this.logger.debug(
-          `CLOVA schema mismatch (ignored). req=${requestId} ct=${contentType} preview=${rawText
-            .replace(/\s+/g, ' ')
-            .slice(0, 200)}`,
+        parsedJson = JSON.parse(rawText);
+      } catch (e) {
+        throw new HttpException(
+          {
+            statusCode: res.status,
+            message: e instanceof Error ? e.message : 'CLOVA response parse failed',
+            requestId,
+            contentType,
+            rawTextPreview: rawText.slice(0, 500),
+          },
+          res.ok ? 500 : res.status,
         );
-        this.logger.debug(`CLOVA schema issues: ${JSON.stringify(issues)}`);
-      } catch {}
-    }
+      }
 
-    if (!res.ok) {
-      throw new HttpException(
-        {
-          statusCode: res.status,
-          message: 'CLOVA request failed',
-          details: json,
-          requestId,
-        },
-        res.status,
-      );
+      const parsed = clovaSchema.safeParse(parsedJson);
+      json = parsed.success ? parsed.data : (parsedJson as any);
+
+      const bodyStatusCode: string | undefined = json?.status?.code
+        ? String(json.status.code)
+        : undefined;
+      const msg = String(json?.status?.message ?? '');
+      const invalidParam = /Invalid parameter/i.test(msg);
+      const mentionsThinking = /thinking/.test(msg);
+      const mentionsResponseFormat = /responseFormat/.test(msg);
+
+      if (invalidParam && attempt === 0) {
+        let adjusted = false;
+        if (mentionsResponseFormat && body.responseFormat) {
+          delete body.responseFormat;
+          adjusted = true;
+        }
+        if (mentionsThinking && body.thinking) {
+          delete body.thinking;
+          adjusted = true;
+        }
+        if (adjusted) {
+          continue; // 재시도
+        }
+      }
+
+      if (bodyStatusCode && bodyStatusCode !== '20000') {
+        const httpFromBody = /^\d{3}/.test(bodyStatusCode)
+          ? Number(bodyStatusCode.slice(0, 3))
+          : 400;
+        const retryAfter = res.headers.get('retry-after') ?? undefined;
+        throw new HttpException(
+          {
+            statusCode: httpFromBody,
+            message: json?.status?.message ?? 'CLOVA error',
+            clovaStatus: json?.status,
+            requestId,
+            retryAfter,
+          },
+          httpFromBody,
+        );
+      }
+
+      if (!parsed.success && process.env.CLOVA_SCHEMA_DEBUG === '1') {
+        try {
+          const issues = parsed.error.issues?.slice?.(0, 5);
+          this.logger.debug(
+            `CLOVA schema mismatch (ignored). req=${requestId} ct=${contentType} preview=${rawText
+              .replace(/\s+/g, ' ')
+              .slice(0, 200)}`,
+          );
+          this.logger.debug(`CLOVA schema issues: ${JSON.stringify(issues)}`);
+        } catch {}
+      }
+
+      if (!res.ok) {
+        throw new HttpException(
+          {
+            statusCode: res.status,
+            message: 'CLOVA request failed',
+            details: json,
+            requestId,
+          },
+          res.status,
+        );
+      }
+
+      // 성공 루프 탈출
+      break;
     }
 
     // Content extraction: handle v3 + thinking variants
