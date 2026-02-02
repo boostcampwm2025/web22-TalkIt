@@ -7,8 +7,8 @@ type ThinkingEffort = 'none' | 'low' | 'medium' | 'high';
 type ChatOptions = {
   maxCompletionTokens?: number;
   temperature?: number;
-  thinking?: { effort: ThinkingEffort };
   stream?: boolean;
+  apiKey?: string;
 };
 
 @Injectable()
@@ -24,26 +24,50 @@ export class ClovaService {
   }
 
   async chat(messages: ChatMessage[], options: ChatOptions = {}) {
-    const url = `${this.baseUrl}/v3/chat-completions/${this.model}`;
+    const url = `${this.baseUrl}/v1/chat-completions/${this.model}`;
     const requestId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+
+    const clampTemp = (t?: number) => {
+      if (typeof t !== 'number' || Number.isNaN(t)) return 0.5;
+      return Math.min(1, Math.max(0.01, t));
+    };
 
     const body = {
       messages,
-      maxCompletionTokens: options.maxCompletionTokens ?? 400,
-      temperature: options.temperature ?? 0.2,
-      thinking: options.thinking ?? { effort: 'low' },
-      stream: options.stream ?? false,
+      maxTokens: options.maxCompletionTokens ?? 400,
+      temperature: clampTemp(options.temperature),
+      topK: 0,
+      topP: 0.8,
+      repeatPenalty: 5.0,
+      stopBefore: [],
+      includeAiFilters: true,
     };
 
+    const apiKey = options.apiKey ?? this.apiKey;
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'X-NCP-CLOVASTUDIO-REQUEST-ID': requestId,
+        ...(options.stream ? { Accept: 'text/event-stream' } : {}),
       },
       body: JSON.stringify(body),
     });
+
+    if ((process.env.CLOVA_RATE_LOG ?? '').trim() === '1') {
+      const pick = (name: string) => res.headers.get(name) ?? res.headers.get(name.toLowerCase());
+      const rateInfo = {
+        requestId,
+        limitRequests: pick('x-ratelimit-limit-requests'),
+        remainingRequests: pick('x-ratelimit-remaining-requests'),
+        resetRequests: pick('x-ratelimit-reset-requests'),
+        limitTokens: pick('x-ratelimit-limit-tokens'),
+        remainingTokens: pick('x-ratelimit-remaining-tokens'),
+        resetTokens: pick('x-ratelimit-reset-tokens'),
+      };
+      console.log('[CLOVA RATE]', rateInfo);
+    }
 
     const contentType = res.headers.get('content-type') ?? '';
     const rawText = await res.text();
@@ -129,7 +153,7 @@ export class ClovaService {
         {
           statusCode: 502,
           message: 'CLOVA response has no content',
-          finishReason: json?.result?.finishReason,
+          finishReason: json?.result?.finishReason ?? json?.result?.stopReason,
           requestId,
         },
         502,

@@ -21,19 +21,19 @@ export class LlmFeedbackProvider {
   }): Promise<{ accurate: string[]; weakness: string[]; suggestions: string[] }> {
     const { questionSummary, answerText, issues } = params;
 
-    const apiKey = (process.env.CLOVA_API_KEY ?? '').trim();
+    const apiKey = (process.env.CLOVA_API_KEY_FEEDBACK ?? process.env.CLOVA_API_KEY ?? '').trim();
     if (!apiKey) {
       return this.fallback(issues);
     }
 
-    // Optionally provide golden as extra context
+    // 캐시에 있는 Golden만 사용(새로 생성하지 않음: 호출 수 절감)
     let goldenJson = '';
     try {
-      const golden = await this.golden.generate({ questionSummary });
-      goldenJson = JSON.stringify(golden);
+      const cached = await this.golden.getCached(questionSummary);
+      if (cached) goldenJson = JSON.stringify(cached);
     } catch (e) {
-      this.logger.warn(`Golden generation failed for feedback: ${(e as any)?.message ?? e}`);
-      goldenJson = JSON.stringify({ definition: questionSummary, key_points: [] });
+      this.logger.warn(`Golden cache read failed for feedback: ${(e as any)?.message ?? e}`);
+      goldenJson = '';
     }
 
     const messages = [
@@ -50,12 +50,13 @@ export class LlmFeedbackProvider {
     ];
 
     const out = await this.clova.chat(messages, {
-      temperature: 0,
+      temperature: 0.2,
       maxCompletionTokens: 10000,
       stream: false,
-      thinking: { effort: 'high' },
+      apiKey,
     });
     const text = (out.content ?? '').trim();
+    this.logResponsePreview('feedback', out.requestId, text);
     try {
       const parsed = JSON.parse(text);
       return this.normalizeFeedback(parsed);
@@ -126,5 +127,22 @@ export class LlmFeedbackProvider {
     }
     t = t.replace(/,\s*([}\]])/g, '$1');
     return t.trim();
+  }
+
+  private logResponsePreview(stage: string, requestId: string | undefined, text: string) {
+    const enabled = (process.env.ASSESS_LLM_LOG ?? '').trim() === '1';
+    if (!enabled) return;
+    const full = (process.env.ASSESS_LLM_LOG_FULL ?? '').trim() === '1';
+    const safeText = String(text ?? '');
+    if (full) {
+      this.logger.log(
+        `[LLM:${stage}] req=${requestId ?? 'n/a'} textLength=${safeText.length} text=${safeText}`,
+      );
+      return;
+    }
+    const preview = safeText.replace(/\s+/g, ' ').slice(0, 600);
+    this.logger.log(
+      `[LLM:${stage}] req=${requestId ?? 'n/a'} textLength=${safeText.length} textPreview=${preview}`,
+    );
   }
 }

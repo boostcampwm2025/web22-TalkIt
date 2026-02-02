@@ -1,13 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 
 import { ClovaService } from '@/infra/clova/clova.service';
 
 import { GoldenSystemPrompt, GoldenUserPrompt } from '../prompt/prompt.template';
+import IORedis from 'ioredis';
+import { createHash } from 'node:crypto';
+
+export const GOLDEN_CACHE_REDIS = Symbol('GOLDEN_CACHE_REDIS');
 
 @Injectable()
-export class LlmGoldenProvider {
+export class LlmGoldenProvider implements OnApplicationShutdown {
   private readonly logger = new Logger(LlmGoldenProvider.name);
-  constructor(private readonly clova: ClovaService) {}
+  constructor(
+    private readonly clova: ClovaService,
+    @Inject(GOLDEN_CACHE_REDIS) private readonly redis: IORedis,
+  ) {}
 
   async generate(params: { questionSummary: string }): Promise<{
     definition: string;
@@ -16,6 +23,22 @@ export class LlmGoldenProvider {
     pitfalls?: string[];
   }> {
     const { questionSummary } = params;
+    const apiKey = (process.env.CLOVA_API_KEY_GOLDEN ?? process.env.CLOVA_API_KEY ?? '').trim();
+    const cacheTtlSec = Number(process.env.CLOVA_GOLDEN_CACHE_TTL_SEC ?? '86400');
+    const cacheKey = this.cacheKey(questionSummary);
+
+    // 캐시가 있으면 LLM 호출 없이 재사용
+    if (cacheTtlSec > 0) {
+      try {
+        const cached = await this.redis.get(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          return this.toGolden(parsed, questionSummary);
+        }
+      } catch (e: any) {
+        this.logger.warn(`Golden cache read failed: ${e?.message ?? e}`);
+      }
+    }
     const messages = [
       { role: 'system' as const, content: GoldenSystemPrompt },
       { role: 'user' as const, content: GoldenUserPrompt(questionSummary) },
@@ -24,12 +47,14 @@ export class LlmGoldenProvider {
       temperature: 0.1,
       maxCompletionTokens: 1500,
       stream: false,
-      thinking: { effort: 'medium' },
+      apiKey,
     });
     const text = (out.content ?? '').trim();
     // 1) 직파싱 → 2) 정리 후 파싱 → 3) 재요청(강조) → 실패 시 폴백
     try {
-      return this.parseGoldenJson(text, questionSummary);
+      const golden = this.parseGoldenJson(text, questionSummary);
+      await this.writeCache(cacheKey, golden, cacheTtlSec);
+      return golden;
     } catch {
       // reinforce with stronger formatting/safety guidance
       const reinforce =
@@ -39,17 +64,34 @@ export class LlmGoldenProvider {
           { role: 'system' as const, content: GoldenSystemPrompt },
           { role: 'user' as const, content: GoldenUserPrompt(questionSummary) + reinforce },
         ],
-        { temperature: 0, maxCompletionTokens: 700, stream: false },
+        { temperature: 0, maxCompletionTokens: 700, stream: false, apiKey },
       );
       const text2 = (out2.content ?? '').trim();
       try {
-        return this.parseGoldenJson(text2, questionSummary);
+        const golden = this.parseGoldenJson(text2, questionSummary);
+        await this.writeCache(cacheKey, golden, cacheTtlSec);
+        return golden;
       } catch (e2) {
         this.logger.warn(
           `Golden parse failed, falling back minimal: ${(e2 as any)?.message ?? e2}`,
         );
-        return { definition: questionSummary, key_points: [] };
+        const fallback = { definition: questionSummary, key_points: [] };
+        await this.writeCache(cacheKey, fallback, cacheTtlSec);
+        return fallback;
       }
+    }
+  }
+
+  async getCached(questionSummary: string) {
+    const cacheKey = this.cacheKey(questionSummary);
+    try {
+      const cached = await this.redis.get(cacheKey);
+      if (!cached) return null;
+      const parsed = JSON.parse(cached);
+      return this.toGolden(parsed, questionSummary);
+    } catch (e: any) {
+      this.logger.warn(`Golden cache read failed: ${e?.message ?? e}`);
+      return null;
     }
   }
 
@@ -70,6 +112,24 @@ export class LlmGoldenProvider {
     const ex = Array.isArray(json?.examples) ? json.examples.map(String) : [];
     const pf = Array.isArray(json?.pitfalls) ? json.pitfalls.map(String) : [];
     return { definition: def, key_points: kp, examples: ex, pitfalls: pf };
+  }
+
+  private cacheKey(questionSummary: string) {
+    const hash = createHash('sha256').update(questionSummary).digest('hex').slice(0, 32);
+    return `assessment:golden:${hash}`;
+  }
+
+  private async writeCache(key: string, value: any, ttlSec: number) {
+    if (ttlSec <= 0) return;
+    try {
+      await this.redis.set(key, JSON.stringify(value), 'EX', ttlSec);
+    } catch (e: any) {
+      this.logger.warn(`Golden cache write failed: ${e?.message ?? e}`);
+    }
+  }
+
+  async onApplicationShutdown() {
+    await this.redis?.quit?.().catch(() => undefined);
   }
 
   private prepareLikelyJson(s: string): string {

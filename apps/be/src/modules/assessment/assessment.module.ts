@@ -49,7 +49,11 @@ import IORedis from 'ioredis';
     {
       provide: ASSESS_QUEUE,
       inject: [ASSESS_REDIS],
-      useFactory: (redis: IORedis) => new Queue('assessment', { connection: redis }),
+      useFactory: (redis: IORedis) =>
+        new Queue('assessment', {
+          connection: redis,
+          limiter: { max: 1, duration: 1000 },
+        } as any),
     },
 
     // Worker + Event Bus
