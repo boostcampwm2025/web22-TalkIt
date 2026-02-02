@@ -1,4 +1,4 @@
-import { Logger, NotFoundException } from '@nestjs/common';
+import { ConflictException, Logger, NotFoundException } from '@nestjs/common';
 
 import { normalizeAudio } from '../../../common/audio/normalize-audio';
 import { SessionsRecordService } from './sessions-record.service';
@@ -36,15 +36,26 @@ describe('SessionsRecordService', () => {
     const normalizeService = {
       normalizeForDraft: jest.fn(),
     };
+    const userCreditsRepository = {
+      getTotalCredit: jest.fn(),
+    };
 
     const service = new SessionsRecordService(
       sessionsRepository as any,
       storageProvider as any,
       sttService as any,
       normalizeService as any,
+      userCreditsRepository as any,
     );
 
-    return { service, sessionsRepository, storageProvider, sttService, normalizeService };
+    return {
+      service,
+      sessionsRepository,
+      storageProvider,
+      sttService,
+      normalizeService,
+      userCreditsRepository,
+    };
   };
 
   it('세션이 없으면 NotFoundException을 반환한다', async () => {
@@ -58,10 +69,17 @@ describe('SessionsRecordService', () => {
   });
 
   it('정상적으로 STT/정규화 처리 후 sttText를 반환한다', async () => {
-    const { service, sessionsRepository, storageProvider, sttService, normalizeService } =
-      makeService();
+    const {
+      service,
+      sessionsRepository,
+      storageProvider,
+      sttService,
+      normalizeService,
+      userCreditsRepository,
+    } = makeService();
 
-    sessionsRepository.findById.mockResolvedValue({ id: 1 });
+    sessionsRepository.findById.mockResolvedValue({ id: 1, userId: 1 });
+    userCreditsRepository.getTotalCredit.mockResolvedValue(1);
     storageProvider.upload.mockResolvedValue('obj-key');
     sttService.transcribe.mockResolvedValue({ text: 'raw stt' });
     normalizeService.normalizeForDraft.mockResolvedValue({ draftText: 'normalized' });
@@ -80,9 +98,11 @@ describe('SessionsRecordService', () => {
   });
 
   it('STT 과정에서 에러가 발생하면 에러를 던지고 임시 객체를 삭제한다', async () => {
-    const { service, sessionsRepository, storageProvider, sttService } = makeService();
+    const { service, sessionsRepository, storageProvider, sttService, userCreditsRepository } =
+      makeService();
 
-    sessionsRepository.findById.mockResolvedValue({ id: 1 });
+    sessionsRepository.findById.mockResolvedValue({ id: 1, userId: 1 });
+    userCreditsRepository.getTotalCredit.mockResolvedValue(1);
     storageProvider.upload.mockResolvedValue('obj-key');
     sttService.transcribe.mockRejectedValue(new Error('stt error'));
 
@@ -94,9 +114,10 @@ describe('SessionsRecordService', () => {
   });
 
   it('normalizeAudio 실패 시 에러를 던진다', async () => {
-    const { service, sessionsRepository, storageProvider } = makeService();
+    const { service, sessionsRepository, storageProvider, userCreditsRepository } = makeService();
 
-    sessionsRepository.findById.mockResolvedValue({ id: 1 });
+    sessionsRepository.findById.mockResolvedValue({ id: 1, userId: 1 });
+    userCreditsRepository.getTotalCredit.mockResolvedValue(1);
     (normalizeAudio as jest.Mock).mockRejectedValueOnce(new Error('normalize fail'));
 
     await expect(service.record(1, { questionId: 1 } as any, {} as any)).rejects.toBeInstanceOf(
@@ -105,5 +126,18 @@ describe('SessionsRecordService', () => {
 
     // normalize 실패 시 objectKey가 없으므로 deleteObject 호출되지 않아야 함
     expect(storageProvider.deleteObject).not.toHaveBeenCalled();
+  });
+
+  it('크레딧이 0 이하이면 ConflictException을 반환한다', async () => {
+    const { service, sessionsRepository, userCreditsRepository, storageProvider } = makeService();
+
+    sessionsRepository.findById.mockResolvedValue({ id: 1, userId: 1 });
+    userCreditsRepository.getTotalCredit.mockResolvedValue(0);
+
+    await expect(service.record(1, { questionId: 1 } as any, {} as any)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+
+    expect(storageProvider.upload).not.toHaveBeenCalled();
   });
 });

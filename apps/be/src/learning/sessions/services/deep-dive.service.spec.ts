@@ -121,6 +121,21 @@ describe('DeepDiveService', () => {
     );
   });
 
+  it('크레딧이 0 이하이면 딥다이브 요청에서 충돌 예외를 반환한다', async () => {
+    const { service, sessionsRepository, userCreditsRepository } = makeService();
+
+    sessionsRepository.findById.mockResolvedValue({
+      id: 12,
+      userId: 1,
+      completedAt: null,
+    });
+    userCreditsRepository.getTotalCredit.mockResolvedValue(0);
+
+    await expect(service.execute({ userId: 1, sessionId: 12, answerId: 1 })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
   it('답변이 없거나 세션이 일치하지 않으면 예외를 반환한다', async () => {
     const { service, sessionsRepository, answerRepository, userCreditsRepository } = makeService();
 

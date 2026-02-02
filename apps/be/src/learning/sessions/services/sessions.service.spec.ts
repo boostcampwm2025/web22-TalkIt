@@ -84,6 +84,24 @@ describe('SessionsService', () => {
     expect(result.question.questionId).toBe(99);
   });
 
+  it('크레딧이 0 이하이면 세션 생성에서 충돌 예외를 반환한다', async () => {
+    const { service, questionService, userCreditsRepository } = makeService();
+
+    questionService.pickOne.mockResolvedValue({
+      questionId: 99,
+      content: 'Q',
+      mustInclude: ['a'],
+      domain: 'OS',
+      difficulty: 'EASY',
+      timeLimitSec: 100,
+    });
+    userCreditsRepository.getTotalCredit.mockResolvedValue(0);
+
+    await expect(
+      service.createSession(1, { category: 'OS', difficulty: 'EASY' } as any),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
   it('동일 사용자 요청 시 세션이 유지된다(진행 중 세션에서 다음 질문 조회)', async () => {
     const { service, sessionsRepository, questionService, userCreditsRepository } = makeService();
 
@@ -145,6 +163,23 @@ describe('SessionsService', () => {
     expect(result.currentQuestionCount).toBe(4);
     expect(result.question.questionId).toBe(101);
     expect(result.remainedCredit).toBe(7);
+  });
+
+  it('크레딧이 0 이하이면 다음 질문 제공에서 충돌 예외를 반환한다', async () => {
+    const { service, sessionsRepository, userCreditsRepository } = makeService();
+
+    sessionsRepository.findById.mockResolvedValue({
+      id: 11,
+      userId: 1,
+      status: 'ACTIVE',
+      category: 'OS',
+      difficulty: 'EASY',
+      currentQuestionCount: 1,
+      completedAt: null,
+    });
+    userCreditsRepository.getTotalCredit.mockResolvedValue(0);
+
+    await expect(service.getNextQuestion(11, 1)).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('세션이 없는 요청에 대해 예외 처리가 올바르게 동작한다', async () => {
