@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { ClovaService } from '@/infra/clova/clova.service';
 
-import { EvaluationSystemPrompt, EvaluationUserPrompt } from '../prompt/prompt.template';
+import { CombinedSystemPrompt, CombinedUserPrompt } from '../prompt/prompt.template';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -25,6 +25,8 @@ type IssuesMeta = {
   reason?: string;
 };
 type IssuesPayload = { issues: Issue[]; meta: IssuesMeta };
+type FeedbackPayload = { accurate: string[]; weakness: string[]; suggestions: string[] };
+type CombinedPayload = { issues: Issue[]; feedback: FeedbackPayload };
 
 type RubricLike = {
   items: { key: string; description: string; weight: number }[];
@@ -46,60 +48,81 @@ export class LlmEvaluationProvider {
     const mustInclude = (rubric?.items ?? [])
       .map((it) => String(it?.description ?? '').trim())
       .filter((s) => s.length > 0);
+    // 피드백 길이 제한을 위해 루브릭 항목 상한 적용
+    const maxItems = Number(process.env.ASSESS_RUBRIC_MAX_ITEMS ?? '6');
+    const limitedMustInclude = mustInclude.slice(0, Math.max(1, maxItems));
 
+    // 기존 단일 평가 호출 로직은 유지하되, 현재는 Combined 호출로 대체됨.
+    // (요청에 따라 기존 로직은 주석 처리)
     // No API key → deterministic fallback
-    const apiKey = (process.env.CLOVA_API_KEY ?? '').trim();
+    const apiKey = (process.env.CLOVA_API_KEY_EVAL ?? process.env.CLOVA_API_KEY ?? '').trim();
     if (!apiKey) {
       return this.fallbackIssues(mustInclude, answerText);
     }
 
+    // 기존 평가용 프롬프트는 현재 사용하지 않음 (컴파일 오류 방지용)
+    // const messages = [
+    //   { role: 'system' as const, content: EvaluationSystemPrompt },
+    //   {
+    //     role: 'user' as const,
+    //     content: EvaluationUserPrompt(questionSummary, mustInclude, answerText),
+    //   },
+    // ];
+
+    // 기존 단일 평가 호출 로직은 잠시 사용하지 않음
+    // (아래 로직은 참고용으로 보관)
+    // const out1 = await this.clova.chat(...)
+    // return this.parseIssuesJson(...)
+    return this.fallbackIssues(mustInclude, answerText);
+  }
+
+  // 새 구조: 평가 + 피드백을 1회 호출로 생성
+  async evaluateWithFeedback(params: {
+    questionSummary: string;
+    rubric: RubricLike;
+    answerText: string;
+    goldenJson: string;
+  }): Promise<CombinedPayload> {
+    const { questionSummary, rubric, answerText, goldenJson } = params;
+    const mustInclude = (rubric?.items ?? [])
+      .map((it) => String(it?.description ?? '').trim())
+      .filter((s) => s.length > 0);
+    // 피드백 길이 제한을 위해 루브릭 항목 상한 적용
+    const maxItems = Number(process.env.ASSESS_RUBRIC_MAX_ITEMS ?? '6');
+    const limitedMustInclude = mustInclude.slice(0, Math.max(1, maxItems));
+
+    const apiKey = (process.env.CLOVA_API_KEY_EVAL ?? process.env.CLOVA_API_KEY ?? '').trim();
+    if (!apiKey) {
+      const issues = this.fallbackIssues(limitedMustInclude, answerText).issues ?? [];
+      const feedback = this.fallbackFeedback(issues);
+      return { issues, feedback };
+    }
+
     const messages = [
-      { role: 'system' as const, content: EvaluationSystemPrompt },
+      { role: 'system' as const, content: CombinedSystemPrompt },
       {
         role: 'user' as const,
-        content: EvaluationUserPrompt(questionSummary, mustInclude, answerText),
+        content: CombinedUserPrompt(questionSummary, goldenJson, limitedMustInclude, answerText),
       },
     ];
 
-    // First attempt: chat then parse
-    const out1 = await this.clova.chat(messages, {
-      temperature: 0,
-      maxCompletionTokens: 25000,
+    const out = await this.clova.chat(messages, {
+      temperature: 0.2,
+      maxCompletionTokens: 3000,
       stream: false,
-      thinking: { effort: 'high' },
+      apiKey,
     });
-    const text1 = this.stripNewlines(out1.content ?? '').trim();
+    const text = this.stripNewlines(out.content ?? '').trim();
+    this.logResponsePreview('evaluation:combined', out.requestId, text);
 
     try {
-      return this.parseIssuesJson(text1, mustInclude, answerText);
+      return this.parseCombinedJson(text, limitedMustInclude, answerText);
     } catch (e1) {
-      this.debugPreview('first', out1.requestId, text1);
-      // Retry once with reinforced format reminder
-      const reinforce =
-        '\n\n[IMPORTANT]\n마크다운/코드블록 금지. 반드시 유효한 JSON 한 줄로만 출력하세요. detail/evidence/target 문자열 값 내부 큰따옴표(\\\") 금지(필요 시 \\\\ \\\" 로 이스케이프). 백틱/줄바꿈 금지. evidence는 1문장·80자 이내로 요약.';
-      const out2 = await this.clova.chat(
-        [
-          { role: 'system' as const, content: EvaluationSystemPrompt },
-          {
-            role: 'user' as const,
-            content: EvaluationUserPrompt(questionSummary, mustInclude, answerText) + reinforce,
-          },
-        ],
-        { temperature: 0, maxCompletionTokens: 650, stream: false },
-      );
-      const text2 = this.stripNewlines(out2.content ?? '').trim();
-      try {
-        return this.parseIssuesJson(text2, mustInclude, answerText);
-      } catch (e2) {
-        this.debugPreview('second', out2.requestId, text2);
-        // Enhanced debug logging for parse failures
-        try {
-          const debug1 = (e1 as any)?.message ?? String(e1);
-          const debug2 = (e2 as any)?.message ?? String(e2);
-          this.logger.warn(`Evaluation parse failed, fallback used. err1=${debug1} err2=${debug2}`);
-        } catch {}
-        return this.fallbackIssues(mustInclude, answerText);
-      }
+      this.debugPreview('combined', out.requestId, text);
+      // 실패 시 폴백 (LLM 추가 호출 없음)
+      const issues = this.fallbackIssues(limitedMustInclude, answerText).issues ?? [];
+      const feedback = this.fallbackFeedback(issues);
+      return { issues, feedback };
     }
   }
 
@@ -133,6 +156,35 @@ export class LlmEvaluationProvider {
         source: 'llm',
       },
     };
+  }
+
+  private parseCombinedJson(
+    text: string,
+    mustInclude: string[],
+    answerText: string,
+  ): CombinedPayload {
+    const raw = (() => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        const cleaned = this.prepareLikelyJson(text);
+        return JSON.parse(cleaned);
+      }
+    })();
+
+    const issuesPayload = this.parseIssuesJson(
+      JSON.stringify({ issues: raw?.issues ?? [] }),
+      mustInclude,
+      answerText,
+    );
+    const feedbackRaw = raw?.feedback ?? {};
+    const toArr = (x: any) => (Array.isArray(x) ? x.map((s) => String(s)) : []);
+    const feedback: FeedbackPayload = {
+      accurate: toArr(feedbackRaw?.accurate),
+      weakness: toArr(feedbackRaw?.weakness),
+      suggestions: toArr(feedbackRaw?.suggestions),
+    };
+    return { issues: issuesPayload.issues, feedback };
   }
 
   private prepareLikelyJson(s: string): string {
@@ -195,6 +247,23 @@ export class LlmEvaluationProvider {
       } catch {}
     }
     return flattened;
+  }
+
+  private logResponsePreview(stage: string, requestId: string | undefined, text: string) {
+    const enabled = (process.env.ASSESS_LLM_LOG ?? '').trim() === '1';
+    if (!enabled) return;
+    const full = (process.env.ASSESS_LLM_LOG_FULL ?? '').trim() === '1';
+    const safeText = String(text ?? '');
+    if (full) {
+      this.logger.log(
+        `[LLM:${stage}] req=${requestId ?? 'n/a'} textLength=${safeText.length} text=${safeText}`,
+      );
+      return;
+    }
+    const preview = safeText.replace(/\s+/g, ' ').slice(0, 600);
+    this.logger.log(
+      `[LLM:${stage}] req=${requestId ?? 'n/a'} textLength=${safeText.length} textPreview=${preview}`,
+    );
   }
 
   // Debug helper: log parse failure context when ASSESS_EVAL_DEBUG=1
@@ -264,5 +333,31 @@ export class LlmEvaluationProvider {
         source: 'fallback',
       },
     } as IssuesPayload;
+  }
+
+  private fallbackFeedback(issues: Issue[]): FeedbackPayload {
+    const accurate: string[] = [];
+    const weakness: string[] = [];
+    const suggestions: string[] = [];
+    for (const i of issues ?? []) {
+      const t = String(i?.type ?? '');
+      const target = String((i as any)?.target ?? '').trim();
+      if (t === 'strength') {
+        accurate.push(
+          target ? `${target}을 정확하게 설명했어요.` : '핵심 개념을 정확하게 설명했어요.',
+        );
+      } else if (t === 'missing' || t === 'unclear' || t === 'misconception') {
+        if (target) weakness.push(`${target}에 대한 설명을 보완해 주세요.`);
+        if (target)
+          suggestions.push(
+            `‘${target}’의 핵심 정의를 한두 문장으로 정리하고 왜 중요한지 간단한 예시와 함께 보충해 보세요.`,
+          );
+      }
+    }
+    return {
+      accurate: accurate.slice(0, 3),
+      weakness: weakness.slice(0, 5),
+      suggestions: suggestions.slice(0, 5),
+    };
   }
 }

@@ -2,6 +2,7 @@ export type QuestionContext = {
   id: number;
   content: string;
   mustInclude: string[];
+  isExtra: boolean;
 };
 
 /**
@@ -10,6 +11,7 @@ export type QuestionContext = {
  * - mustInclude는 배열 보장 및 문자열화
  */
 export function extractQuestionContext(answer: any): QuestionContext {
+  const isExtra = !!answer?.extraQuestion;
   const q = answer?.question ?? answer?.extraQuestion;
   if (!q) throw new Error('QUESTION_CONTEXT_NOT_FOUND');
   const mustInclude = Array.isArray(q.mustInclude) ? q.mustInclude.map(String) : [];
@@ -17,5 +19,6 @@ export function extractQuestionContext(answer: any): QuestionContext {
     id: q.id,
     content: String(q.content),
     mustInclude,
+    isExtra,
   };
 }

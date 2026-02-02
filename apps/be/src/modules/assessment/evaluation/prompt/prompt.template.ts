@@ -136,3 +136,51 @@ ${answerText}
 [OUTPUT ONLY JSON]
 스키마를 지키며 한 줄 JSON만 출력하세요.`;
 };
+
+// =====================
+// Combined Evaluation + Feedback (Single Call)
+// =====================
+
+export const CombinedSystemPrompt = `당신은 '주니어 개발자 면접' 답변을 평가하고 피드백을 생성하는 시스템입니다.
+반드시 유효한 JSON만 한 줄로(minified) 출력하세요. 마크다운/코드블록/설명/주석 금지.
+모든 텍스트는 한국어로 작성하되, 고유명사는 원어를 유지하세요.
+문자열 값 내부 큰따옴표(\\") 사용 금지. 백틱/줄바꿈 금지.
+스키마 외의 키를 추가하지 마세요.
+피드백 제한:
+- accurate/weakness/suggestions는 각각 최대 4개만 생성합니다.
+- 각 항목은 1문장, 120자 이내로 자연스럽게 작성합니다.`;
+
+export const CombinedUserPrompt = (
+  questionSummary: string,
+  goldenJson: string,
+  mustInclude: string[],
+  answerText: string,
+) => {
+  const mustList = mustInclude.map((s) => `- ${s}`).join('\n');
+  return `
+[QUESTION]
+요약: ${questionSummary}
+
+[GOLDEN]
+${goldenJson}
+
+[RUBRIC MUST-INCLUDE]
+다음 항목을 중심으로 평가하세요(각 항목별 반드시 1개 이슈 생성):
+${mustList}
+
+[ANSWER]
+${answerText}
+
+[TASK]
+1) MUST-INCLUDE의 각 항목에 대해 답변에서 증거 문장을 추출하고 strength/unclear/missing을 판정합니다.
+2) issues는 MUST-INCLUDE 항목 수와 동일한 개수로 생성합니다(항목당 1개).
+3) feedback은 issues를 기반으로 accurate/weakness/suggestions를 작성합니다.
+   - 각 배열은 최대 4개만 작성합니다.
+   - 각 항목은 1문장, 120자 이내로 자연스럽게 작성합니다.
+   - accurate에는 strength 이슈만 사용하고, 부족/불명확한 내용은 절대 포함하지 않습니다.
+   - weakness에는 missing/unclear 이슈만 사용합니다.
+
+[OUTPUT ONLY JSON]
+스키마: {"issues":[{"type":"strength|unclear|missing","detail":"간결 설명","evidence":"답변 근거(선택)","target":"해당 항목 설명(선택)"}],"feedback":{"accurate":["..."],"weakness":["..."],"suggestions":["..."]}}
+`;
+};
