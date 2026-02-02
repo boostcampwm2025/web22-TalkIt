@@ -49,21 +49,11 @@ export class LlmFeedbackProvider {
       },
     ];
 
-    const feedbackSchema: any = {
-      type: 'object',
-      properties: {
-        accurate: { type: 'array', items: { type: 'string' } },
-        weakness: { type: 'array', items: { type: 'string' } },
-        suggestions: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['accurate', 'weakness', 'suggestions'],
-    };
-
     const out = await this.clova.chat(messages, {
       temperature: 0,
       maxCompletionTokens: 3000,
       stream: false,
-      responseFormat: { type: 'json', schema: feedbackSchema },
+      thinking: { effort: 'medium' },
     });
     const text = (out.content ?? '').trim();
     try {

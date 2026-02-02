@@ -1,13 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ClovaService } from '@/infra/clova/clova.service';
+import { StructuredNormalizerService } from '@/infra/structured/structured-normalizer.service';
 
 import { GoldenSystemPrompt, GoldenUserPrompt } from '../prompt/prompt.template';
 
 @Injectable()
 export class LlmGoldenProvider {
   private readonly logger = new Logger(LlmGoldenProvider.name);
-  constructor(private readonly clova: ClovaService) {}
+  constructor(
+    private readonly clova: ClovaService,
+    private readonly normalizer: StructuredNormalizerService,
+  ) {}
 
   async generate(params: { questionSummary: string }): Promise<{
     definition: string;
@@ -20,26 +24,18 @@ export class LlmGoldenProvider {
       { role: 'system' as const, content: GoldenSystemPrompt },
       { role: 'user' as const, content: GoldenUserPrompt(questionSummary) },
     ];
-    const goldenSchema: any = {
-      type: 'object',
-      properties: {
-        definition: { type: 'string' },
-        key_points: { type: 'array', items: { type: 'string' } },
-        pitfalls: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['definition', 'key_points', 'pitfalls'],
-    };
-
     const out = await this.clova.chat(messages, {
       temperature: 0.1,
       maxCompletionTokens: 3000,
       stream: false,
-      responseFormat: { type: 'json', schema: goldenSchema },
+      thinking: { effort: 'medium' },
     });
     const text = (out.content ?? '').trim();
     // 1) 직파싱 → 2) 정리 후 파싱 → 3) 재요청(강조) → 실패 시 폴백
     try {
-      return this.parseGoldenJson(text, questionSummary);
+      const obj = this.parseGoldenJson(text, questionSummary);
+      const normalized = await this.normalizer.normalizeGolden(JSON.stringify(obj));
+      return normalized;
     } catch {
       // reinforce with stronger formatting/safety guidance
       const reinforce =
@@ -53,17 +49,20 @@ export class LlmGoldenProvider {
           temperature: 0,
           maxCompletionTokens: 3000,
           stream: false,
-          responseFormat: { type: 'json', schema: goldenSchema },
+          thinking: { effort: 'medium' },
         },
       );
       const text2 = (out2.content ?? '').trim();
       try {
-        return this.parseGoldenJson(text2, questionSummary);
+        const obj2 = this.parseGoldenJson(text2, questionSummary);
+        const normalized2 = await this.normalizer.normalizeGolden(JSON.stringify(obj2));
+        return normalized2;
       } catch (e2) {
         this.logger.warn(
           `Golden parse failed, falling back minimal: ${(e2 as any)?.message ?? e2}`,
         );
-        return { definition: questionSummary, key_points: [] };
+        // 폴백도 스키마로 맞춰 반환
+        return { definition: questionSummary, key_points: [], pitfalls: [] };
       }
     }
   }
