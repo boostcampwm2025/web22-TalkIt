@@ -28,7 +28,8 @@
     "cache:down": "docker compose -f docker/docker-compose.redis.yml down",
     "cache:logs": "docker compose -f docker/docker-compose.redis.yml logs -f redis",
     "cache:clear-qpool": "ts-node scripts/redis-clear-qpool.ts",
-    "cache:nuke": "docker compose -f docker/docker-compose.redis.yml down -v --remove-orphans && rm -rf docker/redis-data && docker compose -f docker/docker-compose.redis.yml up -d"
+    "cache:nuke": "docker compose -f docker/docker-compose.redis.yml down -v --remove-orphans && rm -rf docker/redis-data && docker compose -f docker/docker-compose.redis.yml up -d",
+    "arena": "node tools/arena/index.js"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.4.0",
@@ -91,7 +92,8 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "bull-arena": "^4.1.0"
   },
   "jest": {
     "moduleFileExtensions": [
