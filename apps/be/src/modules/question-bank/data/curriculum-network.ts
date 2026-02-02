@@ -11,8 +11,9 @@ export const NETWORK_CURRICULUM: Curriculum = {
         { term: 'OSI 7계층 모델', conceptLevel: 'Basic' },
         { term: 'TCP/IP 4계층 모델', conceptLevel: 'Basic' },
         { term: '캡슐화와 역캡슐화', conceptLevel: 'Intermediate' },
-        { term: 'Protocol과 표준화', conceptLevel: 'Intermediate' },
-        { term: 'OSI vs TCP/IP 모델 비교', conceptLevel: 'Advanced' },
+        { term: 'PDU(Protocol Data Unit) 개념', conceptLevel: 'Intermediate' },
+        { term: 'L2/L3/L4/L7 스위치 차이', conceptLevel: 'Advanced' },
+        { term: 'End-to-End Principle', conceptLevel: 'Advanced' },
       ],
     },
     {
