@@ -202,24 +202,6 @@ const RegisterPage = () => {
           {...register('confirmPassword')}
         />
 
-        {/* 약관 동의 */}
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              {...register('termsAgreed')}
-              type="checkbox"
-              id="terms"
-              className="h-4 w-4 rounded border-gray text-primary focus:ring-primary"
-            />
-            <label htmlFor="terms" className="text-sm text-dark-gray">
-              <span className="cursor-pointer text-primary underline">이용약관</span> 및
-              <span className="cursor-pointer text-primary underline"> 개인정보처리방침</span>에
-              동의합니다.
-            </label>
-          </div>
-          {errors.termsAgreed && <p className="text-xs text-alert">{errors.termsAgreed.message}</p>}
-        </div>
-
         {/* 가입하기 버튼 */}
         <button
           type="submit"
