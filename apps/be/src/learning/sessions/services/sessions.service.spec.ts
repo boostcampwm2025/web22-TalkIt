@@ -229,4 +229,68 @@ describe('SessionsService', () => {
       }),
     );
   });
+
+  // completeSession에 totalScore/totalTimeSec 집계값 전달
+  // updateStatsAtomic에 XP/해결 수/학습 시간/스트릭 갱신값 전달
+
+  it('정상 종료 시 데이터 집계(XP/점수/통계)가 수행된다', async () => {
+    const {
+      service,
+      sessionsRepository,
+      prisma,
+      userStatsRepository,
+      xpRepository,
+      xpCalculator,
+      streakCalculator,
+    } = makeService();
+
+    sessionsRepository.findById.mockResolvedValue({
+      id: 15,
+      userId: 1,
+      status: 'ACTIVE',
+      completedAt: null,
+      difficulty: 'EASY',
+    });
+    prisma.userAnswer.findMany.mockResolvedValue([
+      { overallScore: 80, timeSpentSec: 10, extraQuestionId: null },
+      { overallScore: 90, timeSpentSec: 20, extraQuestionId: 5 },
+    ]);
+    xpCalculator.calculate.mockReturnValue({
+      totalGainedXp: 20,
+      detail: { baseXp: 10, difficultyBonus: 5, deepDiveBonus: 5 },
+    });
+    userStatsRepository.findStatsByUserId.mockResolvedValue({
+      level: 1,
+      currentXp: 10,
+      streakDays: 1,
+      updatedAt: new Date(),
+    });
+    streakCalculator.calculate.mockReturnValue(2);
+    xpRepository.findRequiredXpByLevel.mockResolvedValue(100);
+
+    await service.finishSession(15, 1);
+
+    expect(xpCalculator.calculate).toHaveBeenCalledWith('EASY', [
+      { extraQuestionId: null },
+      { extraQuestionId: '5' },
+    ]);
+    expect(sessionsRepository.completeSession).toHaveBeenCalledWith(
+      15,
+      expect.objectContaining({
+        totalScore: 170,
+        totalTimeSec: 30,
+      }),
+      expect.anything(),
+    );
+    expect(userStatsRepository.updateStatsAtomic).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        addedXp: 20,
+        addedSolvedCount: 2,
+        addedStudyTime: 30,
+        streakDays: 2,
+      }),
+      expect.anything(),
+    );
+  });
 });
