@@ -463,17 +463,29 @@ QB_DEDUP_MAX_TOKENS=1024
 
 ---
 
-## 실행 방법 (예상)
+## 실행 방법
 
 ```bash
-# Step 2: 질문 생성
-npx ts-node scripts/generate-questions.ts --category OS --chapter 1 --count 10
+# Step 2: 질문 생성 (단일 챕터)
+npx ts-node scripts/generate-questions.ts -category OS -chapter 1 -count 10
 
-# Step 3: 중복 검사 + final 생성
-npx ts-node scripts/validate-questions.ts --category OS --chapter 1
+# Step 2: 질문 생성 (전체 챕터)
+npx ts-node scripts/generate-questions.ts -category OS
 
-# Step 4: DB import
-npx ts-node scripts/import-question-bank.ts --file resource/question-bank/final/OS-1-*.json
+# Step 3: 중복 검사 + final 생성 (단일 챕터)
+npx ts-node scripts/validate-questions.ts -category OS -chapter 1
+
+# Step 3: 중복 검사 + final 생성 (전체 챕터)
+npx ts-node scripts/validate-questions.ts -category OS
+
+# Step 4-1: 오브젝트 스토리지 업로드
+npx ts-node scripts/upload-question-bank.ts -dir ./resource/question-bank/final
+
+# Step 4-2: DB import (로컬 파일)
+npx ts-node scripts/import-question-bank.ts -source local -dir ./resource/question-bank/final
+
+# Step 4-2: DB import (오브젝트 스토리지에서)
+npx ts-node scripts/import-question-bank.ts -source object
 ```
 
 ---
