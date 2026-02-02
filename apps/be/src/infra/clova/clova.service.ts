@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { z } from 'zod';
@@ -18,6 +18,7 @@ export class ClovaService {
   private readonly baseUrl: string;
   private readonly model: string;
   private readonly apiKey: string;
+  private readonly logger = new Logger(ClovaService.name);
 
   constructor(private readonly config: ConfigService) {
     this.baseUrl = this.config.get<string>('CLOVA_BASE_URL') ?? 'https://clovastudio.ntruss.com';
@@ -93,22 +94,23 @@ export class ClovaService {
       );
     }
 
-    const safe = clovaSchema.safeParse(parsedJson);
-    if (!safe.success) {
-      throw new HttpException(
-        {
-          statusCode: res.status,
-          message: 'CLOVA response validation failed',
-          requestId,
-          contentType,
-          rawTextPreview: rawText.slice(0, 500),
-          issues: safe.error.issues,
-        },
-        res.ok ? 500 : res.status,
-      );
+    // Be tolerant to schema drift: log mismatch but do not throw.
+    const parsed = clovaSchema.safeParse(parsedJson);
+    if (!parsed.success) {
+      try {
+        const issues = parsed.error.issues?.slice?.(0, 5);
+        this.logger.warn(
+          `CLOVA schema mismatch (proceeding with raw). req=${requestId} ct=${contentType} preview=${rawText
+            .replace(/\s+/g, ' ')
+            .slice(0, 200)}`,
+        );
+        if (process.env.CLOVA_SCHEMA_DEBUG === '1') {
+          this.logger.warn(`CLOVA schema issues: ${JSON.stringify(issues)}`);
+        }
+      } catch {}
     }
 
-    const json = safe.data as any;
+    const json = parsed.success ? parsed.data : (parsedJson as any);
 
     if (!res.ok) {
       throw new HttpException(
@@ -122,18 +124,48 @@ export class ClovaService {
       );
     }
 
-    // content 추출: 문자열 또는 배열([{ text }]) 모두 대응
-    const contentRaw = json?.result?.message?.content ?? json?.choices?.[0]?.message?.content;
+    // Content extraction: handle v3 + thinking variants
+    // Try multiple known paths and join segment arrays by their 'text' field.
+    const candidates = [
+      json?.result?.message?.content,
+      json?.result?.outputText,
+      json?.result?.choices?.[0]?.message?.content,
+      json?.choices?.[0]?.message?.content,
+      json?.message?.content,
+      json?.outputText,
+    ];
     let content: string | undefined = undefined;
-    if (typeof contentRaw === 'string') {
-      content = contentRaw;
-    } else if (Array.isArray(contentRaw)) {
-      try {
-        content = contentRaw.map((p: any) => (typeof p?.text === 'string' ? p.text : '')).join('');
-      } catch {
-        content = undefined;
+    for (const cand of candidates) {
+      if (content) break;
+      if (typeof cand === 'string' && cand.length > 0) {
+        content = cand;
+        break;
+      }
+      if (Array.isArray(cand)) {
+        try {
+          // Each segment may be a string or an object with { text, type } (thinking/output)
+          const parts: string[] = [];
+          for (const seg of cand) {
+            if (typeof seg === 'string') {
+              parts.push(seg);
+            } else if (seg && typeof seg.text === 'string') {
+              // Optionally ignore pure thinking segments by type
+              if (seg.type && typeof seg.type === 'string') {
+                // Keep both by default; if needed, filter out seg.type === 'thinking'
+              }
+              parts.push(seg.text);
+            } else if (seg && typeof seg.content === 'string') {
+              parts.push(seg.content);
+            }
+          }
+          const joined = parts.join('');
+          if (joined) content = joined;
+        } catch {
+          // ignore and try next candidate
+        }
       }
     }
+    if (!content) content = '';
     return { requestId, content, raw: json };
   }
 }
