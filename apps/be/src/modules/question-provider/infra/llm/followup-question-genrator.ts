@@ -17,7 +17,7 @@ export class FollowupQuestionGenerator implements FollowupQuestionGeneratorPort 
 
   private readonly apiKey = process.env.CLOVA_API_KEY!;
   private readonly baseUrl = process.env.CLOVA_BASE_URL!;
-  private readonly model = process.env.CLOVA_MODEL!;
+  private readonly model = process.env.CLOVA_MODEL_FOL ?? 'HCX-007';
 
   async generate(input: { question: string; answer: string }): Promise<{
     content: string;
