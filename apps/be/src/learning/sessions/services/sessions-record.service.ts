@@ -1,6 +1,7 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { NormalizeService } from '@/normalize/normalize.service';
+import { UserCreditsRepository } from '@/users/credits/user-credits.repository';
 
 import { normalizeAudio } from '../../../common/audio/normalize-audio';
 import { SttService } from '../../../stt/services/stt.service';
@@ -17,6 +18,7 @@ export class SessionsRecordService {
     private readonly storageProvider: ObjectStorageProvider,
     private readonly sttService: SttService,
     private readonly normalizeService: NormalizeService,
+    private readonly userCreditsRepository: UserCreditsRepository,
   ) {}
 
   async record(
@@ -40,6 +42,17 @@ export class SessionsRecordService {
         throw new NotFoundException({
           code: 'SESSION_NOT_FOUND',
           message: '세션을 찾을 수 없습니다.',
+        });
+      }
+
+      /**
+       * 크레딧 확인 (0 이하이면 처리 중단)
+       */
+      const remainedCredit = await this.userCreditsRepository.getTotalCredit(session.userId);
+      if (remainedCredit <= 0) {
+        throw new ConflictException({
+          code: 'INSUFFICIENT_CREDIT',
+          message: '잔여 크레딧이 부족하여 녹음을 진행할 수 없습니다.',
         });
       }
 
