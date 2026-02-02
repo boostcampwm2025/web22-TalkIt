@@ -14,11 +14,15 @@ export class RubricService {
     private readonly repo: EvaluationRepository,
     private readonly rubricProvider: LlmRubricProvider,
   ) {}
-  async create(params: { questionId: number; questionSummary: string }): Promise<Rubric> {
-    const { questionId, questionSummary } = params;
+  async create(params: {
+    questionId?: number;
+    extraQuestionId?: number;
+    questionSummary: string;
+  }): Promise<Rubric> {
+    const { questionId, extraQuestionId, questionSummary } = params;
 
     // 1) 기존에 생성된 루브릭이 있는지 확인
-    const existingRubric = await this.repo.getRubricByQuestionId(questionId);
+    const existingRubric = await this.repo.getRubricByQuestionRef({ questionId, extraQuestionId });
 
     // 2) 없으면 LLM을 통해 루브릭 생성
     if (existingRubric) {
@@ -29,7 +33,7 @@ export class RubricService {
     const rubric = await this.rubricProvider.generate({ questionSummary });
 
     // // 3) 생성된 루브릭을 DB에 저장
-    await this.repo.saveRubric(questionId, JSON.stringify(rubric));
+    await this.repo.saveRubric({ questionId, extraQuestionId }, JSON.stringify(rubric));
 
     // 4) 루브릭 반환
     return rubric;

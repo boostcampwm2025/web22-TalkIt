@@ -111,13 +111,16 @@ model Question {
 
 model QuestionRubricItem {
   id           Int    @id @default(autoincrement())
-  questionId   Int    @map("question_id")
+  questionId   Int?   @map("question_id")
+  extraQuestionId Int? @map("extra_question_id")
   keywordsText String @map("keywords_text") @db.Text
   weight       Float  @db.Float
 
-  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  extraQuestion ExtraQuestion? @relation(fields: [extraQuestionId], references: [id], onDelete: Cascade)
 
   @@index([questionId])
+  @@index([extraQuestionId])
   @@map("question_rubric_items")
 }
 
@@ -141,6 +144,7 @@ model ExtraQuestion {
   parentAnswer UserAnswer @relation("AnswerToExtraQuestion", fields: [parentAnswerId], references: [id], onDelete: Cascade)
 
   answers UserAnswer[] @relation("ExtraQuestionToAnswer")
+  rubricItems QuestionRubricItem[]
 
   @@index([sessionId])
   @@index([parentAnswerId])
