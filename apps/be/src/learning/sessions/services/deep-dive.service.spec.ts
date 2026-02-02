@@ -146,4 +146,25 @@ describe('DeepDiveService', () => {
       service.execute({ userId: 1, sessionId: 13, answerId: 101 }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('트랜잭션 내부 로직 실패 시 에러를 그대로 던진다', async () => {
+    const { service, sessionsRepository, answerRepository, userCreditsRepository } = makeService();
+
+    sessionsRepository.findById.mockResolvedValue({
+      id: 14,
+      userId: 1,
+      completedAt: null,
+    });
+    userCreditsRepository.getTotalCredit.mockResolvedValue(3);
+    answerRepository.findByIdWithContext.mockResolvedValue({
+      id: 111,
+      sessionId: 14,
+      answerText: 'answer',
+    });
+    sessionsRepository.transaction.mockRejectedValue(new Error('tx failed'));
+
+    await expect(service.execute({ userId: 1, sessionId: 14, answerId: 111 })).rejects.toThrow(
+      'tx failed',
+    );
+  });
 });
