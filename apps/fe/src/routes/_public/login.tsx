@@ -124,7 +124,7 @@ const LoginPage = () => {
       <div className="mt-8 text-center text-sm text-dark-gray">
         아직 계정이 없으신가요?
         <Link
-          to="/register"
+          to="/agreement"
           className="font-semibold text-primary hover:text-primary hover:underline"
         >
           회원가입
