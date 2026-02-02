@@ -22,7 +22,7 @@ export class LlmGoldenProvider {
     ];
     const out = await this.clova.chat(messages, {
       temperature: 0.1,
-      maxCompletionTokens: 1500,
+      maxCompletionTokens: 3000,
       stream: false,
       thinking: { effort: 'medium' },
     });
@@ -39,7 +39,12 @@ export class LlmGoldenProvider {
           { role: 'system' as const, content: GoldenSystemPrompt },
           { role: 'user' as const, content: GoldenUserPrompt(questionSummary) + reinforce },
         ],
-        { temperature: 0, maxCompletionTokens: 700, stream: false },
+        {
+          temperature: 0,
+          maxCompletionTokens: 3000,
+          stream: false,
+          thinking: { effort: 'medium' },
+        },
       );
       const text2 = (out2.content ?? '').trim();
       try {

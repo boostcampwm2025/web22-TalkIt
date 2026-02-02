@@ -64,9 +64,9 @@ export class LlmEvaluationProvider {
     // First attempt: chat then parse
     const out1 = await this.clova.chat(messages, {
       temperature: 0,
-      maxCompletionTokens: 25000,
+      maxCompletionTokens: 3000,
       stream: false,
-      thinking: { effort: 'high' },
+      thinking: { effort: 'medium' },
     });
     const text1 = this.stripNewlines(out1.content ?? '').trim();
 
@@ -85,7 +85,12 @@ export class LlmEvaluationProvider {
             content: EvaluationUserPrompt(questionSummary, mustInclude, answerText) + reinforce,
           },
         ],
-        { temperature: 0, maxCompletionTokens: 650, stream: false },
+        {
+          temperature: 0,
+          maxCompletionTokens: 3000,
+          stream: false,
+          thinking: { effort: 'medium' },
+        },
       );
       const text2 = this.stripNewlines(out2.content ?? '').trim();
       try {

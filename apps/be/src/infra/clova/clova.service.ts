@@ -21,7 +21,9 @@ export class ClovaService {
   private readonly logger = new Logger(ClovaService.name);
 
   constructor(private readonly config: ConfigService) {
-    this.baseUrl = this.config.get<string>('CLOVA_BASE_URL') ?? 'https://clovastudio.ntruss.com';
+    // 기본 URL을 최신 문서 기준의 스트리밍 도메인으로 변경
+    this.baseUrl =
+      this.config.get<string>('CLOVA_BASE_URL') ?? 'https://clovastudio.stream.gov-ntruss.com';
     this.model = this.config.get<string>('CLOVA_MODEL') ?? 'HCX-007';
     this.apiKey = this.config.get<string>('CLOVA_API_KEY') ?? '';
   }
@@ -29,12 +31,13 @@ export class ClovaService {
   async chat(messages: ChatMessage[], options: ChatOptions = {}) {
     const url = `${this.baseUrl}/v3/chat-completions/${this.model}`;
     const requestId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    const startedAt = Date.now();
 
     const body = {
       messages,
-      maxCompletionTokens: options.maxCompletionTokens ?? 400,
+      maxCompletionTokens: options.maxCompletionTokens ?? 3000,
       temperature: options.temperature ?? 0.2,
-      thinking: options.thinking ?? { effort: 'low' },
+      thinking: options.thinking ?? { effort: 'medium' },
       // 안전하게 명시 (지원되면 JSON으로 고정, 미지원이면 무시될 수 있음)
       stream: options.stream ?? false,
     };
@@ -68,13 +71,15 @@ export class ClovaService {
       content: z.any().optional(),
     });
 
+    // 문서 기준: status는 항상 존재, result는 Any(없거나 null일 수 있음)
     const clovaSchema = z.object({
-      result: z
+      status: z
         .object({
-          message: messageSchema.optional(),
-          usage: usageSchema.optional(),
+          code: z.string().optional(),
+          message: z.string().optional(),
         })
         .optional(),
+      result: z.any().nullable().optional(),
       usage: usageSchema.optional(),
     });
 
@@ -94,23 +99,42 @@ export class ClovaService {
       );
     }
 
-    // Be tolerant to schema drift: log mismatch but do not throw.
+    // 우선 JSON을 관용적으로 파싱한 뒤, status.code로 성공/실패 판단
     const parsed = clovaSchema.safeParse(parsedJson);
-    if (!parsed.success) {
+    const json = parsed.success ? parsed.data : (parsedJson as any);
+
+    const bodyStatusCode: string | undefined = json?.status?.code
+      ? String(json.status.code)
+      : undefined;
+
+    // HTTP가 2xx여도 본문 status.code가 실패(예: 42901)일 수 있어 우선적으로 확인
+    if (bodyStatusCode && bodyStatusCode !== '20000') {
+      const httpFromBody = /^\d{3}/.test(bodyStatusCode) ? Number(bodyStatusCode.slice(0, 3)) : 400;
+      const retryAfter = res.headers.get('retry-after') ?? undefined;
+      throw new HttpException(
+        {
+          statusCode: httpFromBody,
+          message: json?.status?.message ?? 'CLOVA error',
+          clovaStatus: json?.status,
+          requestId,
+          retryAfter,
+        },
+        httpFromBody,
+      );
+    }
+
+    // 스키마 미스매치 로그는 성공 케이스에서만 디버그 플래그 시 제한적으로 출력
+    if (!parsed.success && process.env.CLOVA_SCHEMA_DEBUG === '1') {
       try {
         const issues = parsed.error.issues?.slice?.(0, 5);
-        this.logger.warn(
-          `CLOVA schema mismatch (proceeding with raw). req=${requestId} ct=${contentType} preview=${rawText
+        this.logger.debug(
+          `CLOVA schema mismatch (ignored). req=${requestId} ct=${contentType} preview=${rawText
             .replace(/\s+/g, ' ')
             .slice(0, 200)}`,
         );
-        if (process.env.CLOVA_SCHEMA_DEBUG === '1') {
-          this.logger.warn(`CLOVA schema issues: ${JSON.stringify(issues)}`);
-        }
+        this.logger.debug(`CLOVA schema issues: ${JSON.stringify(issues)}`);
       } catch {}
     }
-
-    const json = parsed.success ? parsed.data : (parsedJson as any);
 
     if (!res.ok) {
       throw new HttpException(
@@ -166,6 +190,22 @@ export class ClovaService {
       }
     }
     if (!content) content = '';
+
+    // Success log (including simple usage and latency info)
+    try {
+      const usage = (json?.result?.usage ?? json?.usage) as
+        | { totalTokens?: number; outputTokens?: number; completionTokens?: number }
+        | undefined;
+      const tokens =
+        usage?.totalTokens ?? usage?.outputTokens ?? usage?.completionTokens ?? undefined;
+      const latency = Date.now() - startedAt;
+      this.logger.log(
+        `CLOVA success req=${requestId} model=${this.model} status=${res.status} tokens=${
+          tokens ?? 'n/a'
+        } len=${content.length} latency=${latency}ms`,
+      );
+    } catch {}
+
     return { requestId, content, raw: json };
   }
 }

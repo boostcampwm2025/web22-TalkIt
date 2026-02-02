@@ -51,9 +51,9 @@ export class LlmFeedbackProvider {
 
     const out = await this.clova.chat(messages, {
       temperature: 0,
-      maxCompletionTokens: 10000,
+      maxCompletionTokens: 3000,
       stream: false,
-      thinking: { effort: 'high' },
+      thinking: { effort: 'medium' },
     });
     const text = (out.content ?? '').trim();
     try {
