@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { ClovaModule } from '@/infra/clova/clova.module';
+import { StructuredNormalizerModule } from '@/infra/structured/structured-normalizer.module';
 
 import { AssessmentRepository } from '../assessment.repository';
 import { EvaluateService } from './application/evaluate.service';
@@ -15,7 +16,7 @@ import { LlmGoldenProvider } from './infra/llm-golden.provider';
 import { LlmRubricProvider } from './infra/llm-rubric.provider';
 
 @Module({
-  imports: [ClovaModule],
+  imports: [ClovaModule, StructuredNormalizerModule],
   providers: [
     AssessmentRepository,
     EvaluationRepository,

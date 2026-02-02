@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
+import { StructuredNormalizerService } from '@/infra/structured/structured-normalizer.service';
+
 import { AssessmentRepository } from '../../assessment.repository';
 import { ScoringService } from '../domain/scoring.service';
 import { LlmEvaluationProvider } from '../infra/llm-evaluation.provider';
@@ -18,6 +20,7 @@ export class EvaluateService {
     private readonly evalProvider: LlmEvaluationProvider,
     private readonly rubricService: RubricService,
     private readonly scoring: ScoringService,
+    private readonly normalizer: StructuredNormalizerService,
   ) {}
 
   async evaluate(answerId: number): Promise<{ evaluation; score: number }> {
@@ -42,14 +45,17 @@ export class EvaluateService {
       answerText: String(answer.answerText ?? ''),
     });
 
+    // Structured Outputs를 활용한 정규화 단계
+    const normalized = await this.normalizer.normalizeEvaluation(JSON.stringify(evaluation));
+
     // 6) 루브릭 기반 최종 점수 산출
-    const score = this.scoring.computeRubricScore(evaluation, rubric);
+    const score = this.scoring.computeRubricScore(normalized, rubric);
 
     // 7) 산출된 평가 결과/점수 영속화
-    await this.repo.setAnswerEvaluation(answerId, evaluation as any);
+    await this.repo.setAnswerEvaluation(answerId, normalized as any);
     await this.repo.setAnswerScore(answerId, score);
 
     // 8) 평가 결과 반환
-    return { evaluation, score };
+    return { evaluation: normalized, score };
   }
 }

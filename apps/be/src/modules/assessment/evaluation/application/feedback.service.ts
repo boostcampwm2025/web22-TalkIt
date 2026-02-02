@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
+import { StructuredNormalizerService } from '@/infra/structured/structured-normalizer.service';
+
 import { AssessmentRepository } from '../../assessment.repository';
 import { LlmFeedbackProvider } from '../infra/llm-feedback.provider';
 import { extractQuestionContext } from './question-context.util';
@@ -14,6 +16,7 @@ export class FeedbackService {
   constructor(
     private readonly repo: AssessmentRepository,
     private readonly feedbackProvider: LlmFeedbackProvider,
+    private readonly normalizer: StructuredNormalizerService,
   ) {}
 
   async buildFeedback(answerId: number) {
@@ -33,10 +36,13 @@ export class FeedbackService {
       issues: evaluation,
     });
 
-    // 4) 생성된 피드백을 DB에 저장
-    await this.repo.setAnswerFeedback(answerId, feedback);
+    // 4) Structured Outputs를 활용한 피드백 정규화
+    const normalized = await this.normalizer.normalizeFeedback(JSON.stringify(feedback));
 
-    // 5) 피드백 반환
-    return { feedback };
+    // 5) 생성된 피드백을 DB에 저장
+    await this.repo.setAnswerFeedback(answerId, normalized);
+
+    // 6) 피드백 반환
+    return { feedback: normalized };
   }
 }
