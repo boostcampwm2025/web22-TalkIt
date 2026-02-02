@@ -41,6 +41,7 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
      * concurrency=1 이 사실상 안전한 기본값
      */
     const concurrency = Number(process.env.ASSESS_WORKER_CONCURRENCY ?? '1');
+    this.logger.log(`[worker:init] concurrency=${concurrency}`);
 
     this.worker = new Worker(
       this.queue.name,
@@ -164,6 +165,8 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
         timestamp: new Date().toISOString(),
       });
 
+      this.logger.log(`[job:done] jobId=${jobRow.id}, answerId=${answerId}`);
+
       return { answerId, jobDbId: jobRow.id };
     } catch (e: any) {
       const message = e?.message ?? 'unknown_error';
@@ -179,6 +182,11 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
         this.logger.warn(`[job:rate-limit] jobId=${jobRow.id}, answerId=${answerId}`);
         throw e;
       }
+
+      this.logger.error(
+        `[job:failed] jobId=${jobRow.id}, answerId=${answerId}, error=${message}`,
+        e?.stack,
+      );
 
       // 진짜 실패만 FAILED 처리
       await this.repo.updateAssessmentJob(jobRow.id, {
