@@ -61,12 +61,35 @@ export class LlmEvaluationProvider {
       },
     ];
 
-    // First attempt: chat then parse
+    // Structured Outputs 스키마 정의 (HCX-007 지원)
+    const evaluationSchema: any = {
+      type: 'object',
+      properties: {
+        issues: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string', enum: ['strength', 'missing', 'unclear'] },
+              detail: { type: 'string' },
+              evidence: { type: 'string' },
+              target: { type: ['string', 'null'] },
+              score: { type: 'number' },
+            },
+            required: ['type', 'detail'],
+          },
+        },
+      },
+      required: ['issues'],
+      additionalProperties: false,
+    };
+
+    // First attempt: chat then parse (Structured Outputs로 JSON 강제)
     const out1 = await this.clova.chat(messages, {
       temperature: 0,
       maxCompletionTokens: 3000,
       stream: false,
-      thinking: { effort: 'medium' },
+      responseFormat: { type: 'json', schema: evaluationSchema },
     });
     const text1 = this.stripNewlines(out1.content ?? '').trim();
 
@@ -89,7 +112,7 @@ export class LlmEvaluationProvider {
           temperature: 0,
           maxCompletionTokens: 3000,
           stream: false,
-          thinking: { effort: 'medium' },
+          responseFormat: { type: 'json', schema: evaluationSchema },
         },
       );
       const text2 = this.stripNewlines(out2.content ?? '').trim();

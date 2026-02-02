@@ -49,11 +49,21 @@ export class LlmFeedbackProvider {
       },
     ];
 
+    const feedbackSchema: any = {
+      type: 'object',
+      properties: {
+        accurate: { type: 'array', items: { type: 'string' } },
+        weakness: { type: 'array', items: { type: 'string' } },
+        suggestions: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['accurate', 'weakness', 'suggestions'],
+    };
+
     const out = await this.clova.chat(messages, {
       temperature: 0,
       maxCompletionTokens: 3000,
       stream: false,
-      thinking: { effort: 'medium' },
+      responseFormat: { type: 'json', schema: feedbackSchema },
     });
     const text = (out.content ?? '').trim();
     try {
@@ -112,18 +122,46 @@ export class LlmFeedbackProvider {
 
   private prepareLikelyJson(s: string): string {
     let t = String(s ?? '').trim();
+    // 코드블록 제거
     if (t.startsWith('```')) {
       t = t
         .replace(/^```[a-zA-Z0-9_-]*\n?/, '')
         .replace(/```\s*$/, '')
         .trim();
     }
+    // 스마트 따옴표 치환
     t = t.replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"').replace(/[\u2018\u2019\u2032]/g, "'");
-    const first = t.indexOf('{');
-    const last = t.lastIndexOf('}');
-    if (first !== -1 && last !== -1 && last > first) {
-      t = t.slice(first, last + 1);
+
+    // 첫 번째 완결된 JSON 객체만 절취(여러 객체/설명 혼재 대응)
+    const i0 = t.indexOf('{');
+    if (i0 >= 0) {
+      let depth = 0;
+      let inStr = false;
+      let esc = false;
+      for (let i = i0; i < t.length; i++) {
+        const ch = t[i];
+        if (inStr) {
+          if (esc) {
+            esc = false;
+          } else if (ch === '\\') {
+            esc = true;
+          } else if (ch === '"') {
+            inStr = false;
+          }
+        } else {
+          if (ch === '"') inStr = true;
+          else if (ch === '{') depth++;
+          else if (ch === '}') {
+            depth--;
+            if (depth === 0) {
+              t = t.slice(i0, i + 1);
+              break;
+            }
+          }
+        }
+      }
     }
+    // 흔한 오류: 트레일링 콤마 제거
     t = t.replace(/,\s*([}\]])/g, '$1');
     return t.trim();
   }

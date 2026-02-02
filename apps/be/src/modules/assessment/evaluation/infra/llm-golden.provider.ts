@@ -20,11 +20,21 @@ export class LlmGoldenProvider {
       { role: 'system' as const, content: GoldenSystemPrompt },
       { role: 'user' as const, content: GoldenUserPrompt(questionSummary) },
     ];
+    const goldenSchema: any = {
+      type: 'object',
+      properties: {
+        definition: { type: 'string' },
+        key_points: { type: 'array', items: { type: 'string' } },
+        pitfalls: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['definition', 'key_points', 'pitfalls'],
+    };
+
     const out = await this.clova.chat(messages, {
       temperature: 0.1,
       maxCompletionTokens: 3000,
       stream: false,
-      thinking: { effort: 'medium' },
+      responseFormat: { type: 'json', schema: goldenSchema },
     });
     const text = (out.content ?? '').trim();
     // 1) 직파싱 → 2) 정리 후 파싱 → 3) 재요청(강조) → 실패 시 폴백
@@ -43,7 +53,7 @@ export class LlmGoldenProvider {
           temperature: 0,
           maxCompletionTokens: 3000,
           stream: false,
-          thinking: { effort: 'medium' },
+          responseFormat: { type: 'json', schema: goldenSchema },
         },
       );
       const text2 = (out2.content ?? '').trim();

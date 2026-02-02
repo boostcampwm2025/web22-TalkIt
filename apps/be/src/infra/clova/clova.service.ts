@@ -11,6 +11,7 @@ type ChatOptions = {
   temperature?: number;
   thinking?: { effort: ThinkingEffort };
   stream?: boolean; // 혹시 지원되는 경우 명시적으로 false
+  responseFormat?: { type: 'json'; schema: any };
 };
 
 @Injectable()
@@ -33,14 +34,19 @@ export class ClovaService {
     const requestId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     const startedAt = Date.now();
 
-    const body = {
+    const body: any = {
       messages,
       maxCompletionTokens: options.maxCompletionTokens ?? 3000,
       temperature: options.temperature ?? 0.2,
-      thinking: options.thinking ?? { effort: 'medium' },
       // 안전하게 명시 (지원되면 JSON으로 고정, 미지원이면 무시될 수 있음)
       stream: options.stream ?? false,
     };
+    // Structured Outputs 사용 시 thinking과 동시 사용 불가 → 자동 비활성화
+    if (options.responseFormat?.type === 'json') {
+      body.responseFormat = { type: 'json', schema: options.responseFormat.schema };
+    } else {
+      body.thinking = options.thinking ?? { effort: 'medium' };
+    }
 
     const res = await fetch(url, {
       method: 'POST',
