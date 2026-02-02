@@ -42,7 +42,6 @@ export function preNormalize(text: string): string {
     뮤텍스: 'mutex',
     세마포어: 'semaphore',
     데드락: 'deadlock',
-    락: 'lock',
 
     // ===== Network =====
     아이피: 'IP',
@@ -96,11 +95,6 @@ export function preNormalize(text: string): string {
     노드: 'Node.js',
     스프링: 'Spring',
     리액트: 'React',
-
-    // ===== 단일 단어 (가장 마지막) =====
-    키: 'Key',
-    밸류: 'Value',
-    벨류: 'Value',
   };
 
   let result = text;
