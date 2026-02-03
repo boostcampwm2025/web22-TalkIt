@@ -93,7 +93,6 @@ test.describe('5. 🛡️ 예외 처리 및 안정성 (Edge Cases & Stability)',
     await page.getByRole('button', { name: '답변 제출하기' }).click();
 
     // 2. 브라우저 dialog(beforeunload) 리스너 설정
-    // 실제 구현에서 window.onbeforeunload가 동작해야 함
     let dialogMessage = '';
     page.on('dialog', async (dialog) => {
       dialogMessage = dialog.message();
@@ -147,7 +146,6 @@ test.describe('5. 🛡️ 예외 처리 및 안정성 (Edge Cases & Stability)',
     await page.reload();
 
     // 4. 검증: 모달 또는 결과 데이터가 여전히 존재하는지 확인
-    // (구현 방식에 따라 모달이 다시 뜨거나 결과 페이지가 유지되어야 함)
     await expect(page.getByRole('dialog')).toBeVisible();
   });
 

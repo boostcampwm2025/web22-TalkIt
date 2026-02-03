@@ -7,11 +7,7 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
   });
 
   /**
-   * Auth-01: 서비스 이용 동의 (Agreement) [New]
-   * - 체크박스 동기화 로직 (전체 동의 <-> 개별 동의)
-   * - 필수 항목 체크 시 버튼 활성화
-   * - 약관 모달 호출
-   * - 다음 페이지(회원가입) 이동
+   * Auth-01: 서비스 이용 동의 (Agreement)
    */
   test('서비스 이용 동의: 약관 체크 로직 및 회원가입 페이지 이동을 검증한다', async ({ page }) => {
     await page.goto('/register'); // 혹시 register로 바로 접근해도
@@ -32,7 +28,7 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
 
     // 3. 개별 항목 해제 시 -> 전체 동의 해제 & 버튼 비활성화 확인
     await serviceCheckbox.click(); // 해제
-    // 전체 동의 체크박스가 해제되었는지 확인 (input 상태 확인이 어려우면 버튼 상태로 간접 확인)
+    // 전체 동의 체크박스가 해제되었는지 확인
     await expect(nextButton).toBeDisabled();
 
     // 4. 다시 필수 항목 모두 체크 -> 버튼 활성화
@@ -78,16 +74,16 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
     await page.getByLabel('닉네임').fill('abcdefghijk');
     await expect(page.getByText('닉네임은 10글자 이하여야 합니다.')).toBeVisible();
 
-    // 3. 비밀번호 8자 미만 검사
+    // 4. 비밀번호 8자 미만 검사
     const passwordInput = page.getByLabel('비밀번호', { exact: true });
     await passwordInput.fill('short');
     await expect(page.getByText('비밀번호는 8자 이상이어야 합니다')).toBeVisible();
 
-    // 4. 비밀번호 규칙 위반 (특수문자 미포함 등)
+    // 5. 비밀번호 규칙 위반 (특수문자 미포함 등)
     await passwordInput.fill('onlyletters123');
     await expect(page.getByText('비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다')).toBeVisible();
 
-    // 5. 비밀번호 확인 불일치 검사
+    // 6. 비밀번호 확인 불일치 검사
     await passwordInput.fill('CorrectPass!123');
     const passwordConfirmInput = page.getByLabel('비밀번호 확인');
     await passwordConfirmInput.fill('DifferentPass!456');
@@ -115,7 +111,7 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
     await emailInput.blur();
     await expect(page.getByText('이미 사용 중인 이메일입니다.')).toBeVisible();
 
-    // 이메일 사용 가능 시나리오 Mocking으로 변경
+    // 이메일 사용 가능 시나리오 Mocking
     await page.route('**/api/users/check-duplicate?type=email*', async (route) => {
       await route.fulfill({ status: 200, json: { isDuplicate: false } });
     });
@@ -148,7 +144,7 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
   });
 
   /**
-   * Auth-03: 로그인 실패 처리 (유효성 검사 및 서버 에러)
+   * Auth-04: 로그인 실패 처리 (유효성 검사 및 서버 에러)
    */
   test('로그인 시 유효성 검사 실패 및 잘못된 계정 입력 시 에러 메시지가 노출되어야 한다', async ({
     page,
@@ -192,7 +188,7 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
   });
 
   /**
-   * Auth-04: 로그인 성공
+   * Auth-05: 로그인 성공
    */
   test('로그인 성공 시 메인 페이지로 이동하고 유저 정보를 조회하여 저장하여야한다.', async ({
     page,
@@ -213,7 +209,7 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
       studyStats: {
         solvedProblemCount: 120,
         streak: 7,
-        totalStudyTime: 36000, // 10시간
+        totalStudyTime: 36000,
       },
       social: {
         followerCount: 10,
@@ -230,7 +226,7 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
       });
     });
 
-    // 3. API Mocking: 내 정보 조회 (Swagger 명세 반영)
+    // 3. API Mocking: 내 정보 조회
     await page.route('**/api/users/me', async (route) => {
       await route.fulfill({
         status: 200,
@@ -247,7 +243,7 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
     // 5. 검증: 페이지 이동 및 데이터 렌더링 확인
     await expect(page).toHaveURL('/');
 
-    // 사이드바/대시보드 내 닉네임 확인
+    // 상단 바 내 닉네임 확인
     await expect(page.getByText('YeonShin')).toBeVisible();
   });
 });

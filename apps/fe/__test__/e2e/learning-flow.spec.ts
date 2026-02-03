@@ -84,7 +84,7 @@ test.describe('4. 🤖 피드백 및 진행 흐름 (Feedback & Flow)', () => {
       route.fulfill({ status: 200, json: { sttText: '프로세스는 실행 중인 프로그램입니다.' } }),
     );
 
-    // 마이크 버튼 조작 시뮬레이션
+    // 마이크 버튼 조작
     const micButton = page.getByRole('button', { name: /녹음 시작|녹음 중지/ });
     await micButton.click();
     await expect(micButton).toHaveAttribute('aria-label', '녹음 중지');
@@ -250,6 +250,7 @@ test.describe('4. 🤖 피드백 및 진행 흐름 (Feedback & Flow)', () => {
     await nextButton.click();
     await expect(page.getByText('질문 3')).toBeVisible();
   });
+
   /**
    * Flow-03-A: 꼬리 질문 (비활성화)
    */
@@ -420,7 +421,7 @@ test.describe('4. 🤖 피드백 및 진행 흐름 (Feedback & Flow)', () => {
     await expect(dialog.getByText('학습 성과 리포트')).toBeVisible();
     await expect(dialog.getByText('+600 XP')).toBeVisible();
 
-    // 2. "결과 레벨"을 검증합니다.
+    // 2. "결과 레벨"을 검증
     await expect(dialog.getByText(/Level.*2|Lv\.?.*2/i)).toBeVisible({ timeout: 15000 });
 
     // 3. 지식 서고(Knowledge Stack) 확인
@@ -471,7 +472,7 @@ test.describe('4. 🤖 피드백 및 진행 흐름 (Feedback & Flow)', () => {
       }),
     );
 
-    // [핵심] 정산 후(메인으로 돌아갈 때) 호출되는 유저 정보 Mocking
+    // 정산 후(메인으로 돌아갈 때) 호출되는 유저 정보 Mocking
     // streak 1 -> 2 로 증가 가정
     await page.route('**/api/users/me', (route) =>
       route.fulfill({

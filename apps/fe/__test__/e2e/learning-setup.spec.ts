@@ -135,13 +135,11 @@ test.describe('2. 🏫 학습 대시보드 및 세션 설정 (Learning Setup)', 
       await page.goto('/learning');
 
       // 3. Radix UI Dialog 노출 확인
-      // Radix Dialog는 보통 role="dialog"를 가집니다.
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
       await expect(dialog.getByText('진행 중인 학습이 있습니다')).toBeVisible();
 
       // 4. '이어하기' 버튼 클릭
-      // Radix UI에서는 Dialog.Action 또는 일반 버튼으로 구현됩니다.
       const resumeButton = dialog.getByRole('button', { name: '이어하기' });
       await resumeButton.click();
 
@@ -174,7 +172,6 @@ test.describe('2. 🏫 학습 대시보드 및 세션 설정 (Learning Setup)', 
     // 3. 시작 버튼 클릭 시도
     const startButton = page.getByRole('button', { name: '학습 시작하기' });
 
-    // 만약 백엔드에서 에러를 던지는 시나리오라면
     await page.route('**/api/learning/sessions', async (route) => {
       await route.fulfill({
         status: 409,

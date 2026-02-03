@@ -92,7 +92,7 @@ test.describe('6. 🛠️ 기술적 예외 및 안정성 (Technical Edge Cases)'
     await expect(micButton).toBeVisible();
     await micButton.click();
 
-    // 6. 검증: 상태가 변하지 않았는지 확인 (aria-label이 여전히 '녹음 시작')
+    // 6. 검증: 상태가 변하지 않았는지 확인
     await expect(micButton).toHaveAttribute('aria-label', '녹음 시작');
   });
 

@@ -107,7 +107,7 @@ test.describe('3. 🎤 질문 및 답변 인터랙션 (Question & Answer)', () =
 
     // 2. 녹음 종료 및 STT API Mocking
     await page.route('**/api/learning/sessions/*/record', async (route) => {
-      // 의도적으로 약간의 지연을 주어 로딩 UI를 확실히 확인하게 할 수도 있습니다.
+      // 의도적으로 약간의 지연을 주어 로딩 UI를 확실히 확인
       await new Promise((f) => setTimeout(f, 500));
       await route.fulfill({
         status: 200,
