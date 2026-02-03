@@ -50,9 +50,13 @@ test.describe('6. 🛠️ 기술적 예외 및 안정성 (Technical Edge Cases)'
   test('마이크 권한이 거부된 상태에서 녹음 시도 시 경고창이 나타나야 한다', async ({ page }) => {
     // 1. getUserMedia 권한 거부 강제 설정 (페이지 로드 전 실행)
     await page.addInitScript(() => {
-      navigator.mediaDevices.getUserMedia = async () => {
-        throw new DOMException('Permission denied', 'NotAllowedError');
-      };
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+        value: async () => {
+          throw new DOMException('Permission denied', 'NotAllowedError');
+        },
+        configurable: true,
+        writable: true,
+      });
     });
 
     // 2. 세션 시작 API Mocking
@@ -88,7 +92,7 @@ test.describe('6. 🛠️ 기술적 예외 및 안정성 (Technical Edge Cases)'
     });
 
     // 5. 녹음 버튼 클릭
-    const micButton = page.getByRole('button', { name: '녹음 시작' });
+    const micButton = page.getByRole('button', { name: /녹음 시작|녹음 중지/ });
     await expect(micButton).toBeVisible();
     await micButton.click();
 
