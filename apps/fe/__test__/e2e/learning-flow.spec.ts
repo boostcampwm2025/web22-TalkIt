@@ -33,6 +33,7 @@ test.describe('4. 🤖 피드백 및 진행 흐름 (Feedback & Flow)', () => {
     await page.route('**/api/auth/refresh', (route) =>
       route.fulfill({ status: 200, json: { accessToken: 'fake_token' } }),
     );
+
     await page.route('**/api/users/me', (route) =>
       route.fulfill({
         status: 200,
@@ -449,5 +450,57 @@ test.describe('4. 🤖 피드백 및 진행 흐름 (Feedback & Flow)', () => {
       dialog.getByText('답변한 기록이 없어 이번 세션은 리워드가 지급되지 않습니다.'),
     ).toBeVisible();
     await expect(dialog.getByText('EMPTY STACK')).toBeVisible();
+  });
+
+  /**
+   * Flow-05: 스트릭(Streak) 갱신
+   */
+  test('학습 완료 후 사이드바와 메인 페이지의 스트릭 숫자가 증가하고 활성화되어야 한다', async ({
+    page,
+  }) => {
+    // 1. 학습 종료 API Mocking (레벨업, 정산)
+    await page.route('**/api/learning/sessions/*/finish', (route) =>
+      route.fulfill({
+        status: 200,
+        json: {
+          currentXp: 100,
+          level: 2,
+          gainedXp: { baseXp: 200, difficultyBonus: 0, deepDiveBonus: 0 },
+          questions: [{ content: '질문', type: 'NORMAL', score: 100 }],
+        },
+      }),
+    );
+
+    // [핵심] 정산 후(메인으로 돌아갈 때) 호출되는 유저 정보 Mocking
+    // streak 1 -> 2 로 증가 가정
+    await page.route('**/api/users/me', (route) =>
+      route.fulfill({
+        status: 200,
+        json: {
+          profile: { nickname: '테스터' },
+          progression: { level: 2, currentXp: 100, requiredXpForNextLevel: 1200 },
+          studyStats: { streak: 2, solvedProblemCount: 6, totalStudyTime: 700 }, // streak 2
+          remainingCredit: 19,
+        },
+      }),
+    );
+
+    // 2. 학습 종료
+    const endButton = page.getByRole('button', { name: '학습 종료' });
+    await expect(endButton).toBeVisible();
+    await endButton.click();
+
+    // 3. 결과 모달에서 메인 이동
+    const backButton = page.getByRole('button', { name: '메인으로 돌아가기' });
+    await expect(backButton).toBeVisible();
+    await backButton.click();
+
+    // 4. 메인 페이지 이동 및 스트릭 확인
+    await expect(page).toHaveURL('/learning');
+    await expect(page.getByText(/연속.*2일/)).toBeVisible();
+
+    const streakIcon = page.locator('svg.lucide-flame');
+    await expect(streakIcon).toBeVisible();
+    await expect(streakIcon).toHaveClass(/text-orange|text-primary/);
   });
 });
