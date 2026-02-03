@@ -53,6 +53,8 @@ export function preNormalize(text: string): string {
     세마포어: 'semaphore',
     데드락: 'deadlock',
     '데드 락': 'deadlock',
+    대드락: 'deadlock',
+    '대드 락': 'deadlock',
 
     // ===== Network =====
     아이피: 'IP',
