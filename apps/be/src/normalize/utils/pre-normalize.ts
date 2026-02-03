@@ -22,6 +22,8 @@ export function preNormalize(text: string): string {
     멀티스레드: 'multithread',
     '멀티 스레드': 'multithread',
     '멀티 쓰레드': 'multithread',
+    '메모리 풀': 'memory pool',
+    메모리풀: 'memory pool',
 
     // ===== OS / HW =====
     오에스: 'OS',
