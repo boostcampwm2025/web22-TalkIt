@@ -1,9 +1,6 @@
-import { TotalDifficulty } from './question-bank.types';
+import { Difficulty } from './question-bank.types';
 
-export function calculateTotalDifficulty(
-  conceptLevel: 1 | 2 | 3,
-  depth: 1 | 2 | 3,
-): TotalDifficulty {
+export function calculateDifficulty(conceptLevel: 1 | 2 | 3, depth: 1 | 2 | 3): Difficulty {
   const sum = conceptLevel + depth;
 
   if (sum <= 3) return 'EASY';

@@ -13,9 +13,11 @@ function ensureDir(dir: string) {
 
 function timestamp(): string {
   const now = new Date();
-  const date = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
   const time = now.toTimeString().slice(0, 8).replace(/:/g, '');
-  return `${date}-${time}`;
+  return `${y}${m}${d}-${time}`;
 }
 
 function sanitizeTerm(term: string): string {
@@ -51,8 +53,14 @@ export function saveFinalQuestions(
   return filePath;
 }
 
-export function loadDraftFiles(category: Domain, chapter: number): DraftQuestion[] {
-  const dir = path.join(RESOURCE_BASE, 'draft');
+export function loadDraftFiles(
+  category: Domain,
+  chapter: number,
+  folder?: string,
+): DraftQuestion[] {
+  const dir = folder
+    ? path.join(RESOURCE_BASE, 'draft', folder)
+    : path.join(RESOURCE_BASE, 'draft');
   if (!fs.existsSync(dir)) return [];
 
   const prefix = `${category}-${chapter}-`;

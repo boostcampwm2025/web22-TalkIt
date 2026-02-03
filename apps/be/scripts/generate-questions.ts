@@ -2,6 +2,8 @@
  * question-bank 질문 생성 스크립트
  * 사용법:
  *  ts-node scripts/generate-questions.ts -category OS -chapter 1 -count 10
+ *  ts-node scripts/generate-questions.ts -category OS -chapter 1 -term Kernel -count 10
+ *  ts-node scripts/generate-questions.ts -category OS -chapter 1 -term 'Kernel|Process' -count 10
  *  ts-node scripts/generate-questions.ts -category OS              # 전체 챕터
  */
 import { Module } from '@nestjs/common';
@@ -39,10 +41,17 @@ async function main() {
   const category = (typeof parsed['-category'] === 'string' ? parsed['-category'] : '') as Domain;
   const chapter = typeof parsed['-chapter'] === 'string' ? parseInt(parsed['-chapter'], 10) : 0;
   const count = typeof parsed['-count'] === 'string' ? parseInt(parsed['-count'], 10) : 10;
+  const terms =
+    typeof parsed['-term'] === 'string'
+      ? parsed['-term']
+          .split('|')
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : undefined;
 
   if (!category || !['OS', 'NETWORK', 'DB', 'DATA_STRUCTURE'].includes(category)) {
     console.error(
-      'Usage: ts-node scripts/generate-questions.ts -category OS|NETWORK|DB|DATA_STRUCTURE [-chapter N] [-count N]',
+      'Usage: ts-node scripts/generate-questions.ts -category OS|NETWORK|DB|DATA_STRUCTURE [-chapter N] [-term "Term1|Term2"] [-count N]',
     );
     process.exit(1);
   }
@@ -51,8 +60,9 @@ async function main() {
   const service = app.get(QuestionBankService);
 
   if (chapter > 0) {
-    console.log(`Generating ${count} questions for ${category} chapter ${chapter}...`);
-    const result = await service.generateQuestions(category, chapter, count);
+    const termLabel = terms ? ` [terms: ${terms.join(', ')}]` : '';
+    console.log(`Generating ${count} questions for ${category} chapter ${chapter}${termLabel}...`);
+    const result = await service.generateQuestions(category, chapter, count, terms);
     console.log(`Done: ${result.total} questions generated in ${result.files.length} files`);
   } else {
     const curriculum = CURRICULA[category];
@@ -64,7 +74,7 @@ async function main() {
     let totalFiles = 0;
     for (const ch of curriculum.chapters) {
       console.log(`\n--- Chapter ${ch.chapter}: ${ch.title} ---`);
-      const result = await service.generateQuestions(category, ch.chapter, count);
+      const result = await service.generateQuestions(category, ch.chapter, count, terms);
       totalQuestions += result.total;
       totalFiles += result.files.length;
     }

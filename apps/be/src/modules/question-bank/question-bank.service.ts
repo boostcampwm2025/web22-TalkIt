@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { Domain } from './data';
 import { QuestionGeneratorService } from './generator/question-generator.service';
-import { DedupValidatorService } from './validator/dedup-validator.service';
+import {
+  DedupValidatorService,
+  RemovedQuestion,
+  TokenUsage,
+} from './validator/dedup-validator.service';
 
 @Injectable()
 export class QuestionBankService {
@@ -13,18 +17,28 @@ export class QuestionBankService {
     private readonly dedupValidator: DedupValidatorService,
   ) {}
 
-  async generateQuestions(category: Domain, chapter: number, count?: number) {
+  async generateQuestions(category: Domain, chapter: number, count?: number, terms?: string[]) {
     this.logger.log(`[Pipeline] Step 2: Generating questions for ${category} chapter ${chapter}`);
-    const result = await this.generator.generate({ category, chapter, count });
+    const result = await this.generator.generate({ category, chapter, count, terms });
     this.logger.log(
       `[Pipeline] Generated ${result.total} questions in ${result.files.length} files`,
     );
     return result;
   }
 
-  async validateAndFinalize(category: Domain, chapter: number) {
+  async validateAndFinalize(
+    category: Domain,
+    chapter: number,
+    folder?: string,
+  ): Promise<{
+    filePath: string;
+    total: number;
+    removed: number;
+    removedQuestions: RemovedQuestion[];
+    tokenUsage: TokenUsage;
+  }> {
     this.logger.log(`[Pipeline] Step 3: Validating and finalizing ${category} chapter ${chapter}`);
-    const result = await this.dedupValidator.validateAndFinalize(category, chapter);
+    const result = await this.dedupValidator.validateAndFinalize(category, chapter, folder);
     this.logger.log(
       `[Pipeline] Final: ${result.total} questions, ${result.removed} duplicates removed`,
     );

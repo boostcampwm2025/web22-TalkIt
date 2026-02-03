@@ -13,9 +13,9 @@ interface FinalQuestion {
   category: string;
   chapter: number;
   term: string;
-  difficulty: number;
+  conceptLevel: number;
   depth: number;
-  totalDifficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
   keywords: string[];
   content: string;
   contentHash: string;
@@ -57,7 +57,7 @@ async function importQuestions(prisma: any, questions: FinalQuestion[]) {
       const topicId = buildTopicId(q.category, q.chapter, q.term);
       const unique = {
         category: q.category as any,
-        difficulty: q.totalDifficulty as any,
+        difficulty: q.difficulty as any,
         topicId,
         contentHash: q.contentHash,
       };
@@ -71,7 +71,7 @@ async function importQuestions(prisma: any, questions: FinalQuestion[]) {
           timeLimitSec: 180,
           chapter: q.chapter,
           term: q.term,
-          conceptLevel: q.difficulty,
+          conceptLevel: q.conceptLevel,
           depth: q.depth,
         },
         update: {
@@ -79,7 +79,7 @@ async function importQuestions(prisma: any, questions: FinalQuestion[]) {
           mustInclude: q.keywords,
           chapter: q.chapter,
           term: q.term,
-          conceptLevel: q.difficulty,
+          conceptLevel: q.conceptLevel,
           depth: q.depth,
         },
       });

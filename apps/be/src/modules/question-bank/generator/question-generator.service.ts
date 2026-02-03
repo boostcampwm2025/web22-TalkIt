@@ -10,6 +10,7 @@ interface GenerateInput {
   category: Domain;
   chapter: number;
   count?: number;
+  terms?: string[];
 }
 
 interface LlmQuestionItem {
@@ -34,7 +35,7 @@ export class QuestionGeneratorService {
   }
 
   async generate(input: GenerateInput): Promise<{ files: string[]; total: number }> {
-    const { category, chapter, count = 10 } = input;
+    const { category, chapter, count = 10, terms } = input;
 
     const curriculum = CURRICULA[category];
     const chapterData = curriculum.chapters.find((c) => c.chapter === chapter);
@@ -42,10 +43,20 @@ export class QuestionGeneratorService {
       throw new Error(`Chapter ${chapter} not found in ${category} curriculum`);
     }
 
+    let concepts = chapterData.keyConcepts;
+    if (terms && terms.length > 0) {
+      const termSet = new Set(terms.map((t) => t.toLowerCase()));
+      concepts = concepts.filter((c) => termSet.has(c.term.toLowerCase()));
+      if (concepts.length === 0) {
+        const available = chapterData.keyConcepts.map((c) => c.term).join(', ');
+        throw new Error(`No matching terms found: [${terms.join(', ')}]. Available: ${available}`);
+      }
+    }
+
     const files: string[] = [];
     let total = 0;
 
-    for (const concept of chapterData.keyConcepts) {
+    for (const concept of concepts) {
       this.logger.log(`Generating questions: ${category} ch${chapter} - ${concept.term}`);
 
       const questions = await this.generateForConcept({
@@ -86,6 +97,7 @@ export class QuestionGeneratorService {
       {
         maxCompletionTokens: this.maxTokens,
         temperature: this.temperature,
+        thinking: { effort: 'low' },
       },
     );
 
@@ -126,7 +138,7 @@ export class QuestionGeneratorService {
         category: params.domain,
         chapter: params.chapter,
         term: item.term || params.term,
-        difficulty: conceptLevelNum,
+        conceptLevel: conceptLevelNum,
         depth: item.depth as 1 | 2 | 3,
         keywords: Array.isArray(item.keywords)
           ? item.keywords.filter((k) => typeof k === 'string')
