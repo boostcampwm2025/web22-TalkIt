@@ -22,6 +22,10 @@ export class DeepDiveService {
     private readonly userCreditsRepository: UserCreditsRepository,
   ) {}
 
+  /**
+   * 답변 기반 꼬리질문을 생성하고 다음 질문 정보를 반환한다.
+   * 세션/크레딧/답변 유효성을 검증한 뒤 꼬리질문을 생성한다.
+   */
   async execute(params: { userId: number; sessionId: number; answerId: number }) {
     const { userId, sessionId, answerId } = params;
 
@@ -40,7 +44,6 @@ export class DeepDiveService {
       });
     }
 
-    // 크레딧 확인
     const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
     if (remainedCredit <= 0) {
       throw new ConflictException({
@@ -57,7 +60,6 @@ export class DeepDiveService {
       });
     }
 
-    // DeepDive 질문 생성
     const { extraQuestion, updatedSession } = await this.sessionsRepository.transaction(
       async (tx) => {
         const extraQuestion = await this.createExtraQuestionUseCase.execute({
@@ -75,6 +77,10 @@ export class DeepDiveService {
     return this.present(extraQuestion, updatedSession, remainedCredit);
   }
 
+  /**
+   * 꼬리질문 응답 형식으로 변환한다.
+   * 질문 가이드를 생성해 응답에 포함한다.
+   */
   private present(extraQuestion: any, session: any, remainedCredit: number) {
     const guide = this.guideBuilder.build(extraQuestion.mustInclude);
 

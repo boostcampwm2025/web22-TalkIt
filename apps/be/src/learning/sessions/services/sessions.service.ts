@@ -43,27 +43,10 @@ export class SessionsService {
   ) {}
 
   /**
-   * 세션 생성 + 첫 질문 제공
-   *
-   * 규칙:
-   * - 세션 생성과 첫 질문 비용 차감은 하나의 트랜잭션
-   * - createSession 시점에 currentQuestionCount = 1
+   * 학습 세션을 생성하고 첫 질문과 가이드를 반환한다.
+   * 크레딧 확인 후 세션을 생성하며, 질문은 카테고리/난이도에 맞춰 선택된다.
    */
-
   async createSession(userId: number, dto: CreateSessionDto) {
-    /**
-     * 이미 진행 중인 세션 체크
-     */
-    // NOTE: 로그인 기능 추가하고 주석 해제
-    // const activeSession = await this.sessionsRepository.findActiveSessionByUserId(userId);
-
-    // if (activeSession) {
-    //   throw new BadRequestException('이미 진행 중인 학습 세션이 있습니다.');
-    // }
-
-    /**
-     * 첫 질문 조회
-     */
     const question = await this.questionService.pickOne(dto.category, dto.difficulty);
 
     if (!question) {
@@ -72,10 +55,6 @@ export class SessionsService {
         message: '선택한 주제와 난이도에 해당하는 질문이 없습니다.',
       });
     }
-
-    /**
-     * 유저의 잔여 크레딧 조회
-     */
 
     const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
 
@@ -86,9 +65,6 @@ export class SessionsService {
       });
     }
 
-    /**
-     * 세션 생성
-     */
     const session = await this.sessionsRepository.transaction(async (tx) => {
       const createdSession = await this.sessionsRepository.createSession(
         {
@@ -102,10 +78,6 @@ export class SessionsService {
       return createdSession;
     });
 
-    /**
-     * mustInclude 키워드를 기반으로
-     * 사용자에게 제공할 답변 가이드를 생성
-     */
     const guide = this.guideBuilder.build(question.mustInclude);
 
     return {
@@ -124,17 +96,10 @@ export class SessionsService {
   }
 
   /**
-   * 다음 질문 조회
-   *
-   * 규칙:
-   * - 질문 제공 시점에 크레딧 차감 + questionCount 증가
-   * - 종료 조건 감지만 담당 (종료 처리는 finishSession에 위임)
+   * 진행 중인 세션의 다음 질문을 조회하고 카운트/크레딧을 반영한다.
+   * 질문이 없으면 세션을 종료 처리하고 종료 상태를 응답한다.
    */
-
   async getNextQuestion(sessionId: number, userId: number) {
-    /**
-     * 1. 세션 조회
-     */
     const session = await this.sessionsRepository.findById(sessionId);
 
     if (!session) {
@@ -143,10 +108,6 @@ export class SessionsService {
         message: '세션을 찾을 수 없습니다.',
       });
     }
-
-    /**
-     * 2. 세션 상태 검증
-     */
 
     if (session.completedAt) {
       throw new ConflictException({
@@ -159,9 +120,6 @@ export class SessionsService {
       throw new BadRequestException({ code: 'FORBIDDEN', message: '세션 소유자가 아닙니다.' });
     }
 
-    /**
-     * 3. 유저 잔여 크레딧 조회 (UserCredit ledger SUM)
-     */
     const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
 
     if (remainedCredit <= 0) {
@@ -177,10 +135,6 @@ export class SessionsService {
     );
 
     if (!question) {
-      /**
-       * 더 이상 질문이 없다면 세션 종료 처리
-       */
-
       await this.finishSession(sessionId, userId);
       throw new ConflictException({
         code: 'SESSION_COMPLETED',
@@ -188,18 +142,12 @@ export class SessionsService {
       });
     }
 
-    // 질문 제공 후 증가
     const updatedSession = await this.sessionsRepository.transaction(async (tx) => {
       return this.sessionsRepository.incrementQuestionCount(sessionId, tx);
     });
-    /**
-     * 5. 답변 가이드 생성
-     */
+
     const guide = this.guideBuilder.build(question.mustInclude);
 
-    /**
-     * 6. 응답 반환
-     */
     return {
       currentQuestionCount: updatedSession.currentQuestionCount,
       remainedCredit: remainedCredit,
@@ -215,14 +163,12 @@ export class SessionsService {
   }
 
   /**
-   * 세션 종료 및 리워드(XP, 레벨, 스트릭) 정산을 수행하는 메인 메서드
-   * - 세션 종료는 반드시 이 메서드를 통해서만 수행
+   * 세션을 종료하고 점수/시간/XP/레벨/스트릭을 정산한다.
+   * 답변이 없으면 즉시 종료하고, 답변이 있으면 트랜잭션으로 통계를 갱신한다.
    */
   async finishSession(sessionId: number, userId: number): Promise<FinishSessionResponseDto> {
-    // 1. 검증 및 데이터 로드
     const { session, answers } = await this.validateAndLoadSession(sessionId, userId);
 
-    // ✅ 중도 포기 처리 (답변 0개)
     if (answers.length === 0) {
       await this.prisma.session.update({
         where: { id: sessionId },
@@ -235,12 +181,9 @@ export class SessionsService {
         },
       });
 
-      // 유저의 기존 스탯 정보를 가져옴 (경험치 변화 없음)
       const userStats = await this.userStatsRepository.findStatsByUserId(userId);
       const currentLevel = userStats?.level || 1;
       const currentTotalXp = userStats?.currentXp || 0;
-
-      // 현재 레벨의 게이지 정보만 계산해서 반환
       const levelInfo = await this.processLevelUp(currentLevel, currentTotalXp);
 
       return this.mapToFinishResponse(
@@ -251,7 +194,6 @@ export class SessionsService {
       );
     }
 
-    // 2. XP 계산 위임
     const answersForCalc = answers.map((a) => ({
       extraQuestionId: a.extraQuestionId ? String(a.extraQuestionId) : null,
     }));
@@ -260,13 +202,10 @@ export class SessionsService {
       answersForCalc,
     );
 
-    // 3. 통계 데이터 집계
     const totalScore = answers.reduce((sum, ans) => sum + (ans.overallScore || 0), 0);
     const totalTimeSec = answers.reduce((sum, ans) => sum + (ans.timeSpentSec || 0), 0);
 
-    // 4. DB 트랜잭션 실행
     const result = await this.sessionsRepository.transaction(async (tx) => {
-      // 4-1. 세션 종료 (Repository 호출) ✅
       await this.sessionsRepository.completeSession(
         sessionId,
         {
@@ -274,26 +213,21 @@ export class SessionsService {
           totalTimeSec,
           gainedXp: detail as unknown as Prisma.InputJsonValue,
         },
-        tx, // 트랜잭션 클라이언트 전달
+        tx,
       );
 
-      // 4-2. 유저 스탯 조회
       const userStats = await this.userStatsRepository.findStatsByUserId(session.userId, tx);
 
-      // 4-3. 스트릭 계산 위임
       const newStreak = this.streakCalculator.calculate(
         userStats?.updatedAt,
         userStats?.streakDays || 0,
       );
 
-      // 4-4. 누적 데이터 계산
       const currentLevel = userStats?.level || 1;
       const currentTotalXp = (userStats?.currentXp || 0) + totalGainedXp;
 
-      // 4-5. 레벨업 처리
       const levelInfo = await this.processLevelUp(currentLevel, currentTotalXp);
 
-      // 4-6. 유저 스탯 저장
       await this.userStatsRepository.updateStatsAtomic(
         session.userId,
         {
@@ -308,12 +242,12 @@ export class SessionsService {
       return { ...levelInfo, newStreak };
     });
 
-    // 5. 응답 매핑
     return this.mapToFinishResponse(session, answers, result, detail);
   }
 
   /**
-   * 세션 및 답변 데이터를 조회하고, 종료 가능 여부를 검증하는 메서드
+   * 세션/답변을 조회하고 종료 가능 여부를 검증한다.
+   * 세션 소유자 검증과 채점 완료 여부를 확인한다.
    */
   private async validateAndLoadSession(sessionId: number, userId: number) {
     const session = await this.sessionsRepository.findById(sessionId);
@@ -340,44 +274,38 @@ export class SessionsService {
   }
 
   /**
-   * 누적 경험치를 기반으로 레벨업을 처리하고, UI 표시용 게이지 정보를 계산하는 메서드
+   * 누적 XP를 기준으로 레벨업과 진행도 게이지 값을 계산한다.
+   * 레벨 상한을 고려해 목표 XP를 재계산하고 UI용 범위를 반환한다.
    */
   private async processLevelUp(currentLevel: number, totalXp: number) {
     let newLevel = currentLevel;
 
-    // 현재 레벨의 졸업 요건 조회
     let currentLevelReqXp = await this.xpRepository.findRequiredXpByLevel(newLevel);
 
-    // 레벨업 루프
     while (totalXp >= currentLevelReqXp) {
       if (newLevel >= 100) break;
       newLevel++;
       currentLevelReqXp = await this.xpRepository.findRequiredXpByLevel(newLevel);
     }
 
-    // UI 범위 계산
-    // prevReqXp: 이전 레벨까지 필요했던 총 경험치 (이번 레벨의 바닥)
-    // reqXp: 다음 레벨까지 필요한 총 경험치 (이번 레벨의 천장)
-
-    // Level 1이면 바닥은 0, Level 2이상이면 (Level-1)의 요구량
     const prevReqXp =
       newLevel > 1 ? await this.xpRepository.findRequiredXpByLevel(newLevel - 1) : 0;
 
     const reqXp = await this.xpRepository.findRequiredXpByLevel(newLevel);
 
-    // 현재 레벨에서의 진행도 (Relative XP) 계산
     const currentLevelXp = totalXp - prevReqXp;
 
     return {
       level: newLevel,
-      currentXp: currentLevelXp, // UI에는 초기화된 값 전달
+      currentXp: currentLevelXp,
       prevRequiredXpForNextLevel: prevReqXp,
       requiredXpForNextLevel: reqXp,
     };
   }
 
   /**
-   * 처리된 결과를 클라이언트 응답 DTO 형식으로 매핑하는 메서드
+   * 정산 결과를 클라이언트 응답 DTO로 변환한다.
+   * 질문 목록은 일반 질문/꼬리질문을 구분해 매핑한다.
    */
   private mapToFinishResponse(
     session: any,

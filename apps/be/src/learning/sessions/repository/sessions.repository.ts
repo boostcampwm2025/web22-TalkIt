@@ -8,7 +8,8 @@ export class SessionsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * 세션 ID로 세션 조회
+   * 세션 ID로 세션을 조회한다.
+   * 트랜잭션 클라이언트를 전달하면 동일 트랜잭션에서 조회한다.
    */
   async findById(id: number, tx?: Prisma.TransactionClient) {
     const client = tx ?? this.prisma;
@@ -19,7 +20,8 @@ export class SessionsRepository {
   }
 
   /**
-   * 사용자 ID로 진행 중인 세션 조회
+   * 사용자 ID로 진행 중인 세션을 조회한다.
+   * 최근 시작된 세션이 우선 반환된다.
    */
   async findActiveSessionByUserId(userId: number) {
     return this.prisma.session.findFirst({
@@ -34,9 +36,8 @@ export class SessionsRepository {
   }
 
   /**
-   * 새 세션 생성
-   * - createSession 단계에서 첫 질문이 이미 제공되므로
-   * - currentQuestionCount는 1부터 시작한다.
+   * 새 세션을 생성하고 질문 카운트를 1로 시작한다.
+   * 첫 질문이 제공된 상태를 가정한다.
    */
   async createSession(
     data: { userId: number; category: string; difficulty: string },
@@ -56,7 +57,8 @@ export class SessionsRepository {
   }
 
   /**
-   * 세션 업데이트
+   * 세션 정보를 업데이트한다.
+   * 부분 업데이트 시 공용으로 사용한다.
    */
   async updateSession(id: number, data: Prisma.SessionUpdateInput) {
     return this.prisma.session.update({
@@ -66,9 +68,8 @@ export class SessionsRepository {
   }
 
   /**
-   * 세션 완료 처리
-   * - getNextQuestion 등에서는 직접 호출하지 않고
-   * - finishSession에서 단일 책임으로 호출
+   * 세션 완료 정보와 정산 결과를 저장한다.
+   * 점수/시간/획득 XP를 함께 기록한다.
    */
   async completeSession(
     id: number,
@@ -94,9 +95,8 @@ export class SessionsRepository {
   }
 
   /**
-   * 세션 내 질문 count 증가 처리
-   * - 트랜잭션 대응
-   * - 증가된 session row를 반환
+   * 세션 내 질문 카운트를 1 증가시킨다.
+   * 증가된 세션 레코드를 반환한다.
    */
   async incrementQuestionCount(sessionId: number, tx?: Prisma.TransactionClient) {
     const client = tx ?? this.prisma;
@@ -112,11 +112,8 @@ export class SessionsRepository {
   }
 
   /**
-   * Prisma 트랜잭션 래퍼
-   *
-   * - Service 레이어에서 트랜잭션 경계를 명확히 하기 위함
-   * - 현재는 세션 진행용으로 사용
-   * - 내부 로직은 추후 확장 가능
+   * Prisma 트랜잭션을 실행하는 래퍼다.
+   * 서비스 레이어에서 트랜잭션 경계를 명확히 한다.
    */
   async transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
     return this.prisma.$transaction(fn);

@@ -21,6 +21,10 @@ export class SessionsRecordService {
     private readonly userCreditsRepository: UserCreditsRepository,
   ) {}
 
+  /**
+   * 음성 파일을 업로드해 STT/정규화를 수행하고 텍스트를 반환한다.
+   * 임시 업로드 후 STT를 호출하며, 처리 후 임시 파일은 삭제한다.
+   */
   async record(
     sessionId: number,
     dto: RecordSessionAnswerDto,
@@ -31,9 +35,6 @@ export class SessionsRecordService {
     let objectKey: string | null = null;
 
     try {
-      /**
-       * 세션 존재 확인
-       */
       const session = await this.sessionsRepository.findById(sessionId);
 
       if (!session) {
@@ -45,9 +46,6 @@ export class SessionsRecordService {
         });
       }
 
-      /**
-       * 크레딧 확인 (0 이하이면 처리 중단)
-       */
       const remainedCredit = await this.userCreditsRepository.getTotalCredit(session.userId);
       if (remainedCredit <= 0) {
         throw new ConflictException({
@@ -56,24 +54,10 @@ export class SessionsRecordService {
         });
       }
 
-      /**
-       * 오디오 포맷 정규화
-       * - speech 모듈에서 검증된 로직
-       * - wav / mono / 16kHz 등 STT 요구사항 충족
-       */
       const { buffer, contentType, filename } = await normalizeAudio(file);
 
-      /**
-       * Object Storage 업로드
-       * - STT 서버가 직접 접근 가능한 위치
-       */
       objectKey = await this.storageProvider.upload(buffer, contentType, filename);
 
-      /**
-       * STT 요청
-       * - 파일을 다시 보내지 않음
-       * - objectKey 기준으로 STT 서버가 fetch
-       */
       const sttResult = await this.sttService.transcribe({
         objectKey,
         language: 'ko-KR',
@@ -81,22 +65,13 @@ export class SessionsRecordService {
         extraQuestionId: dto.extraQuestionId,
       });
 
-      /**
-       * stt -> 정규화 로직
-       */
       const normalizeResult = await this.normalizeService.normalizeForDraft(sttResult.text);
-      /**
-       * 응답 반환 -> 일단 최종 변환만 작성
-       * 필요시 응답 변환
-       * preNormalizedText: 음차만 변경
-       * rawText: 기존 stt 텍스트
-       */
+
       return {
         sttText: normalizeResult.draftText,
       };
     } catch (error) {
       if (error instanceof NotFoundException) {
-        // 의도된 도메인 에러 → warn
         this.logger.warn('Domain error in record process', {
           sessionId,
           code: (error.getResponse() as any)?.code,
@@ -104,7 +79,6 @@ export class SessionsRecordService {
         throw error;
       }
 
-      // 진짜 장애
       this.logger.error('Unexpected error in record process', {
         sessionId,
         error: error instanceof Error ? error.stack : error,

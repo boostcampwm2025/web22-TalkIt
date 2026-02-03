@@ -61,6 +61,10 @@ export class SessionsController {
   @ApiBadRequestResponse({
     description: '잘못된 요청 (Enum 값 오류 또는 필수 값 누락)',
   })
+  /**
+   * 학습 세션을 생성하고 첫 질문을 반환한다.
+   * 카테고리/난이도에 따라 질문을 선택하고 가이드를 포함한다.
+   */
   async createSession(
     @ActiveUser()
     user: { id: number },
@@ -107,6 +111,10 @@ export class SessionsController {
   @ApiBadRequestResponse({
     description: '유효하지 않은 세션이거나 잔여 크레딧 부족',
   })
+  /**
+   * 진행 중 세션의 다음 질문을 제공한다.
+   * 크레딧 확인 후 질문 카운트를 증가시킨다.
+   */
   async getNextQuestion(
     @ActiveUser() user: { id: number },
     @Param('sessionId', ParseIntPipe) sessionId: number,
@@ -114,7 +122,6 @@ export class SessionsController {
     return this.sessionsService.getNextQuestion(sessionId, user.id);
   }
 
-  // 꼬리질문(Deep Dive) 요청
   @Post(':sessionId/deep-dive')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
@@ -132,6 +139,10 @@ export class SessionsController {
   @ApiBadRequestResponse({
     description: '세션이 유효하지 않거나, 답변/크레딧이 없음',
   })
+  /**
+   * 답변을 기반으로 꼬리질문을 생성한다.
+   * 유효한 답변과 세션인지 확인한 뒤 추가 질문을 생성한다.
+   */
   async deepDive(
     @ActiveUser()
     user: { id: number },
@@ -148,7 +159,6 @@ export class SessionsController {
     });
   }
 
-  // 세션 종료 요청
   @Post(':sessionId/finish')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
@@ -169,6 +179,10 @@ export class SessionsController {
   @ApiBadRequestResponse({
     description: '이미 종료된 세션이거나 유효하지 않은 요청',
   })
+  /**
+   * 학습 세션을 종료하고 정산 결과를 반환한다.
+   * 점수/XP/레벨/스트릭을 포함한 결과를 반환한다.
+   */
   async finishSession(
     @ActiveUser() user: { id: number },
     @Param('sessionId', ParseIntPipe) sessionId: number,

@@ -1,6 +1,4 @@
-// rule-based, 음차만 수정
-// - 실제 적용 시에는 key 길이 기준으로 정렬하여
-//   복합 개념 / 고유명사를 먼저 치환한다
+// 음차된 기술 용어를 고정 매핑으로 영문 표기로 치환한다.
 export function preNormalize(text: string): string {
   if (!text) return text;
 
