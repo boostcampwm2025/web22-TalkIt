@@ -36,6 +36,7 @@ const PulsingMicButton = ({ isRecording, disabled, stream, onToggle }: PulsingMi
               className={`flex h-24 w-24 items-center justify-center rounded-full transition-all duration-75 ease-out disabled:cursor-not-allowed disabled:bg-gray-400 ${
                 isRecording ? 'bg-primary hover:bg-primary/70' : 'bg-gray-700 hover:bg-gray-600'
               }`}
+              aria-label={isRecording ? '녹음 중지' : '녹음 시작'}
             >
               {isRecording ? (
                 <MicOff className="h-10 w-10 text-white" />
