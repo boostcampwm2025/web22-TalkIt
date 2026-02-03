@@ -45,9 +45,6 @@ export type CreateUserDto = z.infer<typeof CreateUserSchema>;
 // 프론트엔드용 회원가입 스키마
 export const RegisterFormSchema = CreateUserSchema.extend({
   confirmPassword: z.string().min(1, '비밀번호를 다시 입력해주세요.'),
-  termsAgreed: z.literal(true, {
-    message: '이용약관에 동의해주세요.',
-  }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: '비밀번호가 일치하지 않습니다.',
   path: ['confirmPassword'],

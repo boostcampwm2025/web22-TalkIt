@@ -135,7 +135,7 @@ export const TopBar = () => {
               로그인
             </Link>
             <Link
-              to="/register"
+              to="/agreement"
               className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/80"
             >
               회원가입

@@ -14,6 +14,7 @@ import { Route as MainRouteImport } from './routes/_main'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as PublicRegisterRouteImport } from './routes/_public/register'
 import { Route as PublicLoginRouteImport } from './routes/_public/login'
+import { Route as PublicAgreementRouteImport } from './routes/_public/agreement'
 import { Route as MainRankingIndexRouteImport } from './routes/_main/ranking/index'
 import { Route as MainMypageIndexRouteImport } from './routes/_main/mypage/index'
 import { Route as MainLearningIndexRouteImport } from './routes/_main/learning/index'
@@ -43,6 +44,11 @@ const PublicLoginRoute = PublicLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => PublicRoute,
 } as any)
+const PublicAgreementRoute = PublicAgreementRouteImport.update({
+  id: '/agreement',
+  path: '/agreement',
+  getParentRoute: () => PublicRoute,
+} as any)
 const MainRankingIndexRoute = MainRankingIndexRouteImport.update({
   id: '/ranking/',
   path: '/ranking/',
@@ -70,6 +76,7 @@ const MainLearningQuestionRoute = MainLearningQuestionRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/agreement': typeof PublicAgreementRoute
   '/login': typeof PublicLoginRoute
   '/register': typeof PublicRegisterRoute
   '/': typeof PublicIndexRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/ranking': typeof MainRankingIndexRoute
 }
 export interface FileRoutesByTo {
+  '/agreement': typeof PublicAgreementRoute
   '/login': typeof PublicLoginRoute
   '/register': typeof PublicRegisterRoute
   '/': typeof PublicIndexRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_main': typeof MainRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
+  '/_public/agreement': typeof PublicAgreementRoute
   '/_public/login': typeof PublicLoginRoute
   '/_public/register': typeof PublicRegisterRoute
   '/_public/': typeof PublicIndexRoute
@@ -105,6 +114,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/agreement'
     | '/login'
     | '/register'
     | '/'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/ranking'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/agreement'
     | '/login'
     | '/register'
     | '/'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_main'
     | '/_public'
+    | '/_public/agreement'
     | '/_public/login'
     | '/_public/register'
     | '/_public/'
@@ -177,6 +189,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof PublicLoginRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/agreement': {
+      id: '/_public/agreement'
+      path: '/agreement'
+      fullPath: '/agreement'
+      preLoaderRoute: typeof PublicAgreementRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_main/ranking/': {
@@ -236,12 +255,14 @@ const MainRouteChildren: MainRouteChildren = {
 const MainRouteWithChildren = MainRoute._addFileChildren(MainRouteChildren)
 
 interface PublicRouteChildren {
+  PublicAgreementRoute: typeof PublicAgreementRoute
   PublicLoginRoute: typeof PublicLoginRoute
   PublicRegisterRoute: typeof PublicRegisterRoute
   PublicIndexRoute: typeof PublicIndexRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
+  PublicAgreementRoute: PublicAgreementRoute,
   PublicLoginRoute: PublicLoginRoute,
   PublicRegisterRoute: PublicRegisterRoute,
   PublicIndexRoute: PublicIndexRoute,
