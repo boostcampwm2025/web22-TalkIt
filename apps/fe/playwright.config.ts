@@ -33,6 +33,9 @@ export default defineConfig({
 
     // 마이크 권한 자동 허용
     permissions: ['microphone'],
+    launchOptions: {
+      args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
+    },
   },
 
   /* Configure projects for major browsers */
