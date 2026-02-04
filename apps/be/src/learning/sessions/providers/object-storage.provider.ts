@@ -24,7 +24,10 @@ export class ObjectStorageProvider {
     });
   }
 
-  // key 저장 포맷은 temp/stt/{yyyy}/{mm}/{dd}/{uuid}-{filename}.wav
+  /**
+   * 음성 파일을 임시 경로로 업로드하고 저장 키를 반환한다.
+   * 날짜/UUID 기반 경로를 생성해 충돌을 방지한다.
+   */
   async upload(buffer: Buffer, contentType: string, filename = 'audio.wav'): Promise<string> {
     const now = new Date();
     const key = [
@@ -48,8 +51,10 @@ export class ObjectStorageProvider {
     return key;
   }
 
-  // STT 파일 삭제
-  // 스토리지 파일 업로드는 어차피 음성파일을 저장하지 않으므로, STT 변환 후 삭제
+  /**
+   * STT 처리가 끝난 임시 파일을 스토리지에서 삭제한다.
+   * 삭제 실패는 경고 로그만 남기고 흐름을 유지한다.
+   */
   async deleteObject(key: string): Promise<void> {
     try {
       await this.client.send(

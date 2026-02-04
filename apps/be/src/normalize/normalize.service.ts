@@ -10,8 +10,9 @@ export class NormalizeService {
   private readonly logger = new Logger(NormalizeService.name);
 
   /**
-   * 사용자에게 보여줄 Draft 텍스트 생성
-   * (STT 이후, User Edit 이전)
+   * STT 원문을 기준으로 전처리/정규화를 거쳐 사용자용 초안을 만든다.
+   * 1) rule-based 음차 치환(preNormalize)을 적용하고,
+   * 2) 필요 시 LLM 정리를 수행해 더 읽기 쉬운 문장으로 보정한다.
    */
   async normalizeForDraft(rawText: string): Promise<{
     rawText: string;
@@ -28,10 +29,8 @@ export class NormalizeService {
       };
     }
 
-    //  Pre-Normalization (rule-based, 음차만)
     const preNormalizedText = preNormalize(originalText);
 
-    //  LLM Cleanup (User-friendly, optional)
     let draftText = preNormalizedText;
 
     if (shouldCallLlm(preNormalizedText)) {
@@ -39,7 +38,6 @@ export class NormalizeService {
         this.logger.debug(`Calling LLM cleanup (length=${preNormalizedText.length})`);
         draftText = await this.llmCleanupService.cleanup(preNormalizedText);
       } catch (error) {
-        // 실패 시 반드시 fallback
         this.logger.warn('LLM cleanup failed, falling back to preNormalizedText', error);
         draftText = preNormalizedText;
       }

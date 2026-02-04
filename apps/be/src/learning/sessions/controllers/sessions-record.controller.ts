@@ -60,6 +60,10 @@ export class SessionsRecordController {
     },
   })
   @UseInterceptors(FileInterceptor('audioFile'))
+  /**
+   * 음성 답변 파일과 메타데이터를 받아 STT 결과를 반환한다.
+   * 파일 누락 시 에러를 반환한다.
+   */
   async recordAnswer(
     @Param('sessionId') sessionId: string,
     @Body(new ZodValidationPipe(RecordSessionAnswerSchema))

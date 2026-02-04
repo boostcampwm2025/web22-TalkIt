@@ -14,5 +14,4 @@ export const RecordSessionAnswerSchema = z
     },
   );
 
-//타입은 Zod에서 바로 추론
 export type RecordSessionAnswerDto = z.infer<typeof RecordSessionAnswerSchema>;
