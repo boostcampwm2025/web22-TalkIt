@@ -1,12 +1,14 @@
+import * as Tooltip from '@radix-ui/react-tooltip';
 import type { UserInfoResponseDto } from '@repo/shared/types/user';
 import { Link } from '@tanstack/react-router';
 
-import { Flame } from 'lucide-react';
+import { Coins, Flame } from 'lucide-react';
 
 type LearningHeaderProps = {
   nickname: string;
   studyStats: UserInfoResponseDto['studyStats'];
   progression: UserInfoResponseDto['progression'];
+  remainingCredit: number;
   progress: number;
   calculatedPercent: number;
 };
@@ -15,6 +17,7 @@ const LearningHeader = ({
   nickname,
   studyStats,
   progression,
+  remainingCredit,
   progress,
   calculatedPercent,
 }: LearningHeaderProps) => {
@@ -34,10 +37,38 @@ const LearningHeader = ({
             남았어요.
           </p>
         </div>
-        <div className="self-start rounded-full border border-gray bg-white px-4 py-2 shadow-sm md:self-auto">
-          <div className="flex items-center gap-2">
-            <Flame className="h-5 w-5 text-orange" />
-            <span className="text-sm font-semibold">연속 {studyStats.streak}일 학습 중</span>
+        <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+          <Tooltip.Provider delayDuration={200}>
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <div className="cursor-help rounded-full border border-primary/20 bg-primary/5 px-4 py-2 shadow-xs transition-colors hover:bg-primary/10">
+                  <div className="flex items-center gap-2">
+                    <Coins className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-bold text-primary">
+                      {remainingCredit.toLocaleString()} 크레딧
+                    </span>
+                  </div>
+                </div>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content
+                  side="bottom"
+                  sideOffset={5}
+                  className="animate-in fade-in-0 zoom-in-95 z-50 rounded-lg bg-white px-3 py-2 text-xs text-black shadow-lg"
+                >
+                  답변을 제출할 수 있는 횟수가
+                  <span className="font-bold text-primary"> {remainingCredit}회</span> 남았습니다
+                  <Tooltip.Arrow className="fill-white" />
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+
+          <div className="rounded-full border border-gray bg-white px-4 py-2 shadow-xs">
+            <div className="flex items-center gap-2">
+              <Flame className="h-5 w-5 text-orange" />
+              <span className="text-sm font-semibold">연속 {studyStats.streak}일 학습 중</span>
+            </div>
           </div>
         </div>
       </div>

@@ -59,6 +59,7 @@ const LearningPage = () => {
           nickname={profile.nickname}
           studyStats={studyStats}
           progression={progression}
+          remainingCredit={remainingCredit}
           progress={progress}
           calculatedPercent={calculatedPercent}
         />
