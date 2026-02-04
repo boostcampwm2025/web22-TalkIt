@@ -68,7 +68,8 @@ export class AssessmentService {
     try {
       const attempts = Number(this.config.get<string>('ASSESS_EVAL_ATTEMPTS') ?? '3');
       const backoff = Number(this.config.get<string>('ASSESS_EVAL_BACKOFF_MS') ?? '2000');
-      const jobId = `answer-${answer.id}:evaluate`;
+      // BullMQ custom jobId cannot include ':' → use hyphen
+      const jobId = `answer-${answer.id}-evaluate`;
       const opts: JobsOptions = {
         jobId,
         removeOnComplete: true,

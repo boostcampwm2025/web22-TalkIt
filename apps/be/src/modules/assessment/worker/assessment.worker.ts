@@ -21,7 +21,7 @@ import { TokenBucketService } from './limiter/token-bucket.service';
 import { handleEvaluateStage } from './stages/evaluate.stage';
 import { handleFeedbackStage } from './stages/feedback.stage';
 import { handleRewardStage } from './stages/reward.stage';
-import { updateProgress } from './utils/worker.utils';
+import { jobIdStage, updateProgress } from './utils/worker.utils';
 import { Job, JobsOptions, Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 
@@ -129,7 +129,7 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
    */
   async enqueue(answerId: number) {
     // enqueue evaluate stage only (legacy 단일 큐는 제거)
-    const jobId = `answer-${answerId}:evaluate`;
+    const jobId = jobIdStage(answerId, 'evaluate');
     const attempts = Number(this.config.get<string>('ASSESS_EVAL_ATTEMPTS') ?? '3');
     const backoff = Number(this.config.get<string>('ASSESS_EVAL_BACKOFF_MS') ?? '2000');
     const opts: JobsOptions = {

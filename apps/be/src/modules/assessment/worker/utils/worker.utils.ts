@@ -16,7 +16,8 @@ export function jobIdRoot(answerId: number) {
 export type AssessStage = 'evaluate' | 'feedback' | 'reward';
 
 export function jobIdStage(answerId: number, stage: AssessStage) {
-  return `${jobIdRoot(answerId)}:${stage}`;
+  // BullMQ custom jobId must not contain ':'
+  return `${jobIdRoot(answerId)}-${stage}`;
 }
 
 // 안전한 enum 접근: 존재하지 않으면 fallback 반환
