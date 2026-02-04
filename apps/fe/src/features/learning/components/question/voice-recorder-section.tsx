@@ -1,6 +1,5 @@
-import { ANSWER_PHASE, useAnswerFlow } from '@/features/learning/lib/contexts/answer-flow-context';
 import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
-import useLearningSession from '@/lib/stores/learning-session';
+import useLearningSession, { ANSWER_PHASE } from '@/lib/stores/learning-session';
 
 import PulsingMicButton from './pulsing-mic-button';
 
@@ -10,7 +9,9 @@ type VoiceRecorderSectionProps = {
 
 const VoiceRecorderSection = ({ onRecordingComplete }: VoiceRecorderSectionProps) => {
   const question = useLearningSession((state) => state.question);
-  const { phase, setPhase, setRecordingTime } = useAnswerFlow();
+  const phase = useLearningSession((state) => state.phase);
+  const setPhase = useLearningSession((state) => state.setPhase);
+  const setRecordingTime = useLearningSession((state) => state.setRecordingTime);
 
   const timeLimit = question?.timeLimit ?? 300;
 
