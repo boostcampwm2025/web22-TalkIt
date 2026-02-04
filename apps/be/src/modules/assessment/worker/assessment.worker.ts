@@ -56,13 +56,7 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
    * - 오류는 각 워커별로 로깅하여 디버깅 용이성 확보
    */
   onModuleInit() {
-    // 워커 활성화 플래그: 0이면 어떤 워커도 기동하지 않음(물리적 분리 시 API 프로세스에서 사용)
-    // 주의: 운영 환경에서 API와 워커 프로세스를 분리 배포할 때 유용합니다.
-    const enableWorkers = (this.config.get<string>('ASSESS_ENABLE_WORKERS') ?? '1') === '1';
-    if (!enableWorkers) {
-      this.logger.log('ASSESS_ENABLE_WORKERS=0, skipping worker initialization.');
-      return;
-    }
+    // Always start workers in the worker process (API/worker 분리 운영)
 
     // Split-flow: 단계별 큐/워커 등록 (평가 → 피드백 → 보상)
     // 각 단계는 별도 동시성 설정을 가질 수 있어, 단계별 병목을 독립적으로 조정 가능

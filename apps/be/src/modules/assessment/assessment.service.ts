@@ -1,11 +1,13 @@
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { UserCreditsRepository } from '@/users/credits/user-credits.repository';
 import { AssessmentStatus } from '@prisma/client';
@@ -15,14 +17,16 @@ import type { AssessRequestDto } from './dto/assess-request.dto';
 import type { AssessResponseDTO } from './dto/assess-response.dto';
 import type { GetFeedbackResponseDTO } from './dto/get-feedback-response.dto';
 import { AssessmentSnapshotHelper } from './utils/snapshot.helper';
-import { AssessmentWorker } from './worker/assessment.worker';
+import { ASSESS_EVAL_QUEUE } from './worker/assessment.tokens';
+import { JobsOptions, Queue } from 'bullmq';
 
 @Injectable()
 export class AssessmentService {
   constructor(
     private readonly repo: AssessmentRepository,
-    private readonly worker: AssessmentWorker,
     private readonly userCreditsRepository: UserCreditsRepository,
+    private readonly config: ConfigService,
+    @Inject(ASSESS_EVAL_QUEUE) private readonly evalQueue: Queue,
   ) {}
 
   /**
@@ -59,7 +63,16 @@ export class AssessmentService {
 
     // 큐 등록 실패 시 상태 전파: DB를 FAILED로 업데이트 후 503(Service Unavailable) 반환
     try {
-      await this.worker.enqueue(answer.id);
+      const attempts = Number(this.config.get<string>('ASSESS_EVAL_ATTEMPTS') ?? '3');
+      const backoff = Number(this.config.get<string>('ASSESS_EVAL_BACKOFF_MS') ?? '2000');
+      const jobId = `answer-${answer.id}:evaluate`;
+      const opts: JobsOptions = {
+        jobId,
+        removeOnComplete: true,
+        attempts,
+        backoff: { type: 'exponential', delay: backoff },
+      };
+      await this.evalQueue.add('evaluate', { answerId: answer.id }, opts);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       await this.repo.updateAssessmentJob(job.id, {
