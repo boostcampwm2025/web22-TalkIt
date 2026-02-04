@@ -73,6 +73,8 @@ const handleAuthError = () => {
   useAuthStore.getState().clearAuth();
   useUserStore.getState().clearUserInfo();
 
+  removeIsLoggedInCookie();
+
   const currentPath = window.location.pathname;
   const publicPaths = ['/learning', '/mypage', '/ranking', '/battle'];
 
@@ -80,5 +82,9 @@ const handleAuthError = () => {
   if (publicPaths.includes(currentPath)) {
     window.location.href = '/login';
   }
+};
+
+const removeIsLoggedInCookie = () => {
+  document.cookie = 'isLoggedIn=; path=/; max-age=0;';
 };
 export default axiosInstance;

@@ -51,6 +51,16 @@ export const Route = createRootRoute({
 
     if (!authStore.isInitializing) return;
 
+    const hasAuthCookie = document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('isLoggedIn='))
+      ?.split('=')[1];
+
+    if (!hasAuthCookie) {
+      authStore.finishInitializing();
+      return;
+    }
+
     try {
       // 인증 갱신 API 호출 (Store 외부에서 수행)
       const { accessToken } = await refreshAccessTokenApi();
