@@ -14,12 +14,6 @@ interface DuplicateEntry {
   reason: string;
 }
 
-export interface TokenUsage {
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-}
-
 export interface RemovedQuestion {
   index: number;
   content: string;
@@ -49,7 +43,6 @@ export class DedupValidatorService {
     total: number;
     removed: number;
     removedQuestions: RemovedQuestion[];
-    tokenUsage: TokenUsage;
   }> {
     const drafts = loadDraftFiles(category, chapter, folder);
 
@@ -69,19 +62,9 @@ export class DedupValidatorService {
     const llmRounds = parseInt(process.env.QB_DEDUP_LLM_ROUNDS ?? '3', 10);
     let current = jaccardFiltered;
     const allLlmRemoved: RemovedQuestion[] = [];
-    const tokenUsage: TokenUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
     for (let round = 1; round <= llmRounds; round++) {
       const result = await this.findDuplicates(current);
-
-      tokenUsage.inputTokens += result.tokenUsage.inputTokens;
-      tokenUsage.outputTokens += result.tokenUsage.outputTokens;
-      tokenUsage.totalTokens += result.tokenUsage.totalTokens;
-
-      // if (result.removeIndices.size === 0) {
-      //   this.logger.log(`LLM round ${round}/${llmRounds}: no duplicates found, stopping early`);
-      //   break;
-      // }
 
       allLlmRemoved.push(...result.removedQuestions);
       current = current.filter((_, i) => !result.removeIndices.has(i));
@@ -101,26 +84,24 @@ export class DedupValidatorService {
 
     this.logger.log(`Saved final questions to ${filePath}`);
 
-    return { filePath, total: finalQuestions.length, removed, removedQuestions, tokenUsage };
+    return { filePath, total: finalQuestions.length, removed, removedQuestions };
   }
 
   private async findDuplicates(questions: DraftQuestion[]): Promise<{
     removeIndices: Set<number>;
     removedQuestions: RemovedQuestion[];
-    tokenUsage: TokenUsage;
   }> {
     const removeIndices = new Set<number>();
     const removedQuestions: RemovedQuestion[] = [];
-    const tokenUsage: TokenUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
-    if (questions.length <= 1) return { removeIndices, removedQuestions, tokenUsage };
+    if (questions.length <= 1) return { removeIndices, removedQuestions };
 
     const systemPrompt = buildDedupSystemPrompt();
     const dedupInput = questions.map((q) => ({ content: q.content, keywords: q.keywords }));
     const userPrompt = buildDedupUserPrompt(dedupInput);
 
     try {
-      const { content, raw } = await this.clova.chat(
+      const { content } = await this.clova.chat(
         [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
@@ -132,17 +113,9 @@ export class DedupValidatorService {
         },
       );
 
-      const usage = raw?.result?.usage ?? raw?.usage;
-      if (usage) {
-        tokenUsage.inputTokens = usage.inputTokens ?? usage.promptTokens ?? 0;
-        tokenUsage.outputTokens = usage.outputTokens ?? usage.completionTokens ?? 0;
-        tokenUsage.totalTokens =
-          usage.totalTokens ?? tokenUsage.inputTokens + tokenUsage.outputTokens;
-      }
-
       if (!content) {
         this.logger.warn('Empty dedup response, skipping dedup');
-        return { removeIndices, removedQuestions, tokenUsage };
+        return { removeIndices, removedQuestions };
       }
 
       const duplicates = this.parseDedupResponse(content);
@@ -162,7 +135,7 @@ export class DedupValidatorService {
       this.logger.error('Dedup LLM call failed, proceeding without dedup', error);
     }
 
-    return { removeIndices, removedQuestions, tokenUsage };
+    return { removeIndices, removedQuestions };
   }
 
   private parseDedupResponse(content: string): DuplicateEntry[] {

@@ -53,22 +53,11 @@ async function main() {
 
   // ANSI color helpers
   const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
-  const cyan = (s: string) => `\x1b[36m${s}\x1b[0m`;
-  const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
-  const magenta = (s: string) => `\x1b[35m${s}\x1b[0m`;
   const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
-  const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
-
-  let totalInput = 0;
-  let totalOutput = 0;
-  let totalTokens = 0;
 
   if (chapter > 0) {
     console.log(`Validating ${category} chapter ${chapter}...`);
     const result = await service.validateAndFinalize(category, chapter, folder);
-    totalInput += result.tokenUsage.inputTokens;
-    totalOutput += result.tokenUsage.outputTokens;
-    totalTokens += result.tokenUsage.totalTokens;
     console.log(`Done: ${result.total} final questions, ${result.removed} duplicates removed`);
     console.log(`Saved to: ${result.filePath}`);
     for (const rq of result.removedQuestions) {
@@ -87,9 +76,6 @@ async function main() {
         const result = await service.validateAndFinalize(category, ch.chapter, folder);
         totalFinal += result.total;
         totalRemoved += result.removed;
-        totalInput += result.tokenUsage.inputTokens;
-        totalOutput += result.tokenUsage.outputTokens;
-        totalTokens += result.tokenUsage.totalTokens;
         console.log(`  ${result.total} questions, ${result.removed} removed → ${result.filePath}`);
         for (const rq of result.removedQuestions) {
           console.log(`    ${red('✗ Removed #' + rq.index)}: ${rq.content}`);
@@ -101,12 +87,6 @@ async function main() {
     }
     console.log(`\nDone: ${totalFinal} total final questions, ${totalRemoved} duplicates removed`);
   }
-
-  console.log('\n' + bold('═══════════════ Token Usage ═══════════════'));
-  console.log(`  ${cyan('Input tokens')}:  ${totalInput.toLocaleString()}`);
-  console.log(`  ${yellow('Output tokens')}: ${totalOutput.toLocaleString()}`);
-  console.log(`  ${magenta('Total tokens')}:  ${bold(totalTokens.toLocaleString())}`);
-  console.log(bold('═══════════════════════════════════════════'));
 
   await app.close();
 }

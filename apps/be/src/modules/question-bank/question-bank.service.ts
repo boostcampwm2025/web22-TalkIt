@@ -2,11 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { Domain } from './data';
 import { QuestionGeneratorService } from './generator/question-generator.service';
-import {
-  DedupValidatorService,
-  RemovedQuestion,
-  TokenUsage,
-} from './validator/dedup-validator.service';
+import { DedupValidatorService, RemovedQuestion } from './validator/dedup-validator.service';
 
 @Injectable()
 export class QuestionBankService {
@@ -35,7 +31,6 @@ export class QuestionBankService {
     total: number;
     removed: number;
     removedQuestions: RemovedQuestion[];
-    tokenUsage: TokenUsage;
   }> {
     this.logger.log(`[Pipeline] Step 3: Validating and finalizing ${category} chapter ${chapter}`);
     const result = await this.dedupValidator.validateAndFinalize(category, chapter, folder);
