@@ -36,10 +36,14 @@ export function buildChatRequestBody(
   const adapter = selectBodyAdapter(options);
   // noThinking 옵션이 명시되면 thinking 파라미터를 강제로 제거하기 위해 후처리
   const built = adapter.build(messages, options);
-  if (options.noThinking) {
-    const copy: ChatRequestBody = { ...built };
-    delete copy.thinking;
-    return copy;
+  const copy: ChatRequestBody = { ...built };
+  // 강제 상호배타 보장: responseFormat 존재 시 thinking 제거
+  if (copy.responseFormat && (copy as any).thinking) {
+    delete (copy as any).thinking;
   }
-  return built;
+  // 호출부가 명시적으로 noThinking을 요청한 경우에도 제거
+  if (options.noThinking && (copy as any).thinking) {
+    delete (copy as any).thinking;
+  }
+  return copy;
 }

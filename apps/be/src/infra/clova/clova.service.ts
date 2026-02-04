@@ -23,7 +23,7 @@ export class ClovaService {
   constructor(private readonly config: ConfigService) {
     // 기본 URL을 최신 문서 기준의 스트리밍 도메인으로 변경
     this.baseUrl =
-      this.config.get<string>('CLOVA_BASE_URL') ?? 'https://clovastudio.stream.gov-ntruss.com';
+      this.config.get<string>('CLOVA_BASE_URL') ?? 'https://clovastudio.stream.ntruss.com';
     this.model = this.config.get<string>('CLOVA_MODEL') ?? 'HCX-007';
     this.apiKey = this.config.get<string>('CLOVA_API_KEY') ?? '';
   }
