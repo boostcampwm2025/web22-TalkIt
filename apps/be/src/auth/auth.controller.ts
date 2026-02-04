@@ -23,8 +23,10 @@ import { ActiveUser } from '@/common/decorators/active-user.decorator';
 import { ZodValidationPipe } from '@/common/pipes/zod-validation.pipe';
 import { zodSchemaToOpenAPI } from '@/common/utils/zod-to-openapi.util';
 import { UserResponseSchema } from '@/users/schemas/user-response.schema';
+import { UsersService } from '@/users/users.service';
 import { type CreateUserDto, CreateUserSchema } from '@repo/shared/schemas/auth';
 import { type LoginDto, LoginSchema } from '@repo/shared/schemas/auth';
+import { UserInfoResponseDto } from '@repo/shared/types/user';
 
 import { AuthService } from './auth.service';
 import { JwtRefreshAuthGuard } from './guards/jwt-refresh-auth.guard';
@@ -32,7 +34,10 @@ import type { Response } from 'express';
 
 @Controller('/api/auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private userService: UsersService,
+  ) {}
 
   // 회원가입 API
   @Post('register')
@@ -123,6 +128,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { accessToken, refreshToken } = await this.authService.login(req.user);
+    const user: UserInfoResponseDto = await this.userService.getMyProfile(req.user.id);
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
@@ -134,6 +140,7 @@ export class AuthController {
 
     return {
       accessToken,
+      user,
     };
   }
 

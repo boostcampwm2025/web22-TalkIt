@@ -32,6 +32,7 @@ export type UserInfoResponseDto = {
 
 export type AuthResponseDto = {
   accessToken: string;
+  user: UserInfoResponseDto;
 };
 
 export type RegisterResponseDto = {
