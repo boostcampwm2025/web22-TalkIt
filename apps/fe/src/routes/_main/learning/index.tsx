@@ -5,6 +5,7 @@ import { QUESTION_CATEGORY_CONFIG, QUESTION_DIFFICULTY_CONFIG } from '@/constant
 import { useProgressAnimation } from '@/features/learning/lib/hooks/use-progress-animation';
 import useLearningSession from '@/lib/stores/learning-session';
 import { useUserStore } from '@/lib/stores/user-store';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import { type QuestionCategory, type QuestionDifficulty } from '@repo/shared/constants/learning';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
@@ -17,7 +18,7 @@ const LearningPage = () => {
 
   const setQuestion = useLearningSession((state) => state.setQuestion);
 
-  const { profile, progression, studyStats } = userInfo;
+  const { profile, progression, studyStats, remainingCredit } = userInfo;
 
   const { progress, calculatedPercent } = useProgressAnimation(
     progression?.currentXp ?? 0,
@@ -31,8 +32,13 @@ const LearningPage = () => {
   const topicOptions = Object.values(QUESTION_CATEGORY_CONFIG);
   const difficultyOptions = Object.values(QUESTION_DIFFICULTY_CONFIG);
 
+  const isCreditInsufficient = remainingCredit <= 0;
+  const isStartDisabled = isLoading || isCreditInsufficient;
+
   const handleStartClick = async () => {
-    if (!selectedTopic || !selectedDifficulty) return;
+    if (!selectedTopic || !selectedDifficulty || isCreditInsufficient) return;
+
+    setIsLoading(true);
     try {
       const data = await startSessionApi(selectedTopic, selectedDifficulty);
       setQuestion(data);
@@ -268,20 +274,44 @@ const LearningPage = () => {
             </p>
           </div>
 
-          <button
-            onClick={handleStartClick}
-            disabled={isLoading}
-            className={`z-10 flex w-full items-center justify-center gap-2 rounded-lg px-6 py-4 font-medium text-white transition-colors md:w-auto md:py-3 ${isLoading ? `cursor-not-allowed bg-gray-600` : `bg-primary hover:bg-primary/80`} `}
-          >
-            {isLoading ? (
-              <span>질문 생성 중...</span>
-            ) : (
-              <>
-                <Mic className="h-5 w-5" />
-                <span className="text-lg md:text-base">학습 시작하기</span>
-              </>
-            )}
-          </button>
+          <Tooltip.Provider delayDuration={200}>
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <span className="z-10 w-full md:w-auto" tabIndex={isStartDisabled ? 0 : undefined}>
+                  <button
+                    onClick={handleStartClick}
+                    disabled={isStartDisabled}
+                    className={`flex w-full items-center justify-center gap-2 rounded-lg px-6 py-4 font-medium text-white transition-colors md:w-auto md:py-3 ${
+                      isStartDisabled
+                        ? `cursor-not-allowed bg-dark-gray`
+                        : `bg-primary hover:bg-primary/80`
+                    } `}
+                  >
+                    {isLoading ? (
+                      <span>질문 생성 중...</span>
+                    ) : (
+                      <>
+                        <Mic className="h-5 w-5" />
+                        <span className="text-lg md:text-base">학습 시작하기</span>
+                      </>
+                    )}
+                  </button>
+                </span>
+              </Tooltip.Trigger>
+              {isCreditInsufficient && (
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    side="top"
+                    sideOffset={8}
+                    className="z-50 rounded-lg bg-white px-3 py-2 text-xs text-black shadow-lg"
+                  >
+                    크레딧이 부족하여 학습을 시작할 수 없어요
+                    <Tooltip.Arrow className="fill-white" />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              )}
+            </Tooltip.Root>
+          </Tooltip.Provider>
         </section>
       </div>
     </div>
