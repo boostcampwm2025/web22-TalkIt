@@ -1,4 +1,4 @@
-import { ANSWER_PHASE, useAnswerFlow } from '@/features/learning/lib/contexts/answer-flow-context';
+import useLearningSession, { ANSWER_PHASE } from '@/lib/stores/learning-session';
 import { ASSESSMENT_STATUS, type AssessmentStatus } from '@repo/shared/constants/learning';
 import type { GetFeedbackResponseDTO } from '@repo/shared/types/learning';
 
@@ -29,7 +29,17 @@ const getStatusMessage = (assessmentStatus: AssessmentStatus | null) => {
 };
 
 const FeedbackSection = () => {
-  const { feedback, phase, assessmentStatus, isInsufficientAnswer } = useAnswerFlow();
+  const phase = useLearningSession((s) => s.phase);
+  const feedback = useLearningSession((s) => s.feedback.data);
+  const assessmentStatus = useLearningSession((s) => s.feedback.assessmentStatus);
+  const isInsufficientAnswer = useLearningSession((s) => {
+    const fb = s.feedback.data;
+    if (!fb) return false;
+    return (
+      (fb.strengths.length === 0 && fb.weaknesses.length === 0 && fb.suggestions.length === 0) ||
+      fb.overallScore === 0
+    );
+  });
 
   const isFeedbackLoading = phase === ANSWER_PHASE.FEEDBACK_LOADING;
 
