@@ -18,6 +18,7 @@ import { Binoculars, SkipForward } from 'lucide-react';
 const FloatingStepBar = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
+  const remainedCredit = useLearningSession((state) => state.remainedCredit);
 
   const {
     phase,
@@ -110,7 +111,9 @@ const FloatingStepBar = () => {
         <>
           <ActionBar.Button
             onClick={handleDeepDive}
-            disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE || isInsufficientAnswer}
+            disabled={
+              phase !== ANSWER_PHASE.FEEDBACK_DONE || isInsufficientAnswer || remainedCredit === 0
+            }
             disabledReason={
               phase !== ANSWER_PHASE.FEEDBACK_DONE
                 ? '피드백이 완료된 후 이용할 수 있어요'
@@ -122,7 +125,7 @@ const FloatingStepBar = () => {
             딥다이브
           </ActionBar.Button>
           <ActionBar.PrimaryButton
-            disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE}
+            disabled={phase !== ANSWER_PHASE.FEEDBACK_DONE || remainedCredit === 0}
             disabledReason="피드백이 완료된 후 이용할 수 있어요"
             onClick={handleNextQuestion}
           >
@@ -131,12 +134,16 @@ const FloatingStepBar = () => {
         </>
       ) : (
         <>
-          <ActionBar.Button onClick={handleNextQuestion} className="flex items-center gap-2">
+          <ActionBar.Button
+            onClick={handleNextQuestion}
+            disabled={remainedCredit === 0}
+            className="flex items-center gap-2"
+          >
             <SkipForward className="hidden h-4 w-4 sm:block" />
             다음 질문으로 건너뛰기
           </ActionBar.Button>
           <ActionBar.PrimaryButton
-            disabled={phase !== ANSWER_PHASE.STT_DONE || !sttText}
+            disabled={phase !== ANSWER_PHASE.STT_DONE || !sttText || remainedCredit === 0}
             disabledReason={
               !sttText
                 ? '인식된 답변이 없어요. 다시 녹음해 주세요'
