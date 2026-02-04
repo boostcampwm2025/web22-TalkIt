@@ -1,207 +1,135 @@
 /*
- * question-bank final JSON을 DB로 import하는 스크립트
+ * question-bank version JSON을 Object Storage에서 읽어 DB로 import하는 스크립트 (Prisma)
  * 사용법:
- *  로컬 파일:    ts-node scripts/import-question-bank.ts -source local -path ./resource/question-bank/final/OS-1-*.json
- *  로컬 디렉토리: ts-node scripts/import-question-bank.ts -source local -dir ./resource/question-bank/final
- *  오브젝트 스토리지: ts-node scripts/import-question-bank.ts -source object [-key question-bank/final/OS-1-final.json]
+ *  ts-node scripts/import-questionbank.ts
  */
 import { PrismaService } from '../src/modules/question-provider/infra/prisma/prisma.service';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import 'dotenv/config';
+import { createHash } from 'node:crypto';
 
-interface FinalQuestion {
-  category: string;
-  chapter: number;
-  term: string;
-  conceptLevel: number;
-  depth: number;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  keywords: string[];
-  content: string;
-  contentHash: string;
-}
+const BUCKET = process.env.OBJECT_STORAGE_BUCKET_NAME ?? '';
+const ENDPOINT = process.env.NCLOUD_OBJECT_ENDPOINT ?? 'https://kr.object.ncloudstorage.com';
+const PREFIX = 'question-bank/v1/';
 
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const res: Record<string, string | boolean> = {};
-  for (let i = 0; i < args.length; i++) {
-    const key = args[i];
-    if (typeof key !== 'string' || !key.startsWith('-')) continue;
-    const val = args[i + 1];
-    if (typeof val === 'undefined' || val.startsWith('-')) {
-      res[key] = true;
-    } else {
-      res[key] = val;
-      i++;
-    }
-  }
-  return res;
-}
-
-function buildTopicId(category: string, chapter: number, term: string): string {
-  const sanitized = term
-    .toLowerCase()
-    .replace(/[^a-z0-9가-힣]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-  return `${category.toLowerCase()}-${chapter}-${sanitized}`;
-}
-
-async function importQuestions(prisma: any, questions: FinalQuestion[]) {
-  let inserted = 0;
-  let updated = 0;
-  let failed = 0;
-
-  for (const q of questions) {
-    try {
-      const topicId = buildTopicId(q.category, q.chapter, q.term);
-      const unique = {
-        category: q.category as any,
-        difficulty: q.difficulty as any,
-        topicId,
-        contentHash: q.contentHash,
-      };
-
-      const res = await prisma.question.upsert({
-        where: { category_difficulty_topicId_contentHash: unique },
-        create: {
-          ...unique,
-          content: q.content,
-          mustInclude: q.keywords,
-          timeLimitSec: 180,
-          chapter: q.chapter,
-          term: q.term,
-          conceptLevel: q.conceptLevel,
-          depth: q.depth,
-        },
-        update: {
-          content: q.content,
-          mustInclude: q.keywords,
-          chapter: q.chapter,
-          term: q.term,
-          conceptLevel: q.conceptLevel,
-          depth: q.depth,
-        },
-      });
-
-      if (res?.createdAt === res?.updatedAt || !res?.updatedAt) inserted++;
-      else updated++;
-    } catch (e) {
-      failed++;
-      console.warn('upsert failed:', (e as any)?.message);
-    }
-  }
-
-  return { inserted, updated, failed };
-}
-
-async function loadFromObjectStorage(key?: string): Promise<FinalQuestion[]> {
-  const bucket = process.env.OBJECT_STORAGE_BUCKET_NAME ?? '';
-  const endpoint = process.env.NCLOUD_OBJECT_ENDPOINT ?? 'https://kr.object.ncloudstorage.com';
-
-  const { S3Client, GetObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
-  const client = new S3Client({
+function createS3Client() {
+  const { S3Client } = require('@aws-sdk/client-s3');
+  return new S3Client({
     region: 'kr-standard',
-    endpoint,
+    endpoint: ENDPOINT,
     credentials: {
       accessKeyId: process.env.NCP_ACCESS_KEY_ID ?? '',
       secretAccessKey: process.env.NCP_SECRET_ACCESS_KEY ?? '',
     },
     forcePathStyle: true,
   });
-
-  const allQuestions: FinalQuestion[] = [];
-
-  if (key) {
-    // 단일 파일
-    const out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-    const body = await out.Body.transformToString('utf-8');
-    const parsed = JSON.parse(body);
-    if (Array.isArray(parsed)) allQuestions.push(...parsed);
-  } else {
-    // question-bank/final/ 하위 전체
-    const prefix = 'question-bank/final/';
-    const list = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix }));
-    const keys = (list.Contents ?? [])
-      .map((obj: any) => obj.Key)
-      .filter((k: string) => k.endsWith('-final.json'));
-
-    for (const k of keys) {
-      console.log('Downloading', k);
-      const out = await client.send(new GetObjectCommand({ Bucket: bucket, Key: k }));
-      const body = await out.Body.transformToString('utf-8');
-      const parsed = JSON.parse(body);
-      if (Array.isArray(parsed)) allQuestions.push(...parsed);
-    }
-  }
-
-  return allQuestions;
 }
 
-function loadFromLocal(filePath?: string, dirPath?: string): FinalQuestion[] {
-  const allQuestions: FinalQuestion[] = [];
+async function listKeys(client: any): Promise<string[]> {
+  const { ListObjectsCommand } = require('@aws-sdk/client-s3');
+  const keys: string[] = [];
+  let token: string | undefined;
 
-  if (dirPath) {
-    const files = readdirSync(dirPath)
-      .filter((f) => f.endsWith('-final.json'))
-      .map((f) => join(dirPath, f))
-      .sort();
-
-    if (!files.length) {
-      console.error('No final JSON files found in:', dirPath);
-      process.exit(1);
+  do {
+    const res = await client.send(
+      new ListObjectsCommand({
+        Bucket: BUCKET,
+        Prefix: PREFIX,
+        ContinuationToken: token,
+      }),
+    );
+    for (const obj of res.Contents ?? []) {
+      if (obj.Key && obj.Key.endsWith('.json')) keys.push(obj.Key);
     }
+    token = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (token);
 
-    for (const f of files) {
-      console.log('Loading', f);
-      const parsed = JSON.parse(readFileSync(f, 'utf-8'));
-      if (Array.isArray(parsed)) allQuestions.push(...parsed);
-    }
-  } else if (filePath) {
-    const parsed = JSON.parse(readFileSync(filePath, 'utf-8'));
-    if (Array.isArray(parsed)) allQuestions.push(...parsed);
-  }
+  return keys.sort();
+}
 
-  return allQuestions;
+async function getObject(client: any, key: string): Promise<string> {
+  const { GetObjectCommand } = require('@aws-sdk/client-s3');
+  const res = await client.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+  return res.Body.transformToString('utf-8');
+}
+
+function mapCategory(val: string): 'OS' | 'NETWORK' | 'DB' | 'DATA_STRUCTURE' | null {
+  const v = (val || '').toUpperCase();
+  if (['OS', 'NETWORK', 'DB', 'DATA_STRUCTURE'].includes(v)) return v as any;
+  return null;
+}
+
+function mapDifficulty(val: string): 'EASY' | 'MEDIUM' | 'HARD' | null {
+  if (!val) return null;
+  const v = val.trim().toUpperCase();
+  if (v === 'EASY') return 'EASY';
+  if (v === 'MEDIUM') return 'MEDIUM';
+  if (v === 'HARD') return 'HARD';
+  return null;
 }
 
 async function main() {
-  const parsed = parseArgs();
-  const source = typeof parsed['-source'] === 'string' ? parsed['-source'] : '';
-  const filePath = typeof parsed['-path'] === 'string' ? parsed['-path'] : '';
-  const dirPath = typeof parsed['-dir'] === 'string' ? parsed['-dir'] : '';
-  const objectKey = typeof parsed['-key'] === 'string' ? parsed['-key'] : undefined;
-
-  if (!source || !['local', 'object'].includes(source)) {
-    console.error(
-      'Usage:\n' +
-        '  -source local  -path <file> | -dir <directory>\n' +
-        '  -source object [-key <object-storage-key>]',
-    );
-    process.exit(1);
-  }
-
-  let questions: FinalQuestion[];
-  if (source === 'object') {
-    questions = await loadFromObjectStorage(objectKey);
-  } else {
-    if (!filePath && !dirPath) {
-      console.error('local source requires -path or -dir');
-      process.exit(1);
-    }
-    questions = loadFromLocal(filePath, dirPath);
-  }
-
-  console.log(`Loaded ${questions.length} questions, importing to DB...`);
-
+  const client = createS3Client();
   const prisma = new PrismaService();
   await prisma.$connect?.();
 
-  const total = await importQuestions(prisma, questions);
+  const keys = await listKeys(client);
+  console.log(`Found ${keys.length} files in ${PREFIX}`);
 
-  console.log(
-    `imported: inserted=${total.inserted} updated=${total.updated} failed=${total.failed}`,
-  );
+  let inserted = 0;
+  let updated = 0;
+  let failed = 0;
+
+  for (const key of keys) {
+    console.log(`Importing ${key} ...`);
+    const body = await getObject(client, key);
+    const items: any[] = JSON.parse(body);
+
+    for (const j of items) {
+      try {
+        const category = mapCategory(j.category);
+        const difficulty = mapDifficulty(j.difficulty);
+        const content = j.content as string;
+        const contentHash =
+          j.contentHash || createHash('sha256').update(content, 'utf-8').digest('hex');
+        const term = j.term as string;
+        const chapter = j.chapter as number;
+        const conceptLevel = j.conceptLevel as number;
+        const depth = j.depth as number;
+        const mustInclude = Array.isArray(j.keywords) ? j.keywords : [];
+        const topicId = `${category}-${chapter}-${term}`;
+
+        if (!category || !difficulty || !content || !term) {
+          failed++;
+          continue;
+        }
+
+        const unique = { category, difficulty, topicId, contentHash };
+
+        const res = await (prisma as any).question.upsert({
+          where: { category_difficulty_topicId_contentHash: unique },
+          create: {
+            ...unique,
+            content,
+            mustInclude,
+            timeLimitSec: 180,
+            chapter,
+            term,
+            conceptLevel,
+            depth,
+          },
+          update: { content, mustInclude, chapter, term, conceptLevel, depth },
+        });
+
+        if (res?.createdAt?.getTime() === res?.updatedAt?.getTime()) inserted++;
+        else updated++;
+      } catch (e) {
+        failed++;
+        console.warn('upsert failed:', (e as any)?.message);
+      }
+    }
+  }
+
+  console.log(`Done: inserted=${inserted} updated=${updated} failed=${failed}`);
   await prisma.$disconnect?.();
 }
 

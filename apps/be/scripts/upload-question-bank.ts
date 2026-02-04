@@ -5,6 +5,7 @@
  *  디렉토리:   ts-node scripts/upload-question-bank.ts -dir ./resource/question-bank/final
  */
 import { ObjectStorageProvider } from '../src/modules/question-provider/infra/object-storage/object-storage.provider.impl';
+import 'dotenv/config';
 import { readFileSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
@@ -28,7 +29,7 @@ function parseArgs() {
 async function uploadFile(provider: ObjectStorageProvider, filePath: string) {
   const buf = readFileSync(filePath);
   const fileName = basename(filePath);
-  const key = `question-bank/final/${fileName}`;
+  const key = `question-bank/v1/${fileName}`;
   const out = await provider.upload(buf, key, 'application/json');
   console.log(`Uploaded: key=${out.key} size=${out.size ?? buf.length} etag=${out.etag ?? ''}`);
 }
