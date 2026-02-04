@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 
-import { ANSWER_PHASE, useAnswerFlow } from '@/features/learning/lib/contexts/answer-flow-context';
+import useLearningSession, { ANSWER_PHASE } from '@/lib/stores/learning-session';
 
 const AnswerSection = () => {
-  const { phase, sttText, setSttText } = useAnswerFlow();
+  const phase = useLearningSession((s) => s.phase);
+  const sttText = useLearningSession((s) => s.answer.sttText);
+  const setSttText = useLearningSession((s) => s.setSttText);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
 
