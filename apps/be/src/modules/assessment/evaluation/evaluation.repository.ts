@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '@/infra/database/prisma.service';
 
+import type { Rubric, RubricItem } from './dtos';
+
 @Injectable()
 export class EvaluationRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -11,7 +13,7 @@ export class EvaluationRepository {
     return this.prisma.question.findUnique({ where: { id: questionId } });
   }
 
-  async getRubricByQuestionId(questionId: number) {
+  async getRubricByQuestionId(questionId: number): Promise<Rubric | null> {
     // questionId에 해당하는 루브릭 항목들을 조회하여 Rubric 형태로 반환합니다.
     const items = await this.prisma.questionRubricItem.findMany({
       where: { questionId },
@@ -19,31 +21,50 @@ export class EvaluationRepository {
     });
     if (!items.length) return null;
 
-    const rubricItems = items.map((it, idx) => {
-      // keywordsText 에 JSON( { key, description } ) 형태로 저장된 경우 파싱
-      let key = `item_${idx + 1}`;
+    const rubricItems = items.map((it) => {
+      // keywordsText가 JSON인 경우 description만 사용, 아니면 평문 그대로 사용
       let description = it.keywordsText ?? '';
       try {
-        const parsed = JSON.parse(it.keywordsText as any);
-        if (parsed && typeof parsed === 'object') {
-          if (parsed.key) key = String(parsed.key);
-          if (parsed.description) description = String(parsed.description);
+        const parsed = JSON.parse(String(it.keywordsText ?? '')) as Partial<{
+          description: string;
+        }>;
+        if (parsed && typeof parsed === 'object' && parsed.description) {
+          description = String(parsed.description);
         }
       } catch {
-        // 무시: 과거 포맷(plain text) 호환
+        // plain text로 간주하여 그대로 사용
       }
       const weight = Number(it.weight ?? 0.2);
-      return { key, description, weight };
+      return { description, weight };
     });
-    return { items: rubricItems, scale: '0-2' as const };
+    return { items: rubricItems, scale: '0-2' } as Rubric;
   }
 
   async saveRubric(questionId: number, rubricContent: string) {
     // questionId에 해당하는 루브릭을 항목 단위로 저장합니다.
     // rubricContent 는 JSON 문자열이어야 합니다.
-    let rubric: { items: { key: string; description: string; weight: number }[] };
+    let rubric: Rubric;
+    const hasProp = <K extends string>(obj: unknown, prop: K): obj is Record<K, unknown> =>
+      typeof obj === 'object' && obj !== null && prop in obj;
+
+    const isRubricItem = (v: unknown): v is RubricItem =>
+      hasProp(v, 'description') &&
+      typeof v.description === 'string' &&
+      hasProp(v, 'weight') &&
+      typeof v.weight === 'number';
+
+    const isRubric = (v: unknown): v is Rubric =>
+      hasProp(v, 'items') &&
+      Array.isArray(v.items) &&
+      v.items.every(isRubricItem) &&
+      hasProp(v, 'scale') &&
+      v.scale === '0-2';
     try {
-      rubric = JSON.parse(rubricContent);
+      const parsed: unknown = JSON.parse(rubricContent);
+      if (!isRubric(parsed)) {
+        throw new Error('INVALID_RUBRIC_JSON');
+      }
+      rubric = parsed;
     } catch {
       throw new Error('INVALID_RUBRIC_JSON');
     }
@@ -53,15 +74,12 @@ export class EvaluationRepository {
       // 기존 항목 삭제 후 재삽입(간단/일관성)
       await tx.questionRubricItem.deleteMany({ where: { questionId } });
       if (!items.length) return;
-      // 저장: key/description은 keywordsText에 JSON으로 보관
+      // 저장: description 문장을 keywordsText에 직접 보관(문장 단위 저장)
       for (const it of items) {
         await tx.questionRubricItem.create({
           data: {
             questionId,
-            keywordsText: JSON.stringify({
-              key: String(it.key),
-              description: String(it.description),
-            }),
+            keywordsText: String(it.description ?? ''),
             weight: Number(it.weight ?? 0.2),
           },
         });
