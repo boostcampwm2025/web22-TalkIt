@@ -1,7 +1,6 @@
 import { useForm } from 'react-hook-form';
 
-import { loginUser, logoutUser } from '@/apis/auth-api';
-import { getUserInfoApi } from '@/apis/user-api';
+import { loginUser } from '@/apis/auth-api';
 import { AuthHeader } from '@/features/auth/components/AuthHeader';
 import { AuthLayout } from '@/features/auth/components/AuthLayout';
 import { FormInput } from '@/features/auth/components/FormInput';
@@ -32,10 +31,16 @@ const LoginPage = () => {
   });
 
   const onSubmit = async (data: LoginDto) => {
-    let accessToken: string;
     try {
       const response = await loginUser(data);
-      accessToken = response.accessToken;
+      const accessToken = response.accessToken;
+      const userInfo = response.user;
+
+      authStore.setAccessToken(accessToken);
+      userStore.setUserInfo(userInfo);
+
+      navigate({ to: '/', replace: true });
+
       // 스토어에 토큰 저장
     } catch (error) {
       if (isAxiosError<BackendErrorResponse>(error) && error.response) {
@@ -62,26 +67,6 @@ const LoginPage = () => {
         });
       }
       return;
-    }
-    authStore.setAccessToken(accessToken);
-
-    try {
-      const userInfo = await getUserInfoApi();
-
-      userStore.setUserInfo(userInfo);
-      await navigate({ to: '/', replace: true });
-    } catch (error) {
-      try {
-        await logoutUser();
-      } catch (error) {}
-
-      authStore.clearAuth();
-      userStore.clearUserInfo();
-
-      setError('root', {
-        type: 'network',
-        message: '회원 정보를 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.',
-      });
     }
   };
   return (
