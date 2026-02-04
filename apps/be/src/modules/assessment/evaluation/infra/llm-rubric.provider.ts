@@ -68,6 +68,7 @@ export class LlmRubricProvider {
     const out = await this.clova.chat(messages, {
       temperature: 0,
       stream: false,
+      thinking: { effort: 'low' },
     });
     return (out.content ?? '').trim();
   }

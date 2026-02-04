@@ -21,9 +21,9 @@ export class StructuredNormalizerService {
 
     const out = await this.clova.chat(messages, {
       temperature: 0,
-      maxCompletionTokens: 3000,
       stream: false,
       responseFormat: { type: 'json', schema },
+      noThinking: true,
     });
 
     return JSON.parse(out.content ?? '');
