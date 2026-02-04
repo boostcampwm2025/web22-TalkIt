@@ -2,6 +2,41 @@
 // - 문서 스펙에 맞춘 필드/범위 검증 및 타입 제공(서비스 입력 검증에 활용 가능)
 import { z } from 'zod';
 
+// TypeScript type for the supported JSON Schema subset
+// Keep in sync with jsonSchemaSubsetSchema below.
+export type JsonSchemaSubset = {
+  type?:
+    | 'string'
+    | 'number'
+    | 'boolean'
+    | 'integer'
+    | 'object'
+    | 'array'
+    | readonly ['string', 'null'];
+  format?:
+    | 'date-time'
+    | 'date'
+    | 'time'
+    | 'duration'
+    | 'email'
+    | 'hostname'
+    | 'ipv4'
+    | 'ipv6'
+    | 'uuid';
+  minimum?: number;
+  maximum?: number;
+  minItems?: number;
+  maxItems?: number;
+  items?: JsonSchemaSubset;
+  properties?: Record<string, JsonSchemaSubset>;
+  required?: string[];
+  enum?: Array<string | number | boolean>;
+  anyOf?: JsonSchemaSubset[];
+  additionalProperties?: boolean;
+  // Some usages allow union type for type value like ['string','null']
+  // We model a minimal allowance above; additionalProperties is not supported in this subset.
+};
+
 // 요청용 메시지 스키마(역할/내용)
 // - role: system(규칙/지시), user(사용자 발화/질문), assistant(모델 답변)
 // - content: 텍스트 입력(String)
@@ -50,10 +85,15 @@ function assertNoPatternDeep(obj: unknown): boolean {
   return true;
 }
 
-export const jsonSchemaSubsetSchema: z.ZodType<any> = z.lazy(() =>
+export const jsonSchemaSubsetSchema: z.ZodType<JsonSchemaSubset> = z.lazy(() =>
   z
     .object({
-      type: z.enum(['string', 'number', 'boolean', 'integer', 'object', 'array']).optional(),
+      type: z
+        .union([
+          z.enum(['string', 'number', 'boolean', 'integer', 'object', 'array']),
+          z.tuple([z.literal('string'), z.literal('null')]),
+        ])
+        .optional(),
       format: formats.optional(),
       minimum: z.number().optional(),
       maximum: z.number().optional(),
@@ -69,6 +109,7 @@ export const jsonSchemaSubsetSchema: z.ZodType<any> = z.lazy(() =>
       required: z.array(z.string()).optional(),
       enum: z.array(z.union([z.string(), z.number(), z.boolean()])).optional(),
       anyOf: z.array(z.lazy(() => jsonSchemaSubsetSchema)).optional(),
+      additionalProperties: z.boolean().optional(),
     })
     .strict()
     .refine(assertNoPatternDeep, {
@@ -127,7 +168,5 @@ export const clovaRequestBodyWithRulesSchema = clovaRequestBodySchema.superRefin
     /* ignore errors */
   }
 });
-
-export type JsonSchemaSubset = z.infer<typeof jsonSchemaSubsetSchema>;
 
 export type ClovaChatRequest = z.infer<typeof clovaRequestBodySchema>;
