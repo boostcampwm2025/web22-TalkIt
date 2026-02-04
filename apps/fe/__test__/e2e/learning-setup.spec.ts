@@ -193,14 +193,13 @@ test.describe('2. 🏫 학습 대시보드 및 세션 설정 (Learning Setup)', 
     // 3. 시작 버튼 클릭 시도
     const startButton = page.getByRole('button', { name: '학습 시작하기' });
 
-    await page.route('**/api/learning/sessions', async (route) => {
-      await route.fulfill({
-        status: 409,
-        json: { message: '잔여 크레딧이 부족하여 세션을 진행할 수 없습니다.' },
-      });
-    });
+    // disabled 상태 확인
+    await expect(startButton).toBeDisabled();
 
-    await startButton.click();
-    await expect(page.getByText('잔여 크레딧이 부족하여 세션을 진행할 수 없습니다.')).toBeVisible();
+    // 툴팁 트리거 (강제 hover)
+    await startButton.hover({ force: true });
+
+    // 툴팁 텍스트 확인
+    await expect(page.getByText('크레딧이 부족하여 학습을 시작할 수 없어요')).toBeVisible();
   });
 });
