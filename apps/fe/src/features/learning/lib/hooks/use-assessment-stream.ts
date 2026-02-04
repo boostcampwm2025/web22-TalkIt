@@ -37,9 +37,7 @@ export const useAssessmentStream = ({
   }, []);
 
   useEffect(() => {
-    console.log('SSE Hook Attempt:', { sessionId, answerId, hasToken: !!accessToken });
     if (!sessionId || !answerId || !accessToken) return;
-    console.log('🚀 SSE Connecting...');
     const url = `${ENV.API_URL}/learning/${sessionId}/answers/${answerId}/assess/stream`;
     const eventSource = new EventSourcePolyfill(url, {
       headers: {
