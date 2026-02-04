@@ -6,10 +6,8 @@ import {
   getNextQuestionApi,
   submitAssessApi,
 } from '@/apis/learning-api';
-import useLearningSession from '@/lib/stores/learning-session';
+import useLearningSession, { ANSWER_PHASE } from '@/lib/stores/learning-session';
 import type { FinishSessionResponseDTO } from '@repo/shared/types/learning';
-
-import { ANSWER_PHASE, useAnswerFlow } from '../contexts/answer-flow-context';
 
 const getEndLearningDisabledReason = (phase: string) => {
   if (phase === ANSWER_PHASE.FEEDBACK_LOADING) return '피드백이 완료된 후 이용할 수 있어요';
@@ -61,16 +59,21 @@ const useFloatingStepBarActions = () => {
   const question = useLearningSession((state) => state.question);
   const remainedCredit = useLearningSession((state) => state.remainedCredit);
 
-  const {
-    phase,
-    setPhase,
-    sttText,
-    setAnswerId,
-    answerId,
-    recordingTime,
-    reset,
-    isInsufficientAnswer,
-  } = useAnswerFlow();
+  const phase = useLearningSession((state) => state.phase);
+  const setPhase = useLearningSession((state) => state.setPhase);
+  const sttText = useLearningSession((state) => state.answer.sttText);
+  const answerId = useLearningSession((state) => state.answer.answerId);
+  const recordingTime = useLearningSession((state) => state.answer.recordingTime);
+  const setAnswerId = useLearningSession((state) => state.setAnswerId);
+  const resetAnswerFlow = useLearningSession((state) => state.resetAnswerFlow);
+  const isInsufficientAnswer = useLearningSession((s) => {
+    const fb = s.feedback.data;
+    if (!fb) return false;
+    return (
+      (fb.strengths.length === 0 && fb.weaknesses.length === 0 && fb.suggestions.length === 0) ||
+      fb.overallScore === 0
+    );
+  });
 
   const [rewardData, setRewardData] = useState<FinishSessionResponseDTO | null>(null);
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
@@ -118,7 +121,7 @@ const useFloatingStepBarActions = () => {
     if (!sessionId || isClicked('nextQuestion')) return;
     markClicked('nextQuestion');
 
-    reset();
+    resetAnswerFlow();
     getNextQuestionApi(sessionId).then((data) => {
       useLearningSession.getState().setQuestion({ ...data, sessionId });
     });
@@ -129,7 +132,7 @@ const useFloatingStepBarActions = () => {
     markClicked('deepDive');
 
     getDeepDiveQuestionApi(sessionId, answerId).then((data) => {
-      reset();
+      resetAnswerFlow();
       useLearningSession.getState().setQuestion({ ...data, sessionId });
     });
   };
