@@ -5,10 +5,11 @@ import { checkEmailDuplicate, checkNicknameDuplicate, registerUser } from '@/api
 import { AuthHeader } from '@/features/auth/components/AuthHeader';
 import { AuthLayout } from '@/features/auth/components/AuthLayout';
 import { FormInput } from '@/features/auth/components/FormInput';
+import { useAuthStore } from '@/lib/stores/user-auth-store';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type RegisterFormDto, RegisterFormSchema } from '@repo/shared/schemas/auth';
 import { type BackendErrorResponse } from '@repo/shared/types/error';
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 
 import { isAxiosError } from 'axios';
 import { AlertCircle, Check, Loader2 } from 'lucide-react';
@@ -242,5 +243,10 @@ const RegisterPage = () => {
 };
 
 export const Route = createFileRoute('/_public/register')({
+  beforeLoad: () => {
+    if (useAuthStore.getState().isAuthenticated) {
+      throw redirect({ to: '/', replace: true });
+    }
+  },
   component: RegisterPage,
 });

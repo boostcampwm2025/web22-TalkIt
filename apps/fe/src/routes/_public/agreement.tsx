@@ -5,8 +5,9 @@ import { PRIVACY_POLICY, SERVICE_TERMS } from '@/constants/terms';
 import { AuthHeader } from '@/features/auth/components/AuthHeader';
 import { AuthLayout } from '@/features/auth/components/AuthLayout';
 import { TermsModal } from '@/features/auth/components/TermsModal';
+import { useAuthStore } from '@/lib/stores/user-auth-store';
 import { cn } from '@/lib/utils';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 
 import { Check, ChevronRight } from 'lucide-react';
 
@@ -152,5 +153,10 @@ const AgreementPage = () => {
 };
 
 export const Route = createFileRoute('/_public/agreement')({
+  beforeLoad: () => {
+    if (useAuthStore.getState().isAuthenticated) {
+      throw redirect({ to: '/', replace: true });
+    }
+  },
   component: AgreementPage,
 });

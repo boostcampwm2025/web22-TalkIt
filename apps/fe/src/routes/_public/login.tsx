@@ -9,7 +9,7 @@ import { useUserStore } from '@/lib/stores/user-store';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type LoginDto, LoginSchema } from '@repo/shared/schemas/auth';
 import type { BackendErrorResponse } from '@repo/shared/types/error';
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 
 import { isAxiosError } from 'axios';
 import { AlertCircle, Loader2 } from 'lucide-react';
@@ -154,5 +154,10 @@ const LoginPage = () => {
 };
 
 export const Route = createFileRoute('/_public/login')({
+  beforeLoad: () => {
+    if (useAuthStore.getState().isAuthenticated) {
+      throw redirect({ to: '/', replace: true });
+    }
+  },
   component: LoginPage,
 });
