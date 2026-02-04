@@ -1,4 +1,8 @@
-import { ANSWER_PHASE, useAnswerFlow } from '@/features/learning/lib/contexts/answer-flow-context';
+import { useCallback } from 'react';
+
+import { getFeedbackApi } from '@/apis/learning-api';
+import { useAssessmentStream } from '@/features/learning/lib/hooks/use-assessment-stream';
+import useLearningSession, { ANSWER_PHASE } from '@/lib/stores/learning-session';
 import { ASSESSMENT_STATUS, type AssessmentStatus } from '@repo/shared/constants/learning';
 import type { GetFeedbackResponseDTO } from '@repo/shared/types/learning';
 
@@ -29,7 +33,43 @@ const getStatusMessage = (assessmentStatus: AssessmentStatus | null) => {
 };
 
 const FeedbackSection = () => {
-  const { feedback, phase, assessmentStatus, isInsufficientAnswer } = useAnswerFlow();
+  const sessionId = useLearningSession((s) => s.sessionId);
+  const answerId = useLearningSession((s) => s.answer.answerId);
+  const phase = useLearningSession((s) => s.phase);
+  const feedback = useLearningSession((s) => s.feedback.data);
+  const assessmentStatus = useLearningSession((s) => s.feedback.assessmentStatus);
+  const setPhase = useLearningSession((s) => s.setPhase);
+  const setFeedback = useLearningSession((s) => s.setFeedback);
+  const setAssessmentStatus = useLearningSession((s) => s.setAssessmentStatus);
+  const setRemainedCredit = useLearningSession((s) => s.setRemainedCredit);
+  const isInsufficientAnswer = useLearningSession((s) => {
+    const fb = s.feedback.data;
+    if (!fb) return false;
+    return (
+      (fb.strengths.length === 0 && fb.weaknesses.length === 0 && fb.suggestions.length === 0) ||
+      fb.overallScore === 0
+    );
+  });
+
+  const handleFeedbackDone = useCallback(async () => {
+    if (!answerId) return;
+
+    try {
+      const feedback = await getFeedbackApi(answerId);
+      setFeedback(feedback);
+      setRemainedCredit(feedback.remainingToken);
+      setPhase(ANSWER_PHASE.FEEDBACK_DONE);
+    } catch (error) {
+      console.error('피드백 조회 실패:', error);
+    }
+  }, [answerId, setFeedback, setPhase, setRemainedCredit]);
+
+  useAssessmentStream({
+    sessionId,
+    answerId,
+    onStatusChange: setAssessmentStatus,
+    onDone: handleFeedbackDone,
+  });
 
   const isFeedbackLoading = phase === ANSWER_PHASE.FEEDBACK_LOADING;
 

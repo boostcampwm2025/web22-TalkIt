@@ -1,22 +1,41 @@
-import { ANSWER_PHASE, useAnswerFlow } from '@/features/learning/lib/contexts/answer-flow-context';
+import { submitRecordApi } from '@/apis/learning-api';
 import { useVoiceRecorder } from '@/features/learning/lib/hooks/use-voice-recorder';
-import useLearningSession from '@/lib/stores/learning-session';
+import useLearningSession, { ANSWER_PHASE } from '@/lib/stores/learning-session';
 
 import PulsingMicButton from './pulsing-mic-button';
 
-type VoiceRecorderSectionProps = {
-  onRecordingComplete: (audioBlob: Blob, recordingTime: number) => void;
-};
-
-const VoiceRecorderSection = ({ onRecordingComplete }: VoiceRecorderSectionProps) => {
+const VoiceRecorderSection = () => {
+  const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
-  const { phase, setPhase, setRecordingTime } = useAnswerFlow();
+  const phase = useLearningSession((state) => state.phase);
+  const setPhase = useLearningSession((state) => state.setPhase);
+  const setRecordingTime = useLearningSession((state) => state.setRecordingTime);
+  const setSttText = useLearningSession((state) => state.setSttText);
 
   const timeLimit = question?.timeLimit ?? 300;
 
-  const handleRecordFinish = (audioBlob: Blob, elapsedTime: number) => {
+  const handleRecordFinish = async (audioBlob: Blob, elapsedTime: number) => {
     setRecordingTime(elapsedTime);
-    onRecordingComplete(audioBlob, elapsedTime);
+
+    if (!sessionId || !question) return;
+
+    try {
+      setPhase(ANSWER_PHASE.STT_LOADING);
+
+      const extension = audioBlob.type.split('/')[1]?.split(';')[0] || 'webm';
+      const audioFile = new File([audioBlob], `answer.${extension}`, { type: audioBlob.type });
+      const { sttText } = await submitRecordApi({
+        sessionId,
+        questionId: question.questionId,
+        extraQuestionId: question.extraQuestionId,
+        audioFile,
+      });
+
+      setSttText(sttText);
+      setPhase(ANSWER_PHASE.STT_DONE);
+    } catch (error) {
+      console.error('녹음 제출 실패:', error);
+    }
   };
 
   const { stream, isRecording, formattedTime, toggleRecording } = useVoiceRecorder({
