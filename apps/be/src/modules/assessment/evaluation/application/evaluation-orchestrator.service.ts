@@ -18,8 +18,8 @@ export class EvaluationOrchestratorService {
   /**
    * 루브릭 생성은 RubricService로 위임
    */
-  async createRubric(questionId: number, question: string): Promise<any> {
-    return this.rubricService.create({ questionId, question });
+  async createRubric(answerId: number): Promise<any> {
+    return this.rubricService.create(answerId);
   }
 
   /**
