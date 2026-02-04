@@ -51,17 +51,17 @@ import IORedis from 'ioredis';
     {
       provide: ASSESS_EVAL_QUEUE,
       inject: [ASSESS_REDIS],
-      useFactory: (redis: IORedis) => new Queue('assessment:evaluate', { connection: redis }),
+      useFactory: (redis: IORedis) => new Queue('assessment-evaluate', { connection: redis }),
     },
     {
       provide: ASSESS_FB_QUEUE,
       inject: [ASSESS_REDIS],
-      useFactory: (redis: IORedis) => new Queue('assessment:feedback', { connection: redis }),
+      useFactory: (redis: IORedis) => new Queue('assessment-feedback', { connection: redis }),
     },
     {
       provide: ASSESS_REWARD_QUEUE,
       inject: [ASSESS_REDIS],
-      useFactory: (redis: IORedis) => new Queue('assessment:reward', { connection: redis }),
+      useFactory: (redis: IORedis) => new Queue('assessment-reward', { connection: redis }),
     },
     // 앱 종료 시 Redis 커넥션을 정상 종료
     AssessmentRedisShutdown,

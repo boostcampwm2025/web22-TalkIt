@@ -33,7 +33,7 @@ export class AssessmentQueueEventBus implements OnModuleInit, OnModuleDestroy {
    */
   async onModuleInit() {
     // 단일큐(legacy)는 제거됨: 분리 플로우 큐만 구독
-    const queueNames = ['assessment:evaluate', 'assessment:feedback', 'assessment:reward'];
+    const queueNames = ['assessment-evaluate', 'assessment-feedback', 'assessment-reward'];
     this.qes = queueNames.map((name) => new QueueEvents(name, { connection: this.redisEvents }));
 
     // 모든 큐 준비 대기
@@ -75,7 +75,7 @@ export class AssessmentQueueEventBus implements OnModuleInit, OnModuleDestroy {
         const parentId = mapParentId(String(jobId ?? ''));
         if (!parentId) return;
         // reward 큐의 completed만 전달 (최종 완료)
-        if (queueName === 'assessment:reward') {
+        if (queueName === 'assessment-reward') {
           this.emit(parentId, {
             type: 'completed',
             jobId: parentId,
