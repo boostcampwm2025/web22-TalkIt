@@ -5,18 +5,20 @@ import { AuthHeader } from '@/features/auth/components/AuthHeader';
 import { AuthLayout } from '@/features/auth/components/AuthLayout';
 import { FormInput } from '@/features/auth/components/FormInput';
 import { useAuthStore } from '@/lib/stores/user-auth-store';
+import { useUserStore } from '@/lib/stores/user-store';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type LoginDto, LoginSchema } from '@repo/shared/schemas/auth';
 import type { BackendErrorResponse } from '@repo/shared/types/error';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
 import { isAxiosError } from 'axios';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 const LoginPage = () => {
   const navigate = useNavigate();
 
-  const setAccessToken = useAuthStore((state) => state.setAccessToken);
+  const authStore = useAuthStore.getState();
+  const userStore = useUserStore.getState();
 
   const {
     register,
@@ -30,13 +32,16 @@ const LoginPage = () => {
 
   const onSubmit = async (data: LoginDto) => {
     try {
-      const { accessToken } = await loginUser(data);
+      const response = await loginUser(data);
+      const accessToken = response.accessToken;
+      const userInfo = response.user;
+
+      authStore.setAccessToken(accessToken);
+      userStore.setUserInfo(userInfo);
+
+      navigate({ to: '/', replace: true });
 
       // 스토어에 토큰 저장
-      setAccessToken(accessToken);
-
-      // 메인 페이지로 이동
-      await navigate({ to: '/', replace: true });
     } catch (error) {
       if (isAxiosError<BackendErrorResponse>(error) && error.response) {
         const { status } = error.response;
@@ -49,12 +54,19 @@ const LoginPage = () => {
           });
         } else {
           // 500 등 기타 서버 에러
-          alert('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+          setError('root', {
+            type: 'server',
+            message: '로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+          });
         }
       } else {
         // 네트워크 에러 등
-        alert('서버와 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+        setError('root', {
+          type: 'network',
+          message: '서버와 연결할 수 없습니다. 네트워크 상태를 확인해주세요.',
+        });
       }
+      return;
     }
   };
   return (
@@ -99,6 +111,13 @@ const LoginPage = () => {
             '로그인'
           )}
         </button>
+
+        {errors.root && (
+          <div className="animate-in fade-in slide-in-from-top-1 flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-alert">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{errors.root.message}</span>
+          </div>
+        )}
 
         {/* Note: 현재는 소셜 로그인 미구현이라 주석처리 해둠. */}
         {/* <div className="relative mt-6">

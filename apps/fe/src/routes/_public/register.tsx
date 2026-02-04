@@ -11,7 +11,7 @@ import { type BackendErrorResponse } from '@repo/shared/types/error';
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 
 import { isAxiosError } from 'axios';
-import { Check, Loader2 } from 'lucide-react';
+import { AlertCircle, Check, Loader2 } from 'lucide-react';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -52,12 +52,13 @@ const RegisterPage = () => {
             clearErrors('nickname');
           }
         } catch (error) {
-          // todo: 추후에 토스트 메시지 컴포넌트 구현한 후 alert에서 리팩토링 예정
-          console.error('닉네임 중복 확인 시스템 에러', error);
-          alert('닉네임 확인 중 오류가 발생했습니다.');
+          setError('nickname', {
+            type: 'manual',
+            message: '닉네임 확인 중 오류가 발생했습니다.',
+          });
         }
       }
-    }, 1000);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [nicknameValue, trigger, setError, clearErrors]);
@@ -83,9 +84,10 @@ const RegisterPage = () => {
         setEmailChecked(true);
       }
     } catch (error) {
-      console.error('이메일 중복 확인 시스템 에러', error);
-      // todo: 추후에 토스트 메시지 컴포넌트 구현한 후 alert에서 리팩토링 예정
-      alert('이메일 확인 중 오류가 발생했습니다.');
+      setError('email', {
+        type: 'manual',
+        message: '이메일 확인 중 오류가 발생했습니다.',
+      });
     }
   };
 
@@ -130,12 +132,16 @@ const RegisterPage = () => {
             });
           });
         } else {
-          // todo: 추후에 토스트 메시지 컴포넌트 구현한 후 alert에서 리팩토링 예정
-          alert(errorData.message || '회원가입 중 오류가 발생했습니다.');
+          setError('root', {
+            type: 'server',
+            message: '회원가입 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+          });
         }
       } else {
-        // todo: 추후에 토스트 메시지 컴포넌트 구현한 후 alert에서 리팩토링 예정
-        alert('서버와 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+        setError('root', {
+          type: 'network',
+          message: '서버와 연결할 수 없습니다. 네트워크 상태를 확인해주세요.',
+        });
       }
     }
   };
@@ -217,6 +223,12 @@ const RegisterPage = () => {
             '가입하기'
           )}
         </button>
+        {errors.root && (
+          <div className="animate-in fade-in slide-in-from-top-1 flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-600">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{errors.root.message}</span>
+          </div>
+        )}
       </form>
 
       <div className="mt-8 text-center text-sm text-dark-gray">
