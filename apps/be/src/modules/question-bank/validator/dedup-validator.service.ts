@@ -3,16 +3,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ClovaService } from '../../../infra/clova/clova.service';
 import { calculateDifficulty } from '../common/difficulty-calculator';
 import { loadDraftFiles, saveFinalQuestions } from '../common/file-manager';
+import { DedupResponseSchema, DuplicateEntry } from '../common/question-bank.schema';
 import { DraftQuestion, FinalQuestion } from '../common/question-bank.types';
 import { Domain } from '../data';
 import { buildDedupSystemPrompt, buildDedupUserPrompt } from './dedup-validator.prompt';
 import * as crypto from 'crypto';
-
-interface DuplicateEntry {
-  keep: number;
-  remove: number;
-  reason: string;
-}
 
 export interface RemovedQuestion {
   index: number;
@@ -142,28 +137,21 @@ export class DedupValidatorService {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return [];
 
+    let raw: unknown;
     try {
-      const parsed = JSON.parse(jsonMatch[0]) as { duplicates?: unknown[] };
-      if (Array.isArray(parsed.duplicates)) {
-        return parsed.duplicates
-          .filter(
-            (d): d is { keep: number; remove: number; reason?: string } =>
-              typeof d === 'object' &&
-              d !== null &&
-              typeof (d as Record<string, unknown>).keep === 'number' &&
-              typeof (d as Record<string, unknown>).remove === 'number',
-          )
-          .map((d) => ({
-            keep: d.keep,
-            remove: d.remove,
-            reason: typeof d.reason === 'string' ? d.reason : '',
-          }));
-      }
+      raw = JSON.parse(jsonMatch[0]);
     } catch {
-      this.logger.error('Failed to parse dedup response');
+      this.logger.error('Failed to parse dedup JSON');
+      return [];
     }
 
-    return [];
+    const result = DedupResponseSchema.safeParse(raw);
+    if (!result.success) {
+      this.logger.error(`Dedup Zod validation failed: ${result.error.message}`);
+      return [];
+    }
+
+    return result.data.duplicates;
   }
 
   private filterByJaccard(questions: DraftQuestion[]): {

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { ClovaService } from '../../../infra/clova/clova.service';
 import { saveDraftQuestions } from '../common/file-manager';
+import { LlmQuestionArraySchema, LlmQuestionItem } from '../common/question-bank.schema';
 import { DraftQuestion } from '../common/question-bank.types';
 import { CONCEPT_LEVEL_MAP, CURRICULA, Domain } from '../data';
 import { buildSystemPrompt, buildUserPrompt } from './question-generator.prompt';
@@ -11,13 +12,6 @@ interface GenerateInput {
   chapter: number;
   count?: number;
   terms?: string[];
-}
-
-interface LlmQuestionItem {
-  term: string;
-  depth: number;
-  keywords: string[];
-  content: string;
 }
 
 @Injectable()
@@ -119,31 +113,32 @@ export class QuestionGeneratorService {
       return [];
     }
 
-    let items: LlmQuestionItem[];
+    let raw: unknown;
     try {
-      items = JSON.parse(jsonMatch[0]);
+      raw = JSON.parse(jsonMatch[0]);
     } catch {
       this.logger.error(`JSON parse failed for ${params.term}`);
       return [];
     }
 
-    if (!Array.isArray(items)) return [];
+    const result = LlmQuestionArraySchema.safeParse(raw);
+    if (!result.success) {
+      this.logger.error(`Zod validation failed for ${params.term}: ${result.error.message}`);
+      return [];
+    }
 
+    const items: LlmQuestionItem[] = result.data;
     const conceptLevelNum =
       CONCEPT_LEVEL_MAP[params.conceptLevel as keyof typeof CONCEPT_LEVEL_MAP];
 
-    return items
-      .filter((item) => item.content && item.depth >= 1 && item.depth <= 3)
-      .map((item) => ({
-        category: params.domain,
-        chapter: params.chapter,
-        term: item.term || params.term,
-        conceptLevel: conceptLevelNum,
-        depth: item.depth as 1 | 2 | 3,
-        keywords: Array.isArray(item.keywords)
-          ? item.keywords.filter((k) => typeof k === 'string')
-          : [],
-        content: item.content.trim(),
-      }));
+    return items.map((item) => ({
+      category: params.domain,
+      chapter: params.chapter,
+      term: item.term || params.term,
+      conceptLevel: conceptLevelNum,
+      depth: item.depth as 1 | 2 | 3,
+      keywords: item.keywords,
+      content: item.content.trim(),
+    }));
   }
 }
