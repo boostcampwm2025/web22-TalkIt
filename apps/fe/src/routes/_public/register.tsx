@@ -247,6 +247,10 @@ export const Route = createFileRoute('/_public/register')({
     if (useAuthStore.getState().isAuthenticated) {
       throw redirect({ to: '/', replace: true });
     }
+
+    if (!useAuthStore.getState().isTermsAgreed) {
+      throw redirect({ to: '/agreement', replace: true });
+    }
   },
   component: RegisterPage,
 });

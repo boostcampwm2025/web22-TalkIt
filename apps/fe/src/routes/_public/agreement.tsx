@@ -19,6 +19,7 @@ type AgreementForm = {
 
 const AgreementPage = () => {
   const navigate = useNavigate();
+  const setTermsAgreed = useAuthStore((state) => state.setTermsAgreed);
 
   const { register, watch, setValue, handleSubmit } = useForm<AgreementForm>({
     mode: 'onChange',
@@ -49,6 +50,7 @@ const AgreementPage = () => {
   };
 
   const onSubmit = () => {
+    setTermsAgreed(true);
     navigate({ to: '/register' });
   };
 
