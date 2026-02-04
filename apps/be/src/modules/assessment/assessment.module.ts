@@ -13,6 +13,7 @@ import { AssessmentRedisModule } from './redis/assessment-redis.module';
 import { AssessmentQueueEventBus } from './redis/assessment.queue-events';
 import { AssessmentSseController } from './sse/assessment.sse.controller';
 import { AssessmentWorker } from './worker/assessment.worker';
+import { TokenBucketService } from './worker/limiter/token-bucket.service';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { AssessmentWorker } from './worker/assessment.worker';
     // Worker + Event Bus
     AssessmentWorker,
     AssessmentQueueEventBus,
+    TokenBucketService,
   ],
 })
 export class AssessmentModule {}
