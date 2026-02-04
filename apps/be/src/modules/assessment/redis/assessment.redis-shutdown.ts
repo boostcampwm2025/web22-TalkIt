@@ -1,6 +1,6 @@
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
 
-import { ASSESS_REDIS, ASSESS_REDIS_EVENTS } from '../worker/assessment.worker';
+import { ASSESS_REDIS, ASSESS_REDIS_EVENTS } from '../worker/assessment.tokens';
 import IORedis from 'ioredis';
 
 @Injectable()

@@ -1,7 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
-import { ASSESS_QUEUE, ASSESS_REDIS, ASSESS_REDIS_EVENTS } from '../worker/assessment.worker';
+import {
+  ASSESS_EVAL_QUEUE,
+  ASSESS_FB_QUEUE,
+  ASSESS_REDIS,
+  ASSESS_REDIS_EVENTS,
+  ASSESS_REWARD_QUEUE,
+} from '../worker/assessment.tokens';
 import { AssessmentRedisShutdown } from './assessment.redis-shutdown';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
@@ -41,16 +47,31 @@ import IORedis from 'ioredis';
         return new IORedis(url, { maxRetriesPerRequest: null });
       },
     },
-    // BullMQ Queue using the main Redis connection
-    // - 외부 라이브러리 인스턴스는 클래스가 아니므로 useFactory가 자연스러움
+    // Split-flow stage queues (evaluate/feedback/reward)
     {
-      provide: ASSESS_QUEUE,
+      provide: ASSESS_EVAL_QUEUE,
       inject: [ASSESS_REDIS],
-      useFactory: (redis: IORedis) => new Queue('assessment', { connection: redis }),
+      useFactory: (redis: IORedis) => new Queue('assessment:evaluate', { connection: redis }),
+    },
+    {
+      provide: ASSESS_FB_QUEUE,
+      inject: [ASSESS_REDIS],
+      useFactory: (redis: IORedis) => new Queue('assessment:feedback', { connection: redis }),
+    },
+    {
+      provide: ASSESS_REWARD_QUEUE,
+      inject: [ASSESS_REDIS],
+      useFactory: (redis: IORedis) => new Queue('assessment:reward', { connection: redis }),
     },
     // 앱 종료 시 Redis 커넥션을 정상 종료
     AssessmentRedisShutdown,
   ],
-  exports: [ASSESS_REDIS, ASSESS_REDIS_EVENTS, ASSESS_QUEUE],
+  exports: [
+    ASSESS_REDIS,
+    ASSESS_REDIS_EVENTS,
+    ASSESS_EVAL_QUEUE,
+    ASSESS_FB_QUEUE,
+    ASSESS_REWARD_QUEUE,
+  ],
 })
 export class AssessmentRedisModule {}

@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { AssessmentSseEventSchema } from '../schemas/assessment-sse-event.schema';
-import { ASSESS_REDIS_EVENTS } from '../worker/assessment.worker';
+import { ASSESS_REDIS_EVENTS } from '../worker/assessment.tokens';
 import type {
   AssessmentQueueEvent,
   QueueCompletedEvent,
@@ -15,7 +15,7 @@ import { Observable, Subject } from 'rxjs';
 @Injectable()
 export class AssessmentQueueEventBus implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AssessmentQueueEventBus.name);
-  private readonly qe: QueueEvents;
+  private qes: QueueEvents[] = [];
   // jobId 별 subject + 구독자 수 + 지연 정리 타이머를 관리 (메모리 누수 방지)
   private readonly subjects = new Map<
     string,
@@ -23,7 +23,7 @@ export class AssessmentQueueEventBus implements OnModuleInit, OnModuleDestroy {
   >();
 
   constructor(@Inject(ASSESS_REDIS_EVENTS) private readonly redisEvents: IORedis) {
-    this.qe = new QueueEvents('assessment', { connection: this.redisEvents });
+    // QueueEvents 인스턴스는 onModuleInit에서 초기화
   }
 
   /**
@@ -32,49 +32,81 @@ export class AssessmentQueueEventBus implements OnModuleInit, OnModuleDestroy {
    * - progress/completed/failed: jobId 기준으로 구독자에게 이벤트 전달 후 정리(completed/failed).
    */
   async onModuleInit() {
-    await this.qe.waitUntilReady();
+    // 단일큐(legacy)는 제거됨: 분리 플로우 큐만 구독
+    const queueNames = ['assessment:evaluate', 'assessment:feedback', 'assessment:reward'];
+    this.qes = queueNames.map((name) => new QueueEvents(name, { connection: this.redisEvents }));
 
-    this.qe.on('progress', ({ jobId, data }) => {
+    // 모든 큐 준비 대기
+    await Promise.all(this.qes.map((qe) => qe.waitUntilReady().catch(() => undefined)));
+
+    const mapParentId = (jid: string): string => {
+      const idx = jid.indexOf(':');
+      return idx >= 0 ? jid.slice(0, idx) : jid;
+    };
+
+    const onProgress = ({ jobId, data }: { jobId: string | number | undefined; data: unknown }) => {
       if (!jobId) return;
       try {
         const payload = AssessmentSseEventSchema.parse(data);
-        this.emit(String(jobId), {
+        const parentId = mapParentId(String(jobId ?? ''));
+        if (!parentId) return;
+        this.emit(parentId, {
           type: 'progress',
-          jobId: String(jobId),
+          jobId: parentId,
           data: payload,
         } satisfies QueueProgressEvent);
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         this.logger.warn(`Invalid progress payload for job ${jobId}: ${message}`);
       }
-    });
+    };
 
-    this.qe.on('completed', ({ jobId, returnvalue }) => {
-      if (!jobId) return;
-      const id = String(jobId);
-      this.emit(id, {
-        type: 'completed',
-        jobId: id,
-        data: returnvalue,
-      } satisfies QueueCompletedEvent);
-      this.complete(id);
-    });
-
-    this.qe.on('failed', ({ jobId, failedReason }) => {
-      if (!jobId) return;
-      const id = String(jobId);
-      this.emit(id, {
-        type: 'failed',
-        jobId: id,
-        error: failedReason ?? 'failed',
-      } satisfies QueueFailedEvent);
-      this.complete(id);
-    });
-
-    this.qe.on('error', (err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`QueueEvents error: ${message}`);
-    });
+    for (const qe of this.qes) {
+      const queueName: string = ((qe as any)?.name ?? 'assessment') as string;
+      qe.on('progress', onProgress as any);
+      qe.on('completed', (({
+        jobId,
+        returnvalue,
+      }: {
+        jobId?: string | number;
+        returnvalue: any;
+      }) => {
+        if (!jobId) return;
+        const parentId = mapParentId(String(jobId ?? ''));
+        if (!parentId) return;
+        // reward 큐의 completed만 전달 (최종 완료)
+        if (queueName === 'assessment:reward') {
+          this.emit(parentId, {
+            type: 'completed',
+            jobId: parentId,
+            data: returnvalue,
+          } satisfies QueueCompletedEvent);
+          this.complete(parentId);
+        }
+      }) as any);
+      qe.on('failed', (({
+        jobId,
+        failedReason,
+      }: {
+        jobId?: string | number;
+        failedReason?: string;
+      }) => {
+        if (!jobId) return;
+        const parentId = mapParentId(String(jobId ?? ''));
+        if (!parentId) return;
+        // 어떤 단계 실패도 부모 실패로 전파
+        this.emit(parentId, {
+          type: 'failed',
+          jobId: parentId,
+          error: failedReason ?? 'failed',
+        } satisfies QueueFailedEvent);
+        this.complete(parentId);
+      }) as any);
+      qe.on('error', (err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`QueueEvents error: ${message}`);
+      });
+    }
   }
 
   /**
@@ -137,11 +169,13 @@ export class AssessmentQueueEventBus implements OnModuleInit, OnModuleDestroy {
 
   /** 모듈 종료 시 QueueEvents와 내부 Subject를 정리합니다. */
   async onModuleDestroy() {
-    try {
-      await this.qe.close();
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      this.logger.warn(`QueueEvents close failed: ${message}`);
+    for (const qe of this.qes) {
+      try {
+        await qe.close();
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        this.logger.warn(`QueueEvents close failed: ${message}`);
+      }
     }
     for (const [, entry] of this.subjects) {
       try {
