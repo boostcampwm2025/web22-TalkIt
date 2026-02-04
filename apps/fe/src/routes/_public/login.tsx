@@ -1,14 +1,16 @@
 import { useForm } from 'react-hook-form';
 
-import { loginUser } from '@/apis/auth-api';
+import { loginUser, logoutUser } from '@/apis/auth-api';
+import { getUserInfoApi } from '@/apis/user-api';
 import { AuthHeader } from '@/features/auth/components/AuthHeader';
 import { AuthLayout } from '@/features/auth/components/AuthLayout';
 import { FormInput } from '@/features/auth/components/FormInput';
 import { useAuthStore } from '@/lib/stores/user-auth-store';
+import { useUserStore } from '@/lib/stores/user-store';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type LoginDto, LoginSchema } from '@repo/shared/schemas/auth';
 import type { BackendErrorResponse } from '@repo/shared/types/error';
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 
 import { isAxiosError } from 'axios';
 import { Loader2 } from 'lucide-react';
@@ -16,7 +18,8 @@ import { Loader2 } from 'lucide-react';
 const LoginPage = () => {
   const navigate = useNavigate();
 
-  const setAccessToken = useAuthStore((state) => state.setAccessToken);
+  const authStore = useAuthStore.getState();
+  const userStore = useUserStore.getState();
 
   const {
     register,
@@ -29,14 +32,11 @@ const LoginPage = () => {
   });
 
   const onSubmit = async (data: LoginDto) => {
+    let accessToken: string;
     try {
-      const { accessToken } = await loginUser(data);
-
+      const response = await loginUser(data);
+      accessToken = response.accessToken;
       // 스토어에 토큰 저장
-      setAccessToken(accessToken);
-
-      // 메인 페이지로 이동
-      await navigate({ to: '/', replace: true });
     } catch (error) {
       if (isAxiosError<BackendErrorResponse>(error) && error.response) {
         const { status } = error.response;
@@ -55,6 +55,24 @@ const LoginPage = () => {
         // 네트워크 에러 등
         alert('서버와 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
       }
+      return;
+    }
+    authStore.setAccessToken(accessToken);
+
+    try {
+      const userInfo = await getUserInfoApi();
+
+      userStore.setUserInfo(userInfo);
+      await navigate({ to: '/', replace: true });
+    } catch (error) {
+      try {
+        await logoutUser();
+      } catch (error) {}
+
+      authStore.clearAuth();
+      userStore.clearUserInfo();
+
+      throw redirect({ to: '/login' });
     }
   };
   return (
