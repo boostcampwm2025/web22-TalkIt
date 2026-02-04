@@ -7,21 +7,19 @@ import FloatingStepBar from '@/features/learning/components/question/floating-st
 import QuestionContent from '@/features/learning/components/question/question-content';
 import QuestionHeader from '@/features/learning/components/question/question-header';
 import VoiceRecorderSection from '@/features/learning/components/question/voice-recorder-section';
-import {
-  ANSWER_PHASE,
-  AnswerFlowProvider,
-  useAnswerFlow,
-} from '@/features/learning/lib/contexts/answer-flow-context';
 import { useAssessmentStream } from '@/features/learning/lib/hooks/use-assessment-stream';
-import useLearningSession from '@/lib/stores/learning-session';
+import useLearningSession, { ANSWER_PHASE } from '@/lib/stores/learning-session';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 
-const QuestionPageContent = () => {
+const QuestionPage = () => {
   const sessionId = useLearningSession((state) => state.sessionId);
   const question = useLearningSession((state) => state.question);
   const setRemainedCredit = useLearningSession((state) => state.setRemainedCredit);
-
-  const { setPhase, setSttText, setFeedback, setAssessmentStatus, answerId } = useAnswerFlow();
+  const answerId = useLearningSession((state) => state.answer.answerId);
+  const setPhase = useLearningSession((state) => state.setPhase);
+  const setSttText = useLearningSession((state) => state.setSttText);
+  const setFeedback = useLearningSession((state) => state.setFeedback);
+  const setAssessmentStatus = useLearningSession((state) => state.setAssessmentStatus);
 
   const navigate = useNavigate();
 
@@ -89,14 +87,6 @@ const QuestionPageContent = () => {
       <div className="flex-1" />
       <FloatingStepBar key={`floating-step-bar-${sessionKey}`} />
     </div>
-  );
-};
-
-const QuestionPage = () => {
-  return (
-    <AnswerFlowProvider>
-      <QuestionPageContent />
-    </AnswerFlowProvider>
   );
 };
 
