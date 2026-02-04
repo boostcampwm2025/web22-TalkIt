@@ -9,12 +9,21 @@ export function preNormalize(text: string): string {
     레이스컨디션: 'Race condition',
     '레이스 컨디션': 'Race condition',
     컨텍스트스위칭: 'context switching',
+    '컨텍스트 스위칭': 'context switching',
     페이지폴트: 'page fault',
+    '페이지 폴트': 'page fault',
     해시인덱스: 'hash index',
+    '해시 인덱스': 'hash index',
     키벨류: 'Key-Value',
     키밸류: 'Key-Value',
+    '키 밸류': 'Key-Value',
+    '키 벨류': 'Key-Value',
     멀티쓰레드: 'multithread',
     멀티스레드: 'multithread',
+    '멀티 스레드': 'multithread',
+    '멀티 쓰레드': 'multithread',
+    '메모리 풀': 'memory pool',
+    메모리풀: 'memory pool',
 
     // ===== OS / HW =====
     오에스: 'OS',
@@ -29,6 +38,7 @@ export function preNormalize(text: string): string {
     캐시: 'cache',
     레지스터: 'register',
     인메모리: 'in-memory',
+    '인 메모리': 'in-memory',
     메모리: 'memory',
     페이징: 'paging',
 
@@ -42,27 +52,54 @@ export function preNormalize(text: string): string {
     뮤텍스: 'mutex',
     세마포어: 'semaphore',
     데드락: 'deadlock',
-    락: 'lock',
+    '데드 락': 'deadlock',
+    대드락: 'deadlock',
+    '대드 락': 'deadlock',
 
     // ===== Network =====
     아이피: 'IP',
     웹소켓: 'websocket',
+    '웹 소켓': 'websocket',
     소켓: 'socket',
     패킷: 'packet',
     라우터: 'router',
+    맥어드레스: 'MAC address',
+    '맥 어드레스': 'MAC address',
+    쓰리웨이핸드셰이크: '3-way handshake',
+    '쓰리 웨이 핸드셰이크': '3-way handshake',
+    '쓰리웨이 핸드셰이크': '3-way handshake',
+    '3웨이 핸드셰이크': '3-way handshake',
+    '3 웨이 핸드셰이크': '3-way handshake',
+    '쓰리 way 핸드셰이크': '3-way handshake',
+    '3way 핸드셰이크': '3-way handshake',
+    쓰리웨이핸드쉐이크: '3-way handshake',
+    '쓰리 웨이 핸드쉐이크': '3-way handshake',
+    '쓰리웨이 핸드쉐이크': '3-way handshake',
+    '3웨이 핸드쉐이크': '3-way handshake',
+    '3 웨이 핸드쉐이크': '3-way handshake',
+    '쓰리 way 핸드쉐이크': '3-way handshake',
+    '3way 핸드쉐이크': '3-way handshake',
 
     // ===== DB / Storage =====
     데이터베이스: 'database',
     디비: 'DB',
     노에스큐엘: 'NoSQL',
+    '노 에스 큐엘': 'NoSQL',
+    '노 에스큐엘': 'NoSQL',
+    '노에스 큐엘': 'NoSQL',
+    '노 SQL': 'NoSQL',
+    '노 sql': 'NoSQL',
     에스큐엘: 'SQL',
+    '에스 큐엘': 'SQL',
     트랜잭션: 'transaction',
     인덱스: 'index',
     해시: 'hash',
 
     // ===== Backend / API =====
     에이피아이: 'API',
+    '에이 피 아이': 'API',
     엔드포인트: 'endpoint',
+    '엔드 포인트': 'endpoint',
     리퀘스트: 'request',
     리스폰스: 'response',
 
@@ -79,28 +116,42 @@ export function preNormalize(text: string): string {
     몽고디비: 'MongoDB',
     마이에스큐엘: 'MySQL',
     포스트그레스: 'PostgreSQL',
+    '포스트 그레스': 'PostgreSQL',
+    '포스트 그레 스': 'PostgreSQL',
     엘라스틱서치: 'Elasticsearch',
+    래빗엠큐: 'RabbitMQ',
     레빗엠큐: 'RabbitMQ',
+    '레빗 엠큐': 'RabbitMQ',
+    '레빗 mq': 'RabbitMQ',
 
     // ===== Cloud / Platform =====
     아마존웹서비스: 'AWS',
+    '아마존 웹 서비스': 'AWS',
+    '아마존 웹서비스': 'AWS',
     에이더블유에스: 'AWS',
+    '에이 더블유 에스': 'AWS',
     구글클라우드: 'GCP',
+    '구글 클라우드': 'GCP',
     애저: 'Azure',
     쿠버네티스: 'Kubernetes',
+    '쿠버 네티스': 'Kubernetes',
     도커: 'Docker',
 
     // ===== Language / Framework =====
     자바: 'Java',
     파이썬: 'Python',
-    노드: 'Node.js',
+    노드제이에스: 'Node.js',
+    '노드 제이 에스': 'Node.js',
+    '노드 제이에스': 'Node.js',
+    '노드 JS': 'Node.js',
+    '노드 js': 'Node.js',
     스프링: 'Spring',
     리액트: 'React',
 
-    // ===== 단일 단어 (가장 마지막) =====
     키: 'Key',
     밸류: 'Value',
-    벨류: 'Value',
+    세션: 'Session',
+    스토어: 'Store',
   };
 
   let result = text;
@@ -109,10 +160,13 @@ export function preNormalize(text: string): string {
   const entries = Object.entries(MAP).sort(([a], [b]) => b.length - a.length);
 
   for (const [from, to] of entries) {
-    // 조사/공백/문장 끝 고려
-    const regex = new RegExp(`${from}(?=[가-힣\\s.,!?]|$)`, 'g');
+    // 조사/공백/문장 끝 고려 + 합성어 방지(앞쪽 경계)
+    const regex = new RegExp(`(?<![가-힣A-Za-z0-9])${from}(?=[가-힣\\s.,!?]|$)`, 'g');
     result = result.replace(regex, to);
   }
+
+  // 영문/숫자+키는 분리/치환 (예: V2키 -> V2 key)
+  result = result.replace(/([A-Za-z0-9])키(?=[가-힣\s.,!?]|$)/g, '$1 key');
 
   return result;
 }
