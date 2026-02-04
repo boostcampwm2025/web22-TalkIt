@@ -58,11 +58,28 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     // Always start workers in the worker process (API/worker 분리 운영)
 
-    // Split-flow: 단계별 큐/워커 등록 (평가 → 피드백 → 보상)
-    // 각 단계는 별도 동시성 설정을 가질 수 있어, 단계별 병목을 독립적으로 조정 가능
+    // 연결/동시성 설정 로그와 Redis 헬스체크(초기 진단 편의)
+    const redisUrl = this.config.get<string>('REDIS_URL') ?? 'redis://127.0.0.1:6379';
     const evalConc = Number(this.config.get<string>('ASSESS_EVAL_CONCURRENCY') ?? '20');
     const fbConc = Number(this.config.get<string>('ASSESS_FB_CONCURRENCY') ?? '20');
     const rewardConc = Number(this.config.get<string>('ASSESS_REWARD_CONCURRENCY') ?? '50');
+
+    this.logger.log(
+      `Assessment workers starting: redisUrl=${redisUrl} concurrencies={eval:${evalConc}, fb:${fbConc}, reward:${rewardConc}}`,
+    );
+
+    // Redis 핑으로 조기 연결 확인(실패 시 이후 BullMQ에서도 동일하게 실패하므로, 원인 파악 로그만 남김)
+    this.redis
+      .ping()
+      .then((pong) => this.logger.log(`Redis ping OK: ${pong}`))
+      .catch((err) =>
+        this.logger.error(
+          `Redis ping failed: ${err?.message ?? err}. Check REDIS_URL/port/firewall/docker port mapping.`,
+        ),
+      );
+
+    // Split-flow: 단계별 큐/워커 등록 (평가 → 피드백 → 보상)
+    // 각 단계는 별도 동시성 설정을 가질 수 있어, 단계별 병목을 독립적으로 조정 가능
 
     this.evalWorker = new Worker<AssessJobData>(
       this.evalQueue.name,
