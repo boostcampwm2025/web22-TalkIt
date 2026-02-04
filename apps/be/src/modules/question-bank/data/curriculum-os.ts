@@ -1,0 +1,130 @@
+import { Curriculum } from './curriculum.types';
+
+export const OS_CURRICULUM: Curriculum = {
+  domain: 'OS',
+  chapters: [
+    {
+      chapter: 1,
+      title: '운영체제 개요 및 구조',
+      keyConcepts: [
+        { term: '운영체제 정의와 역할', conceptLevel: 'Basic' },
+        { term: 'Kernel', conceptLevel: 'Basic' },
+        { term: 'System Call', conceptLevel: 'Intermediate' },
+        { term: 'Interrupt', conceptLevel: 'Intermediate' },
+        { term: 'Dual Mode', conceptLevel: 'Intermediate' },
+        { term: '모놀리식 커널 vs 마이크로 커널 vs 하이브리드', conceptLevel: 'Advanced' },
+        { term: '컴파일러, 링커, 로더의 역할', conceptLevel: 'Advanced' },
+      ],
+    },
+    {
+      chapter: 2,
+      title: '프로세스 관리',
+      keyConcepts: [
+        { term: 'Process 개념 및 메모리 구조 (Stack, Heap, Data, Text)', conceptLevel: 'Basic' },
+        { term: 'PCB와 Context Switch 매커니즘', conceptLevel: 'Intermediate' },
+        { term: 'Process State와 상태 전이도', conceptLevel: 'Intermediate' },
+        { term: 'fork(), exec(), wait(), exit() 시스템 콜', conceptLevel: 'Intermediate' },
+        { term: 'IPC 방식 (Shared Memory vs Message Passing)', conceptLevel: 'Advanced' },
+        { term: 'Zombie Process 및 Orphan Process', conceptLevel: 'Advanced' },
+      ],
+    },
+    {
+      chapter: 3,
+      title: '스레드와 동시성',
+      keyConcepts: [
+        { term: 'Thread', conceptLevel: 'Basic' },
+        { term: 'Process vs Thread', conceptLevel: 'Basic' },
+        { term: 'User-Level Thread vs Kernel-Level Thread', conceptLevel: 'Intermediate' },
+        { term: 'Multi-threading Model', conceptLevel: 'Intermediate' },
+        { term: 'Thread Pool', conceptLevel: 'Intermediate' },
+        { term: 'Thread Safety', conceptLevel: 'Advanced' },
+      ],
+    },
+    {
+      chapter: 4,
+      title: 'CPU 스케줄링',
+      keyConcepts: [
+        { term: 'CPU Scheduler', conceptLevel: 'Basic' },
+        { term: 'Preemptive vs Non-preemptive', conceptLevel: 'Basic' },
+        { term: 'FCFS / SJF / Priority / Round Robin', conceptLevel: 'Intermediate' },
+        { term: 'Multilevel Queue', conceptLevel: 'Intermediate' },
+        { term: 'Starvation과 Aging', conceptLevel: 'Intermediate' },
+        { term: 'Real-time Scheduling', conceptLevel: 'Advanced' },
+        { term: '다중 처리기(Multi-Processor) 스케줄링 기초', conceptLevel: 'Advanced' },
+      ],
+    },
+    {
+      chapter: 5,
+      title: '프로세스 동기화',
+      keyConcepts: [
+        { term: 'Race Condition', conceptLevel: 'Basic' },
+        { term: 'Critical Section', conceptLevel: 'Basic' },
+        { term: 'Mutex와 Semaphore', conceptLevel: 'Intermediate' },
+        { term: 'Monitor', conceptLevel: 'Intermediate' },
+        { term: 'Spinlock', conceptLevel: 'Intermediate' },
+        { term: 'Producer-Consumer / Readers-Writers 문제', conceptLevel: 'Advanced' },
+      ],
+    },
+    {
+      chapter: 6,
+      title: '교착 상태(Deadlock)',
+      keyConcepts: [
+        { term: 'Deadlock 정의와 조건', conceptLevel: 'Basic' },
+        { term: 'Resource Allocation Graph', conceptLevel: 'Basic' },
+        { term: 'Deadlock Prevention', conceptLevel: 'Intermediate' },
+        { term: "Deadlock Avoidance(Banker's Algorithm)", conceptLevel: 'Intermediate' },
+        { term: 'Deadlock Detection & Recovery', conceptLevel: 'Advanced' },
+        { term: 'Livelock과 Starvation', conceptLevel: 'Advanced' },
+      ],
+    },
+    {
+      chapter: 7,
+      title: '메모리 관리',
+      keyConcepts: [
+        { term: 'Logical Address vs Physical Address', conceptLevel: 'Basic' },
+        { term: 'Contiguous Memory Allocation', conceptLevel: 'Basic' },
+        { term: 'Paging', conceptLevel: 'Intermediate' },
+        { term: 'Segmentation', conceptLevel: 'Intermediate' },
+        { term: 'Page Table 구조', conceptLevel: 'Intermediate' },
+        { term: 'TLB(Translation Lookaside Buffer)', conceptLevel: 'Advanced' },
+      ],
+    },
+    {
+      chapter: 8,
+      title: '가상 메모리',
+      keyConcepts: [
+        { term: 'Virtual Memory 개념', conceptLevel: 'Basic' },
+        { term: 'Demand Paging', conceptLevel: 'Basic' },
+        { term: 'Page Fault', conceptLevel: 'Intermediate' },
+        { term: 'Page Replacement Algorithm(FIFO, LRU, Optimal)', conceptLevel: 'Intermediate' },
+        { term: 'Thrashing', conceptLevel: 'Advanced' },
+        { term: 'Working Set Model', conceptLevel: 'Advanced' },
+      ],
+    },
+    {
+      chapter: 9,
+      title: '파일 시스템',
+      keyConcepts: [
+        { term: 'File과 Directory 구조', conceptLevel: 'Basic' },
+        { term: 'File Allocation(연속, 연결, 인덱스)', conceptLevel: 'Intermediate' },
+        { term: 'Free Space Management', conceptLevel: 'Intermediate' },
+        { term: 'Inode', conceptLevel: 'Intermediate' },
+        { term: 'Journaling File System', conceptLevel: 'Advanced' },
+        { term: 'VFS(Virtual File System)', conceptLevel: 'Advanced' },
+      ],
+    },
+    {
+      chapter: 10,
+      title: 'I/O 시스템',
+      keyConcepts: [
+        { term: 'I/O Hardware 기초', conceptLevel: 'Basic' },
+        { term: 'Polling vs Interrupt-driven I/O', conceptLevel: 'Basic' },
+        { term: 'DMA(Direct Memory Access)', conceptLevel: 'Intermediate' },
+        { term: 'Buffering과 Caching', conceptLevel: 'Intermediate' },
+        { term: 'Disk Scheduling(SCAN, C-SCAN, LOOK)', conceptLevel: 'Advanced' },
+        { term: 'RAID', conceptLevel: 'Advanced' },
+        { term: 'Zero Copy와 커널/유저 공간 데이터 전송', conceptLevel: 'Advanced' },
+      ],
+    },
+  ],
+};

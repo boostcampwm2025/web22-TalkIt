@@ -91,7 +91,7 @@ model UserStats {
 // =====================================================
 
 model Question {
-  id           Int     @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   category     Category
   difficulty   Difficulty
   topicId      String
@@ -100,6 +100,11 @@ model Question {
   mustInclude  Json
   timeLimitSec Int        @default(180)
   createdAt    DateTime   @default(now())
+
+  chapter      Int
+  term         String     @db.VarChar(100)
+  conceptLevel Int        @map("concept_level")
+  depth        Int
 
   rubricItems  QuestionRubricItem[]
   answers      UserAnswer[]
