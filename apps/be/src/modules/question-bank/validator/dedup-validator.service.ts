@@ -5,6 +5,7 @@ import { calculateDifficulty } from '../common/difficulty-calculator';
 import { loadDraftFiles, saveFinalQuestions } from '../common/file-manager';
 import { DedupResponseSchema, DuplicateEntry } from '../common/question-bank.schema';
 import { DraftQuestion, FinalQuestion } from '../common/question-bank.types';
+import { sleep } from '../common/sleep';
 import { Domain } from '../data';
 import { buildDedupSystemPrompt, buildDedupUserPrompt } from './dedup-validator.prompt';
 import * as crypto from 'crypto';
@@ -17,6 +18,9 @@ export interface RemovedQuestion {
 
 @Injectable()
 export class DedupValidatorService {
+  private static readonly MAX_RETRIES = 3;
+  private static readonly BASE_DELAY_MS = 2_000;
+
   private readonly logger = new Logger(DedupValidatorService.name);
 
   private readonly temperature: number;
@@ -95,41 +99,53 @@ export class DedupValidatorService {
     const dedupInput = questions.map((q) => ({ content: q.content, keywords: q.keywords }));
     const userPrompt = buildDedupUserPrompt(dedupInput);
 
-    try {
-      const { content } = await this.clova.chat(
-        [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        {
-          maxCompletionTokens: this.maxTokens,
-          temperature: this.temperature,
-          thinking: { effort: 'medium' },
-        },
-      );
+    for (let attempt = 1; attempt <= DedupValidatorService.MAX_RETRIES; attempt++) {
+      try {
+        const { content } = await this.clova.chat(
+          [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          {
+            maxCompletionTokens: this.maxTokens,
+            temperature: this.temperature,
+            thinking: { effort: 'medium' },
+          },
+        );
 
-      if (!content) {
-        this.logger.warn('Empty dedup response, skipping dedup');
+        if (!content) {
+          this.logger.warn('Empty dedup response, skipping dedup');
+          return { removeIndices, removedQuestions };
+        }
+
+        const duplicates = this.parseDedupResponse(content);
+
+        for (const dup of duplicates) {
+          const removeIdx = dup.remove - 1;
+          if (removeIdx < 0 || removeIdx >= questions.length) continue;
+
+          removeIndices.add(removeIdx);
+          removedQuestions.push({
+            index: dup.remove,
+            content: questions[removeIdx]!.content,
+            reason: dup.reason,
+          });
+        }
+
         return { removeIndices, removedQuestions };
+      } catch (error) {
+        const delay = DedupValidatorService.BASE_DELAY_MS * 2 ** (attempt - 1);
+        this.logger.error(
+          `[Retry] Dedup LLM call failed (attempt ${attempt}/${DedupValidatorService.MAX_RETRIES}), waiting ${delay}ms`,
+          error,
+        );
+        await sleep(delay);
       }
-
-      const duplicates = this.parseDedupResponse(content);
-
-      for (const dup of duplicates) {
-        const removeIdx = dup.remove - 1;
-        if (removeIdx < 0 || removeIdx >= questions.length) continue;
-
-        removeIndices.add(removeIdx);
-        removedQuestions.push({
-          index: dup.remove,
-          content: questions[removeIdx]!.content,
-          reason: dup.reason,
-        });
-      }
-    } catch (error) {
-      this.logger.error('Dedup LLM call failed, proceeding without dedup', error);
     }
 
+    this.logger.error(
+      `Dedup LLM failed after ${DedupValidatorService.MAX_RETRIES} retries, proceeding without dedup`,
+    );
     return { removeIndices, removedQuestions };
   }
 

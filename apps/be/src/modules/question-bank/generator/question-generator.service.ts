@@ -4,6 +4,7 @@ import { ClovaService } from '../../../infra/clova/clova.service';
 import { saveDraftQuestions } from '../common/file-manager';
 import { LlmQuestionArraySchema, LlmQuestionItem } from '../common/question-bank.schema';
 import { DraftQuestion } from '../common/question-bank.types';
+import { sleep } from '../common/sleep';
 import { CONCEPT_LEVEL_MAP, CURRICULA, Domain } from '../data';
 import { buildSystemPrompt, buildUserPrompt } from './question-generator.prompt';
 
@@ -17,6 +18,9 @@ interface GenerateInput {
 @Injectable()
 export class QuestionGeneratorService {
   private readonly logger = new Logger(QuestionGeneratorService.name);
+
+  private static readonly MAX_RETRIES = 3;
+  private static readonly BASE_DELAY_MS = 2_000;
 
   private readonly temperature: number;
   private readonly maxTokens: number;
@@ -80,27 +84,63 @@ export class QuestionGeneratorService {
     conceptLevel: 'Basic' | 'Intermediate' | 'Advanced';
     count: number;
   }): Promise<DraftQuestion[]> {
+    const minRequired = Math.ceil((params.count * 2) / 3);
+
+    for (let attempt = 1; attempt <= QuestionGeneratorService.MAX_RETRIES; attempt++) {
+      const questions = await this.callLlm(params);
+
+      if (questions.length >= minRequired) {
+        return questions;
+      }
+
+      const delay = QuestionGeneratorService.BASE_DELAY_MS * 2 ** (attempt - 1);
+      this.logger.warn(
+        `[Retry] ${params.term} attempt ${attempt}/${QuestionGeneratorService.MAX_RETRIES}: ` +
+          `got ${questions.length}/${params.count} (min ${minRequired}), waiting ${delay}ms`,
+      );
+      await sleep(delay);
+    }
+
+    this.logger.error(
+      `Failed to generate sufficient questions for ${params.term} after ${QuestionGeneratorService.MAX_RETRIES} retries`,
+    );
+    return [];
+  }
+
+  private async callLlm(params: {
+    domain: Domain;
+    chapter: number;
+    chapterTitle: string;
+    term: string;
+    conceptLevel: 'Basic' | 'Intermediate' | 'Advanced';
+    count: number;
+  }): Promise<DraftQuestion[]> {
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(params);
 
-    const { content } = await this.clova.chat(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      {
-        maxCompletionTokens: this.maxTokens,
-        temperature: this.temperature,
-        thinking: { effort: 'low' },
-      },
-    );
+    try {
+      const { content } = await this.clova.chat(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        {
+          maxCompletionTokens: this.maxTokens,
+          temperature: this.temperature,
+          thinking: { effort: 'low' },
+        },
+      );
 
-    if (!content) {
-      this.logger.error(`Empty response for ${params.term}`);
+      if (!content) {
+        this.logger.error(`Empty response for ${params.term}`);
+        return [];
+      }
+
+      return this.parseResponse(content, params);
+    } catch (error) {
+      this.logger.error(`LLM call failed for ${params.term}`, error);
       return [];
     }
-
-    return this.parseResponse(content, params);
   }
 
   private parseResponse(
