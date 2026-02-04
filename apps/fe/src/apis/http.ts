@@ -73,8 +73,11 @@ const handleAuthError = () => {
   useAuthStore.getState().clearAuth();
   useUserStore.getState().clearUserInfo();
 
-  // React Router 밖이므로 window.location 사용
-  if (window.location.pathname !== '/login') {
+  const currentPath = window.location.pathname;
+  const publicPaths = ['/learning', '/mypage', '/ranking', '/battle'];
+
+  // 현재 경로가 공개 페이지가 아닐 때만 로그인 페이지로 이동
+  if (publicPaths.includes(currentPath)) {
     window.location.href = '/login';
   }
 };
