@@ -22,6 +22,12 @@ export type CreateQuestionResponseDTO = {
   question: Question;
 };
 
+export type GetActiveSessionResponseDTO = {
+  hasSession: boolean;
+  sessionId: number | null;
+  currentQuestionCount: number | null;
+};
+
 // 다음 질문 조회 DTO
 export type GetQuestionResponseDTO = Pick<
   CreateQuestionResponseDTO,

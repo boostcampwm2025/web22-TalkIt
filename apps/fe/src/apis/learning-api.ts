@@ -4,6 +4,7 @@ import type {
   AssessResponseDTO,
   CreateQuestionResponseDTO,
   FinishSessionResponseDTO,
+  GetActiveSessionResponseDTO,
   GetFeedbackResponseDTO,
   GetQuestionResponseDTO,
   SubmitRecordResponseDTO,
@@ -35,6 +36,26 @@ export const startSessionApi = async (
     category,
     difficulty,
   });
+  return data;
+};
+
+/**
+ * 진행 중인 세션 조회
+ */
+export const getInProgressSessionApi = async () => {
+  const { data } = await axiosInstance.get<GetActiveSessionResponseDTO>(
+    '/learning/sessions/active-session',
+  );
+  return data;
+};
+
+/**
+ * 세션 이어하기 (상태 복구)
+ */
+export const resumeSessionApi = async (sessionId: number) => {
+  const { data } = await axiosInstance.get<CreateQuestionResponseDTO>(
+    `/learning/sessions/${sessionId}`,
+  );
   return data;
 };
 
