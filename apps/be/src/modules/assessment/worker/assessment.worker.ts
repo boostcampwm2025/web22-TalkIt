@@ -135,11 +135,28 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
     const opts: JobsOptions = {
       jobId,
       removeOnComplete: true,
+      removeOnFail: true,
       attempts,
       backoff: { type: 'exponential', delay: backoff },
     };
-    // 중복은 BullMQ가 jobId 기준으로 거부하므로 사전 조회 없이 add 호출
-    await this.evalQueue.add('evaluate', { answerId }, opts);
+    // 중복은 BullMQ가 jobId 기준으로 거부 → 멱등 처리(성공으로 간주) + 로그 남김
+    try {
+      this.logger.log(
+        `[Enqueue] evaluate requested: jobId=${jobId} answerId=${answerId} attempts=${attempts} backoff=${backoff}ms`,
+      );
+      await this.evalQueue.add('evaluate', { answerId }, opts);
+      this.logger.log(`[Enqueue] evaluate success: jobId=${jobId} answerId=${answerId}`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      if (/already exists/i.test(message ?? '')) {
+        this.logger.warn(
+          `[Enqueue] duplicate jobId detected; skipping re-enqueue. jobId=${jobId} error=${message}`,
+        );
+        return; // idempotent
+      }
+      this.logger.error(`[Enqueue] evaluate failed: ${message}`);
+      throw e;
+    }
   }
 
   /**

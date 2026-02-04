@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
   UnprocessableEntityException,
@@ -28,6 +29,8 @@ export class AssessmentService {
     private readonly config: ConfigService,
     @Inject(ASSESS_EVAL_QUEUE) private readonly evalQueue: Queue,
   ) {}
+
+  private readonly logger = new Logger(AssessmentService.name);
 
   /**
    * 답변을 저장하고 평가 작업을 생성/큐에 등록합니다.
@@ -61,7 +64,7 @@ export class AssessmentService {
       timeSpentSec: body.timeSpentSec,
     });
 
-    // 큐 등록 실패 시 상태 전파: DB를 FAILED로 업데이트 후 503(Service Unavailable) 반환
+    // 큐 등록: 멱등성을 위해 중복(jobId) 발생 시 성공으로 간주하고 로그만 남깁니다.
     try {
       const attempts = Number(this.config.get<string>('ASSESS_EVAL_ATTEMPTS') ?? '3');
       const backoff = Number(this.config.get<string>('ASSESS_EVAL_BACKOFF_MS') ?? '2000');
@@ -69,22 +72,37 @@ export class AssessmentService {
       const opts: JobsOptions = {
         jobId,
         removeOnComplete: true,
+        removeOnFail: true,
         attempts,
         backoff: { type: 'exponential', delay: backoff },
       };
+      this.logger.log(
+        `Enqueue evaluate requested: jobId=${jobId} answerId=${answer.id} attempts=${attempts} backoff=${backoff}ms`,
+      );
       await this.evalQueue.add('evaluate', { answerId: answer.id }, opts);
+      this.logger.log(`Enqueue evaluate success: jobId=${jobId} answerId=${answer.id}`);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      await this.repo.updateAssessmentJob(job.id, {
-        status: AssessmentStatus.FAILED,
-        error: message,
-        finishedAt: new Date(),
-      });
-      throw new ServiceUnavailableException({
-        code: 'ASSESSMENT_ENQUEUE_FAILED',
-        message: '평가 작업 큐 등록 실패',
-        error: message,
-      });
+      const isDuplicate = /already exists/i.test(message ?? '');
+      if (isDuplicate) {
+        // 중복은 멱등 처리: 실패로 간주하지 않고 202 응답 흐름 유지
+        this.logger.warn(
+          `Enqueue skipped (duplicate jobId). Treating as success. error=${message}`,
+        );
+      } else {
+        // 실제 실패는 DB 상태를 FAILED로 전파하고 503 반환
+        await this.repo.updateAssessmentJob(job.id, {
+          status: AssessmentStatus.FAILED,
+          error: message,
+          finishedAt: new Date(),
+        });
+        this.logger.error(`Enqueue evaluate failed: ${message}`);
+        throw new ServiceUnavailableException({
+          code: 'ASSESSMENT_ENQUEUE_FAILED',
+          message: '평가 작업 큐 등록 실패',
+          error: message,
+        });
+      }
     }
 
     return {
