@@ -28,7 +28,7 @@ const QuestionPage = () => {
       <AnswerSection />
       <FeedbackSection />
       <div className="flex-1" />
-      <FloatingStepBar key={`floating-step-bar-${sessionKey}`} />
+      <FloatingStepBar />
     </div>
   );
 };

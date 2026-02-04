@@ -77,29 +77,37 @@ const useFloatingStepBarActions = () => {
 
   const [rewardData, setRewardData] = useState<FinishSessionResponseDTO | null>(null);
   const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
-  const clickedButtonsRef = useRef<Set<string>>(new Set());
+  const loadingRef = useRef<Set<string>>(new Set());
 
   const isFeedbackPhase =
     phase === ANSWER_PHASE.FEEDBACK_LOADING || phase === ANSWER_PHASE.FEEDBACK_DONE;
 
-  const markClicked = (buttonName: string) => {
-    clickedButtonsRef.current.add(buttonName);
+  const markLoading = (name: string) => {
+    loadingRef.current.add(name);
   };
 
-  const isClicked = (buttonName: string) => clickedButtonsRef.current.has(buttonName);
+  const unmarkLoading = (name: string) => {
+    loadingRef.current.delete(name);
+  };
+
+  const isLoading = (name: string) => loadingRef.current.has(name);
 
   const handleEndLearning = async () => {
-    if (!sessionId || isClicked('endLearning')) return;
-    markClicked('endLearning');
+    if (!sessionId || isLoading('endLearning')) return;
+    markLoading('endLearning');
 
-    const data = await finishSessionApi({ sessionId });
-    setRewardData(data);
-    setIsRewardModalOpen(true);
+    try {
+      const data = await finishSessionApi({ sessionId });
+      setRewardData(data);
+      setIsRewardModalOpen(true);
+    } finally {
+      unmarkLoading('endLearning');
+    }
   };
 
   const handleSubmitAnswer = async () => {
-    if (!sessionId || !question || !sttText || isClicked('submitAnswer')) return;
-    markClicked('submitAnswer');
+    if (!sessionId || !question || !sttText || isLoading('submitAnswer')) return;
+    markLoading('submitAnswer');
 
     try {
       setPhase(ANSWER_PHASE.FEEDBACK_LOADING);
@@ -114,27 +122,35 @@ const useFloatingStepBarActions = () => {
       setAnswerId(newAnswerId);
     } catch (error) {
       console.error('평가 제출 실패:', error);
+    } finally {
+      unmarkLoading('submitAnswer');
     }
   };
 
-  const handleNextQuestion = () => {
-    if (!sessionId || isClicked('nextQuestion')) return;
-    markClicked('nextQuestion');
+  const handleNextQuestion = async () => {
+    if (!sessionId || isLoading('nextQuestion')) return;
+    markLoading('nextQuestion');
 
-    resetAnswerFlow();
-    getNextQuestionApi(sessionId).then((data) => {
+    try {
+      resetAnswerFlow();
+      const data = await getNextQuestionApi(sessionId);
       useLearningSession.getState().setQuestion({ ...data, sessionId });
-    });
+    } finally {
+      unmarkLoading('nextQuestion');
+    }
   };
 
-  const handleDeepDive = () => {
-    if (!sessionId || !answerId || isClicked('deepDive')) return;
-    markClicked('deepDive');
+  const handleDeepDive = async () => {
+    if (!sessionId || !answerId || isLoading('deepDive')) return;
+    markLoading('deepDive');
 
-    getDeepDiveQuestionApi(sessionId, answerId).then((data) => {
+    try {
+      const data = await getDeepDiveQuestionApi(sessionId, answerId);
       resetAnswerFlow();
       useLearningSession.getState().setQuestion({ ...data, sessionId });
-    });
+    } finally {
+      unmarkLoading('deepDive');
+    }
   };
 
   const endLearning: ButtonProps = {
