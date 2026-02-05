@@ -2,7 +2,7 @@ import { type Page, type Route, expect, test } from '@playwright/test';
 
 // 공통 API Mocking 데이터
 const mockUserInfo = {
-  profile: { nickname: 'YeonShin', profileImage: null, bio: '테스트' },
+  profile: { nickname: 'test', profileImage: null, bio: '테스트' },
   progression: { level: 5, currentXp: 1200, requiredXpForNextLevel: 2000, lp: 450 },
   studyStats: { solvedProblemCount: 120, streak: 7, totalStudyTime: 36000 },
   remainingCredit: 20,
@@ -29,7 +29,7 @@ test.describe('2. 🏫 학습 대시보드 및 세션 설정 (Learning Setup)', 
     page,
   }) => {
     // 1. 닉네임 및 환영 문구 확인
-    await expect(page.getByText('안녕하세요, YeonShin님!')).toBeVisible();
+    await expect(page.getByText('안녕하세요, test님!')).toBeVisible();
 
     // 2. 스트릭 확인
     await expect(page.getByText('연속 7일 학습 중')).toBeVisible();
@@ -45,7 +45,7 @@ test.describe('2. 🏫 학습 대시보드 및 세션 설정 (Learning Setup)', 
     await expect(page.getByText('다음 레벨: 6 Lv')).toBeVisible();
 
     const sideBar = page.locator('aside');
-    await expect(sideBar.getByText('YeonShin')).toBeVisible();
+    await expect(sideBar.getByText('test')).toBeVisible();
     await expect(sideBar.getByText('Level 5 • 1200 XP')).toBeVisible();
   });
 
@@ -55,6 +55,13 @@ test.describe('2. 🏫 학습 대시보드 및 세션 설정 (Learning Setup)', 
   test('주제와 난이도를 선택하면 학습 시작 버튼이 활성화되고 페이지가 이동해야 한다', async ({
     page,
   }) => {
+    await page.route('**/learning/sessions/active-session', async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: { hasSession: false, sessionId: null },
+      });
+    });
+
     // 1. 초기 상태: 난이도 설정 및 시작 버튼은 보이지 않아야 함 (opacity-0)
     const difficultySection = page.locator('section:has-text("난이도 설정")');
     const startSection = page.locator('section:has-text("오늘의 AI 튜터가 준비되었습니다.")');
@@ -101,28 +108,33 @@ test.describe('2. 🏫 학습 대시보드 및 세션 설정 (Learning Setup)', 
    */
   test.describe('진행 중인 세션 이어하기', () => {
     test.beforeEach(async ({ page }) => {
-      // 1. 유저 정보 Mocking
-      await page.route('**/api/users/me', async (route) => {
+      // 1. 진행 중인 세션 정보 Mocking
+      await page.route('**/api/learning/sessions/active-session', async (route) => {
         await route.fulfill({
           status: 200,
           json: {
-            profile: { nickname: 'YeonShin' },
-            progression: { level: 5, currentXp: 1200, requiredXpForNextLevel: 2000 },
-            studyStats: { solvedProblemCount: 120, streak: 7, totalStudyTime: 36000 },
-            remainingCredit: 20,
+            hasSession: true,
+            sessionId: 99,
+            currentQuestionCount: 2,
           },
         });
       });
 
-      // 2. 진행 중인 세션 정보 Mocking
-      await page.route('**/api/learning/active-session', async (route) => {
+      // 2. 세션 이어하기 데이터 Mocking
+      await page.route('**/api/learning/sessions/99', async (route) => {
         await route.fulfill({
           status: 200,
           json: {
             sessionId: 99,
+            currentQuestionCount: 2,
+            remainedCredit: 20,
             question: {
               questionId: 501,
               content: 'TCP와 UDP의 차이점에 대해 설명해주세요.',
+              guide: '연결 지향성',
+              category: 'NETWORK',
+              difficulty: 'MEDIUM',
+              timeLimit: 300,
             },
           },
         });
@@ -133,6 +145,15 @@ test.describe('2. 🏫 학습 대시보드 및 세션 설정 (Learning Setup)', 
       page,
     }) => {
       await page.goto('/learning');
+
+      await expect(page.getByRole('dialog')).toBeHidden();
+
+      await page.getByText('네트워크').click();
+      await expect(page.getByText('난이도 설정')).toBeVisible();
+
+      await page.getByText('중급').click();
+
+      await page.getByRole('button', { name: '학습 시작하기' }).click();
 
       // 3. Radix UI Dialog 노출 확인
       const dialog = page.getByRole('dialog');

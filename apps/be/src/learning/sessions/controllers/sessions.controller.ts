@@ -1,4 +1,4 @@
-import { Body, Controller, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -73,6 +73,74 @@ export class SessionsController {
   ) {
     const userId = user.id;
     return this.sessionsService.createSession(userId, dto);
+  }
+
+  /**
+   * 현재 진행중인 학습 세션이 있다면 해당 세션 정보를 반환한다.
+   */
+  @Get('active-session')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: '진행 중인 세션 조회',
+    description: '사용자의 현재 활성화된(종료되지 않은) 세션이 있는지 확인합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '조회 성공',
+    schema: {
+      example: {
+        hasSession: true,
+        sessionId: 15,
+        currentQuestionCount: 2,
+      },
+    },
+  })
+  async getInProgressSession(@ActiveUser() user: { id: number }) {
+    return this.sessionsService.getInProgressSession(user.id);
+  }
+
+  /**
+   * 진행 중인 세션의 현재 상태(문제, 진행도 등)를 반환한다.
+   * 크레딧을 차감하지 않고 현재 상태를 반환한다.
+   */
+  @Get(':sessionId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: '세션 이어하기 (상태 복구)',
+    description: '진행 중인 세션의 현재 상태(문제, 진행도 등)를 반환하여 학습을 재개합니다.',
+  })
+  @ApiParam({
+    name: 'sessionId',
+    description: '이어할 세션 ID',
+    type: Number,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '세션 정보 로드 성공',
+    schema: {
+      example: {
+        sessionId: 15,
+        currentQuestionCount: 2,
+        remainedCredit: 19,
+        question: {
+          questionId: 105,
+          content: 'TCP와 UDP의 차이는?',
+          guide: '연결 지향성 여부를 중심으로...',
+          category: 'NETWORK',
+          difficulty: 'MEDIUM',
+          timeLimit: 300,
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: '유효하지 않은 세션' })
+  async resumeSession(
+    @ActiveUser() user: { id: number },
+    @Param('sessionId', ParseIntPipe) sessionId: number,
+  ) {
+    return this.sessionsService.resumeSession(sessionId, user.id);
   }
 
   @Post(':sessionId/next-question')

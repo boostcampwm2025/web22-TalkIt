@@ -96,6 +96,86 @@ export class SessionsService {
   }
 
   /**
+   * 사용자의 진행 중인(Active) 세션이 있는지 확인한다.
+   */
+  async getInProgressSession(userId: number) {
+    const activeSession = await this.sessionsRepository.findActiveSessionByUserId(userId);
+
+    if (!activeSession) {
+      return {
+        hasSession: false,
+        sessionId: null,
+        currentQuestionCount: null,
+      };
+    }
+
+    return {
+      hasSession: true,
+      sessionId: activeSession.id,
+      currentQuestionCount: activeSession.currentQuestionCount,
+    };
+  }
+
+  /**
+   * 세션 이어하기: 현재 세션 상태를 복구한다.
+   * 주의: 크레딧을 차감하지 않으며, 현재 카운트에 맞는 질문을 제공한다.
+   */
+  async resumeSession(sessionId: number, userId: number) {
+    const session = await this.sessionsRepository.findById(sessionId);
+
+    if (!session) {
+      throw new NotFoundException({
+        code: 'SESSION_NOT_FOUND',
+        message: '세션을 찾을 수 없습니다.',
+      });
+    }
+
+    if (session.completedAt || session.status === 'COMPLETED') {
+      throw new ConflictException({
+        code: 'SESSION_COMPLETED',
+        message: '이미 종료된 세션입니다.',
+      });
+    }
+
+    if (session.userId !== userId) {
+      throw new BadRequestException({ code: 'FORBIDDEN', message: '세션 소유자가 아닙니다.' });
+    }
+
+    const remainedCredit = await this.userCreditsRepository.getTotalCredit(userId);
+
+    // Note: DB에 '현재 진행중인 questionId'를 저장하지 않는 구조이므로,
+    // 이어하기 시 '동일한 조건'의 질문을 다시 뽑아서 제공합니다.
+    const question = await this.questionService.pickOne(
+      session.category as Domain,
+      session.difficulty as Difficulty,
+    );
+
+    if (!question) {
+      // 극단적인 경우: 질문 데이터가 부족하여 못 가져올 때
+      throw new NotFoundException({
+        code: 'QUESTION_UNAVAILABLE',
+        message: '제공할 질문을 찾을 수 없습니다.',
+      });
+    }
+
+    const guide = this.guideBuilder.build(question.mustInclude);
+
+    return {
+      sessionId: session.id,
+      currentQuestionCount: session.currentQuestionCount,
+      remainedCredit: remainedCredit,
+      question: {
+        questionId: question.questionId,
+        content: question.content,
+        guide,
+        category: question.domain,
+        difficulty: question.difficulty,
+        timeLimit: question.timeLimitSec,
+      },
+    };
+  }
+
+  /**
    * 진행 중인 세션의 다음 질문을 조회하고 카운트/크레딧을 반영한다.
    * 질문이 없으면 세션을 종료 처리하고 종료 상태를 응답한다.
    */

@@ -196,7 +196,7 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
     // 1. 가짜 유저 데이터 정의
     const mockUserInfo = {
       profile: {
-        nickname: 'YeonShin',
+        nickname: 'test',
         profileImage: null,
         bio: '테스트 계정입니다.',
       },
@@ -244,6 +244,6 @@ test.describe('1. 🔐 인증 및 유효성 검사 (Auth & Validation)', () => {
     await expect(page).toHaveURL('/');
 
     // 상단 바 내 닉네임 확인
-    await expect(page.getByText('YeonShin')).toBeVisible();
+    await expect(page.getByText('test')).toBeVisible();
   });
 });
