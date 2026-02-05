@@ -13,20 +13,21 @@ export class RubricService {
   ) {}
   async create(answerId: number): Promise<Rubric> {
     // 답변에 연관된 문항 조회
-    const answerWithQuestion = await this.repo.findQuestionByAnswerId(answerId);
-    if (!answerWithQuestion) {
+    const context = await this.repo.findQuestionContextByAnswerId(answerId);
+    if (!context) {
       this.logger.error(`QUESTION_NOT_FOUND: answerId=${answerId} relation=null`);
       throw new Error('QUESTION_NOT_FOUND');
     }
 
-    const question = answerWithQuestion.content;
-    const questionId = answerWithQuestion.id;
+    const question = context.content;
+    const questionId = context.kind === 'question' ? context.id : undefined;
+    const extraQuestionId = context.kind === 'extraQuestion' ? context.id : undefined;
     this.logger.log(
-      `Rubric create: answerId=${answerId} questionId=${questionId} questionLen=${String(question ?? '').length}`,
+      `Rubric create: answerId=${answerId} ${context.kind}Id=${context.id} questionLen=${String(question ?? '').length}`,
     );
 
     // 1) 기존에 생성된 루브릭이 있는지 확인
-    const existingRubric = await this.repo.getRubricByQuestionId(questionId);
+    const existingRubric = await this.repo.getRubricByTarget({ questionId, extraQuestionId });
 
     // 2) 존재하면 재생성하지 않고 반환
     if (existingRubric) {
@@ -37,7 +38,7 @@ export class RubricService {
     const rubric = await this.rubricProvider.generate({ question });
 
     // 4) 생성된 루브릭을 DB에 저장(keywordsText에 description 저장됨)
-    await this.repo.saveRubric(questionId, JSON.stringify(rubric));
+    await this.repo.saveRubric({ questionId, extraQuestionId }, JSON.stringify(rubric));
 
     // 5) 루브릭 반환
     return rubric;
