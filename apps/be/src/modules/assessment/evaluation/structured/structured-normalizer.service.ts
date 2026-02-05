@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { ClovaService } from '@/infra/clova/clova.service';
 import type { JsonSchemaSubset } from '@/infra/clova/schemas/request-body.schema';
@@ -8,28 +9,33 @@ import { combinedEvaluationSchema, goldenSchema } from '../schemas';
 
 @Injectable()
 export class StructuredNormalizerService {
-  constructor(private readonly clova: ClovaService) {}
+  constructor(
+    private readonly clova: ClovaService,
+    private readonly config: ConfigService,
+  ) {}
 
   private readonly logger = new Logger(StructuredNormalizerService.name);
   private systemPrompt = NormalizerSystemPrompt;
 
   private async normalizeWithSchema(input: string, schema: JsonSchemaSubset): Promise<unknown> {
     type ChatMessage = { role: 'system' | 'user'; content: string };
+    const maxChars = Number(this.config.get<string>('ASSESS_NORMALIZE_INPUT_MAX_CHARS') ?? '0');
+    const clipped = maxChars > 0 && input.length > maxChars ? input.slice(0, maxChars) : input;
     const messages: ChatMessage[] = [
       { role: 'system', content: this.systemPrompt },
-      { role: 'user', content: NormalizerUserPrompt(input) },
+      { role: 'user', content: NormalizerUserPrompt(clipped) },
     ];
     const startedAt = Date.now();
     const schemaSummary = this.summarizeSchema(schema);
     this.logger.log(
-      `LLM normalize request: inputLen=${input.length} inputPreview="${this.makePreview(input, 200)}" schema=${schemaSummary}`,
+      `LLM normalize request: inputLen=${input.length} clipped=${clipped.length} inputPreview="${this.makePreview(clipped, 200)}" schema=${schemaSummary}`,
     );
 
     const out = await this.clova.chat(messages, {
       temperature: 0,
       stream: false,
       responseFormat: { type: 'json', schema },
-      maxCompletionTokens: 500,
+      maxCompletionTokens: Number(this.config.get<string>('CLOVA_SO_MAX_TOKENS') ?? '600'),
       thinking: { effort: 'none' },
     });
 

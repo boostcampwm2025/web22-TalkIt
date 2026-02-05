@@ -53,8 +53,8 @@ export async function handleFeedbackStage(
     });
 
     // Rate limit: QPM 기준 동일 정책 적용 (피드백 생성 시 LLM 호출 발생 가능)
-    const qpm = Number(config.get<string>('ASSESS_LLM_QPM') ?? '90');
-    const burst = Number(config.get<string>('ASSESS_LLM_QPM_BURST') ?? '30');
+    const qpm = Number(config.get<string>('ASSESS_LLM_QPM') ?? '45');
+    const burst = Number(config.get<string>('ASSESS_LLM_QPM_BURST') ?? '20');
     const refill = qpm / 60; // 초당 리필량
     const rateWaitStartedAt = Date.now();
     logger.log(
@@ -64,7 +64,7 @@ export async function handleFeedbackStage(
       capacity: burst,
       refillPerSec: refill,
       amount: 1,
-      maxWaitMs: Number(config.get<string>('ASSESS_LLM_RATE_MAX_WAIT_MS') ?? '3000'),
+      maxWaitMs: Number(config.get<string>('ASSESS_LLM_RATE_MAX_WAIT_MS') ?? '5000'),
       baseDelayMs: Number(config.get<string>('ASSESS_LLM_RATE_DELAY_MS') ?? '250'),
       jitterMs: Number(config.get<string>('ASSESS_LLM_RATE_JITTER_MS') ?? '150'),
     });

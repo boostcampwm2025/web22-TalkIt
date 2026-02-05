@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-import { StructuredNormalizerService } from '@/modules/assessment/evaluation/structured/structured-normalizer.service';
+// 정규화 로직 제거 버전: 정상 동작을 위해 직접 정규화 호출을 하지 않습니다.
 
 import { AssessmentRepository } from '../../assessment.repository';
 import { EvaluationRepository } from '../evaluation.repository';
@@ -21,7 +22,7 @@ export class EvaluateService {
     private readonly evaluationRepo: EvaluationRepository,
     private readonly evalProvider: LlmEvaluationProvider,
     private readonly scoring: ScoringService,
-    private readonly normalizer: StructuredNormalizerService,
+    private readonly config: ConfigService,
   ) {}
 
   async evaluate(answerId: number): Promise<{ score: number }> {
@@ -50,11 +51,17 @@ export class EvaluateService {
     });
     this.logger.log(`Evaluate LLM done: answerId=${answerId} combinedLen=${combinedText.length}`);
 
-    // 정규화: 통합 스키마로 한 번만 호출
-    const normalized = await this.normalizer.normalizeCombined(combinedText);
-    this.logger.log(
-      `Evaluate normalize done: answerId=${answerId} issues=${normalized.issues?.length ?? 0} feedbackAccurate=${normalized.feedback?.accurate?.length ?? 0}`,
-    );
+    const normalized = JSON.parse(combinedText) as {
+      issues: {
+        type: 'strength' | 'missing' | 'unclear';
+        detail: string;
+        evidence?: string;
+        target?: string;
+        score?: number;
+      }[];
+      feedback: { accurate: string[]; weakness: string[]; suggestions: string[] };
+    };
+    this.logger.warn(`Evaluate normalization disabled: answerId=${answerId}`);
 
     // 6) 루브릭 기반 최종 점수 산출
     const score = this.scoring.computeRubricScore(normalized, rubric);

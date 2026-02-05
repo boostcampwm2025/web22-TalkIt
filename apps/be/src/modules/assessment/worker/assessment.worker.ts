@@ -60,9 +60,9 @@ export class AssessmentWorker implements OnModuleInit, OnModuleDestroy {
 
     // 연결/동시성 설정 로그와 Redis 헬스체크(초기 진단 편의)
     const redisUrl = this.config.get<string>('REDIS_URL') ?? 'redis://127.0.0.1:6379';
-    const evalConc = Number(this.config.get<string>('ASSESS_EVAL_CONCURRENCY') ?? '20');
-    const fbConc = Number(this.config.get<string>('ASSESS_FB_CONCURRENCY') ?? '20');
-    const rewardConc = Number(this.config.get<string>('ASSESS_REWARD_CONCURRENCY') ?? '50');
+    const evalConc = Number(this.config.get<string>('ASSESS_EVAL_CONCURRENCY') ?? '3');
+    const fbConc = Number(this.config.get<string>('ASSESS_FB_CONCURRENCY') ?? '1');
+    const rewardConc = Number(this.config.get<string>('ASSESS_REWARD_CONCURRENCY') ?? '10');
 
     this.logger.log(
       `Assessment workers starting: redisUrl=${redisUrl} concurrencies={eval:${evalConc}, fb:${fbConc}, reward:${rewardConc}}`,
