@@ -43,7 +43,7 @@ export class LlmEvaluationProvider {
         temperature: 0,
         stream: false,
         maxCompletionTokens: Number(this.config.get<string>('CLOVA_THINKING_MAX_TOKENS') ?? '1200'),
-        thinking: { effort: 'low' },
+        thinking: { effort: 'none' },
       });
       const responsePreview = this.makePreview(out.content ?? '', 200);
       this.logger.log(
