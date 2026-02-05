@@ -45,10 +45,7 @@ const FeedbackSection = () => {
   const isInsufficientAnswer = useLearningSession((s) => {
     const fb = s.feedback.data;
     if (!fb) return false;
-    return (
-      (fb.strengths.length === 0 && fb.weaknesses.length === 0 && fb.suggestions.length === 0) ||
-      fb.overallScore === 0
-    );
+    return fb.strengths.length === 0 && fb.weaknesses.length === 0 && fb.suggestions.length === 0;
   });
 
   const handleFeedbackDone = useCallback(async () => {
