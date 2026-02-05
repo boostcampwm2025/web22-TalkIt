@@ -138,6 +138,14 @@ export class AuthController {
       maxAge: 14 * 24 * 60 * 60 * 1000,
     });
 
+    res.cookie('isLoggedIn', 'true', {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 14 * 24 * 60 * 60 * 1000, // 리프레시 토큰 수명과 동일하게 설정
+    });
+
     return {
       accessToken,
       user,
@@ -192,6 +200,14 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    res.cookie('isLoggedIn', 'true', {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     return { accessToken };
   }
 
@@ -231,12 +247,16 @@ export class AuthController {
     await this.authService.logout(user.id);
 
     // 클라이언트 쿠키 삭제
-    res.clearCookie('refreshToken', {
+    const cookieOption = {
       path: '/',
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    });
+      sameSite: 'lax' as const,
+    };
+
+    res.clearCookie('refreshToken', cookieOption);
+
+    res.clearCookie('isLoggedIn', { ...cookieOption, httpOnly: false });
 
     return { message: '성공적으로 로그아웃 되었습니다.' };
   }

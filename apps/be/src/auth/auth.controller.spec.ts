@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ActiveUser } from '@/common/decorators/active-user.decorator';
+import { UsersService } from '@/users/users.service';
 import { CreateUserDto, LoginDto } from '@repo/shared/schemas/auth';
 
 import { AuthController } from './auth.controller';
@@ -13,6 +14,11 @@ const mockAuthService = {
   login: jest.fn(),
   rotateRefreshToken: jest.fn(),
   logout: jest.fn(),
+};
+
+const mockUsersService = {
+  checkDuplicate: jest.fn(),
+  getMyProfile: jest.fn(),
 };
 
 // Mock Response 객체 정의 (Express Response)
@@ -34,6 +40,10 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: mockAuthService,
+        },
+        {
+          provide: UsersService,
+          useValue: mockUsersService,
         },
       ],
     }).compile();
@@ -120,6 +130,15 @@ describe('AuthController', () => {
         }),
       );
 
+      expect(res.cookie).toHaveBeenCalledWith(
+        'isLoggedIn',
+        'true',
+        expect.objectContaining({
+          httpOnly: false, // 클라이언트 접근 허용
+          path: '/',
+        }),
+      );
+
       // 3. 반환값에 AccessToken이 포함되어 있는지 확인
       expect(result).toEqual({ accessToken: tokens.accessToken });
     });
@@ -157,6 +176,13 @@ describe('AuthController', () => {
         newTokens.refreshToken,
         expect.anything(),
       );
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        'isLoggedIn',
+        'true',
+        expect.objectContaining({ httpOnly: false }),
+      );
+
       expect(result).toEqual({ accessToken: newTokens.accessToken });
     });
   });
@@ -181,6 +207,14 @@ describe('AuthController', () => {
         expect.objectContaining({
           path: '/',
           httpOnly: true,
+        }),
+      );
+
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        'isLoggedIn',
+        expect.objectContaining({
+          path: '/',
+          httpOnly: false, // 삭제 시에도 옵션을 맞춰주는지 확인
         }),
       );
     });
