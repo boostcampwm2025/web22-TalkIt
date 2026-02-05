@@ -22,15 +22,27 @@ export class LlmEvaluationProvider {
   }): Promise<string> {
     const { questionSummary, rubric, answerText } = params;
     const mustInclude = this.buildMustInclude(rubric);
-    if (!this.hasApiKey()) return this.buildFallbackCombinedJson(mustInclude, answerText);
+    if (!this.hasApiKey()) {
+      this.logger.warn('CLOVA_API_KEY missing. Using heuristic fallback for evaluation.');
+      return this.buildFallbackCombinedJson(mustInclude, answerText);
+    }
 
     const messages = this.buildMessages(questionSummary, mustInclude, answerText);
+    const startedAt = Date.now();
+    const answerPreview = this.makePreview(answerText, 200);
+    this.logger.log(
+      `LLM evaluate request: qSummaryLen=${questionSummary.length} mustInclude=${mustInclude.length} answerLen=${answerText.length} answerPreview="${answerPreview}"`,
+    );
     try {
       const out = await this.clova.chat(messages, {
         temperature: 0,
         stream: false,
         thinking: { effort: 'low' },
       });
+      const responsePreview = this.makePreview(out.content ?? '', 200);
+      this.logger.log(
+        `LLM evaluate response: elapsedMs=${Date.now() - startedAt} contentLen=${(out.content ?? '').length} preview="${responsePreview}"`,
+      );
       return (out.content ?? '').trim();
     } catch (e) {
       this.logger.warn(
@@ -96,5 +108,11 @@ export class LlmEvaluationProvider {
       { role: 'system', content: system },
       { role: 'user', content: user },
     ];
+  }
+
+  private makePreview(input: string, limit = 200): string {
+    return String(input ?? '')
+      .replace(/\s+/g, ' ')
+      .slice(0, limit);
   }
 }

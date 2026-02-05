@@ -8,9 +8,13 @@ import type { Rubric, RubricItem } from './dtos';
 export class EvaluationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findQuestionById(questionId: number) {
-    // questionId에 해당하는 문항을 조회합니다.
-    return this.prisma.question.findUnique({ where: { id: questionId } });
+  async findQuestionByAnswerId(answerId: number) {
+    // answerId에 연결된 문항을 조회합니다.
+    const answer = await this.prisma.userAnswer.findUnique({
+      where: { id: answerId },
+      select: { question: true },
+    });
+    return answer?.question ?? null;
   }
 
   async getRubricByQuestionId(questionId: number): Promise<Rubric | null> {

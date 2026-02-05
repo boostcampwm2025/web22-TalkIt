@@ -20,6 +20,15 @@ export class ClovaService {
   private readonly apiKey: string;
   private readonly logger = new Logger(ClovaService.name);
 
+  private makePreview(input: unknown, limit = 800): string {
+    try {
+      const raw = typeof input === 'string' ? input : JSON.stringify(input);
+      return raw.replace(/\s+/g, ' ').slice(0, limit);
+    } catch {
+      return '[preview-unavailable]';
+    }
+  }
+
   constructor(private readonly config: ConfigService) {
     // 기본 URL을 최신 문서 기준의 스트리밍 도메인으로 변경
     this.baseUrl =
@@ -32,14 +41,23 @@ export class ClovaService {
     const url = makeChatUrl(this.baseUrl, this.model);
     const requestId = generateRequestId();
 
-    // SO(JSON)과 Thinking은 상호배타적: SO가 지정되면 thinking 옵션은 무시(안전 로그)
-    if (options.responseFormat?.type === 'json' && options.thinking && !options.noThinking) {
-      this.logger.debug(
-        `CLOVA options: responseFormat=json → thinking 옵션은 무시됩니다. req=${requestId}`,
-      );
+    // SO(JSON) 모드: thinking.effort=none 강제(미지정 시 low 적용 충돌 방지)
+    if (options.responseFormat?.type === 'json') {
+      const effort = options.thinking?.effort;
+      if (effort && effort !== 'none') {
+        this.logger.debug(
+          `CLOVA options: responseFormat=json → thinking.effort=none으로 강제됩니다. req=${requestId}`,
+        );
+      }
+      if (options.noThinking) {
+        this.logger.debug(
+          `CLOVA options: responseFormat=json → noThinking은 무시되고 thinking.effort=none이 적용됩니다. req=${requestId}`,
+        );
+      }
     }
 
     const body = buildChatRequestBody(messages, options);
+    this.logger.debug(`CLOVA request body preview req=${requestId} ${this.makePreview(body)}`);
 
     // 단일 요청 처리: 재시도/자동 강등 없이 즉시 실패를 표면화
     const res = await fetch(url, {
@@ -50,6 +68,7 @@ export class ClovaService {
 
     const contentType = res.headers.get('content-type') ?? '';
     const rawText = await res.text();
+    this.logger.debug(`CLOVA response body preview req=${requestId} ${this.makePreview(rawText)}`);
 
     let parsedJson: unknown;
     try {

@@ -37,12 +37,12 @@ export function buildChatRequestBody(
   // noThinking 옵션이 명시되면 thinking 파라미터를 강제로 제거하기 위해 후처리
   const built = adapter.build(messages, options);
   const copy: ChatRequestBody = { ...built };
-  // 강제 상호배타 보장: responseFormat 존재 시 thinking 제거
-  if (copy.responseFormat && (copy as any).thinking) {
-    delete (copy as any).thinking;
+  // SO(JSON) 모드: thinking.effort=none 고정(미지정 시 low 적용 충돌 방지)
+  if (copy.responseFormat) {
+    copy.thinking = { effort: 'none' };
   }
-  // 호출부가 명시적으로 noThinking을 요청한 경우에도 제거
-  if (options.noThinking && (copy as any).thinking) {
+  // 호출부가 명시적으로 noThinking을 요청한 경우에만 제거(단, SO 모드는 예외)
+  if (!copy.responseFormat && options.noThinking && (copy as any).thinking) {
     delete (copy as any).thinking;
   }
   return copy;

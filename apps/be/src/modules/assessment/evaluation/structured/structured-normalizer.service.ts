@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { ClovaService } from '@/infra/clova/clova.service';
 import type { JsonSchemaSubset } from '@/infra/clova/schemas/request-body.schema';
@@ -10,6 +10,7 @@ import { combinedEvaluationSchema, goldenSchema } from '../schemas';
 export class StructuredNormalizerService {
   constructor(private readonly clova: ClovaService) {}
 
+  private readonly logger = new Logger(StructuredNormalizerService.name);
   private systemPrompt = NormalizerSystemPrompt;
 
   private async normalizeWithSchema(input: string, schema: JsonSchemaSubset): Promise<unknown> {
@@ -18,15 +19,32 @@ export class StructuredNormalizerService {
       { role: 'system', content: this.systemPrompt },
       { role: 'user', content: NormalizerUserPrompt(input) },
     ];
+    const startedAt = Date.now();
+    const schemaSummary = this.summarizeSchema(schema);
+    this.logger.log(
+      `LLM normalize request: inputLen=${input.length} inputPreview="${this.makePreview(input, 200)}" schema=${schemaSummary}`,
+    );
 
     const out = await this.clova.chat(messages, {
       temperature: 0,
       stream: false,
       responseFormat: { type: 'json', schema },
-      noThinking: true,
+      thinking: { effort: 'none' },
     });
 
-    return JSON.parse(out.content ?? '');
+    const content = out.content ?? '';
+    this.logger.log(
+      `LLM normalize response: elapsedMs=${Date.now() - startedAt} contentLen=${content.length} preview="${this.makePreview(content, 200)}"`,
+    );
+    try {
+      return JSON.parse(content);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.error(
+        `LLM normalize JSON parse failed: ${message} contentPreview="${this.makePreview(content, 400)}" schema=${schemaSummary}`,
+      );
+      throw e;
+    }
   }
 
   async normalizeGolden(text: string): Promise<{
@@ -67,5 +85,19 @@ export class StructuredNormalizerService {
         suggestions: string[];
       };
     }>;
+  }
+
+  private makePreview(input: string, limit = 200): string {
+    return String(input ?? '')
+      .replace(/\s+/g, ' ')
+      .slice(0, limit);
+  }
+
+  private summarizeSchema(schema: JsonSchemaSubset): string {
+    if (!schema || typeof schema !== 'object') return 'unknown';
+    const type = (schema as { type?: string | string[] }).type ?? 'object';
+    const props = (schema as { properties?: Record<string, JsonSchemaSubset> }).properties ?? {};
+    const keys = Object.keys(props);
+    return `type=${Array.isArray(type) ? type.join('|') : String(type)} props=${keys.length} [${keys.slice(0, 6).join(',')}]`;
   }
 }

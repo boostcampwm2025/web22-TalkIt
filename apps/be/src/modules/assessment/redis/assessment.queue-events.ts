@@ -40,6 +40,10 @@ export class AssessmentQueueEventBus implements OnModuleInit, OnModuleDestroy {
     await Promise.all(this.qes.map((qe) => qe.waitUntilReady().catch(() => undefined)));
 
     const mapParentId = (jid: string): string => {
+      // BullMQ jobId is `answer-{id}-{stage}`; SSE subscribes to `answer-{id}`
+      const stageSuffix = jid.match(/^(.*)-(evaluate|feedback|reward)$/);
+      const parent = stageSuffix?.[1];
+      if (parent) return parent;
       const idx = jid.indexOf(':');
       return idx >= 0 ? jid.slice(0, idx) : jid;
     };

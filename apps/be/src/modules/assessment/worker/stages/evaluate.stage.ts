@@ -25,6 +25,10 @@ export async function handleEvaluateStage(
   { repo, orchestrator, config, fbQueue, logger, limiter }: EvaluateStageDeps,
 ) {
   const { answerId } = job.data;
+  const attempts = Number((job.opts as any)?.attempts ?? 1);
+  logger.log(
+    `[Evaluate] start: jobId=${job.id} answerId=${answerId} attemptsMade=${job.attemptsMade} attempts=${attempts}`,
+  );
   // parent jobId(root)는 체이닝 시 stage별 jobId로 대체 사용
   const jobRow = await repo.getAssessmentJobByAnswerId(answerId);
   if (!jobRow) {
@@ -55,6 +59,10 @@ export async function handleEvaluateStage(
     const qpm = Number(config.get<string>('ASSESS_LLM_QPM') ?? '90');
     const burst = Number(config.get<string>('ASSESS_LLM_QPM_BURST') ?? '30');
     const refill = qpm / 60; // 초당 리필량
+    const rateWaitStartedAt = Date.now();
+    logger.log(
+      `[Evaluate] rate-limit wait start: answerId=${answerId} qpm=${qpm} burst=${burst} refillPerSec=${refill.toFixed(2)}`,
+    );
     await limiter.waitUntilAllowed('rl:llm:global:qpm', {
       capacity: burst,
       refillPerSec: refill,
@@ -63,8 +71,13 @@ export async function handleEvaluateStage(
       baseDelayMs: Number(config.get<string>('ASSESS_LLM_RATE_DELAY_MS') ?? '250'),
       jitterMs: Number(config.get<string>('ASSESS_LLM_RATE_JITTER_MS') ?? '150'),
     });
+    logger.log(
+      `[Evaluate] rate-limit wait done: answerId=${answerId} elapsedMs=${Date.now() - rateWaitStartedAt}`,
+    );
 
+    logger.log(`[Evaluate] createRubric start: answerId=${answerId}`);
     await orchestrator.createRubric(answerId);
+    logger.log(`[Evaluate] createRubric done: answerId=${answerId}`);
 
     // 다음 단계 체이닝
     const nextId = jobIdStage(answerId, 'feedback');
@@ -81,9 +94,17 @@ export async function handleEvaluateStage(
         backoff: { type: 'exponential', delay: backoff },
       },
     );
+    logger.log(
+      `[Evaluate] enqueue feedback: answerId=${answerId} jobId=${nextId} attempts=${attempts} backoff=${backoff}ms`,
+    );
     return { stage: 'evaluate', answerId } as const;
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error ? e.stack : undefined;
+    logger.error(
+      `[Evaluate] failed: jobId=${job.id} answerId=${answerId} attemptsMade=${job.attemptsMade} attempts=${(job.opts as any)?.attempts ?? 1} error=${message}`,
+      stack,
+    );
     await repo.updateAssessmentJob(jobRow.id, {
       status: getAssessmentStatus('FAILED_EVALUATION', AssessmentStatus.FAILED),
       error: message,

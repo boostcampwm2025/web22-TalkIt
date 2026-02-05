@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import type { Rubric } from '../dtos';
 import { EvaluationRepository } from '../evaluation.repository';
@@ -6,17 +6,24 @@ import { LlmRubricProvider } from '../infra/llm-rubric.provider';
 
 @Injectable()
 export class RubricService {
+  private readonly logger = new Logger(RubricService.name);
   constructor(
     private readonly repo: EvaluationRepository,
     private readonly rubricProvider: LlmRubricProvider,
   ) {}
   async create(answerId: number): Promise<Rubric> {
     // 답변에 연관된 문항 조회
-    const answerWithQuestion = await this.repo.findQuestionById(answerId);
-    if (!answerWithQuestion) throw new Error('QUESTION_NOT_FOUND');
+    const answerWithQuestion = await this.repo.findQuestionByAnswerId(answerId);
+    if (!answerWithQuestion) {
+      this.logger.error(`QUESTION_NOT_FOUND: answerId=${answerId} relation=null`);
+      throw new Error('QUESTION_NOT_FOUND');
+    }
 
     const question = answerWithQuestion.content;
     const questionId = answerWithQuestion.id;
+    this.logger.log(
+      `Rubric create: answerId=${answerId} questionId=${questionId} questionLen=${String(question ?? '').length}`,
+    );
 
     // 1) 기존에 생성된 루브릭이 있는지 확인
     const existingRubric = await this.repo.getRubricByQuestionId(questionId);

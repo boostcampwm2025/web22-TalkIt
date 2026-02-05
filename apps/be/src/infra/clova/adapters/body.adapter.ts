@@ -16,6 +16,8 @@ export class StructuredOutputBodyAdapter implements BodyAdapter {
       temperature: options.temperature ?? 0.2,
       // SO 모드에서는 기본 스트림 off
       stream: options.stream ?? false,
+      // SO(JSON) 모드: thinking 기본값은 none(미지정 시 low 적용 충돌 방지)
+      thinking: { effort: 'none' },
       responseFormat: { type: 'json', schema: options.responseFormat!.schema },
     };
   }

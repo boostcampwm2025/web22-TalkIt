@@ -20,6 +20,10 @@ export async function handleRewardStage(
   { repo, userCreditsRepository, logger }: RewardStageDeps,
 ) {
   const { answerId } = job.data;
+  const attempts = Number((job.opts as any)?.attempts ?? 1);
+  logger.log(
+    `[Reward] start: jobId=${job.id} answerId=${answerId} attemptsMade=${job.attemptsMade} attempts=${attempts}`,
+  );
   const jobRow = await repo.getAssessmentJobByAnswerId(answerId);
   if (!jobRow) {
     logger.warn(`[Reward] Job not found for answer ${answerId}`);
@@ -41,6 +45,7 @@ export async function handleRewardStage(
       timestamp: new Date().toISOString(),
       error: null,
     });
+    logger.log(`[Reward] status REWARDING set: answerId=${answerId} jobRowId=${jobRow.id}`);
 
     await repo.withTransaction(async (tx) => {
       const answer = await tx.userAnswer.findUnique({
@@ -48,11 +53,14 @@ export async function handleRewardStage(
         select: { userId: true },
       });
       if (!answer) throw new Error('ANSWER_NOT_FOUND');
+      logger.log(`[Reward] userAnswer loaded: answerId=${answerId} userId=${answer.userId}`);
       await userCreditsRepository.consumeIfEnough(answer.userId, 'FEEDBACK_CONSUME', 1, tx);
+      logger.log(`[Reward] credits consumed: answerId=${answerId} userId=${answer.userId}`);
       await tx.assessmentJob.update({
         where: { id: jobRow.id },
         data: { status: AssessmentStatus.DONE, finishedAt: new Date() },
       });
+      logger.log(`[Reward] job DONE updated: answerId=${answerId} jobRowId=${jobRow.id}`);
     });
 
     await updateProgress(job, {
@@ -62,9 +70,15 @@ export async function handleRewardStage(
       timestamp: new Date().toISOString(),
       error: null,
     });
+    logger.log(`[Reward] progress DONE emitted: answerId=${answerId} jobRowId=${jobRow.id}`);
     return { stage: 'reward', answerId } as const;
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error ? e.stack : undefined;
+    logger.error(
+      `[Reward] failed: jobId=${job.id} answerId=${answerId} attemptsMade=${job.attemptsMade} attempts=${(job.opts as any)?.attempts ?? 1} error=${message}`,
+      stack,
+    );
     await repo.updateAssessmentJob(jobRow.id, {
       status: AssessmentStatus.FAILED,
       error: message,

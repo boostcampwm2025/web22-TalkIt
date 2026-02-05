@@ -138,7 +138,7 @@ export const clovaRequestBodySchema = z
     repetitionPenalty: z.number().gt(0).lte(2.0).optional(),
     stop: z.array(z.string()).optional(),
     seed: z.number().int().min(0).max(4294967295).optional(),
-    thinking: thinkingSchema.optional(), // SO와 동시 사용 불가(서비스 레벨에서 상호배타 보장)
+    thinking: thinkingSchema.optional(), // SO(JSON) 모드에서는 effort=none 필수
     responseFormat: responseFormatSchema.optional(),
     includeAiFilters: z.boolean().optional(),
   })
@@ -146,7 +146,7 @@ export const clovaRequestBodySchema = z
 
 // 추가 제약
 // - messages 내 system 역할은 최대 1개
-// - thinking과 responseFormat은 상호배타(서비스에서도 보장하지만 스키마에서 재확인)
+// - responseFormat 사용 시 thinking.effort=none 필수
 export const clovaRequestBodyWithRulesSchema = clovaRequestBodySchema.superRefine((val, ctx) => {
   try {
     const systemCount = (val.messages ?? []).filter((m) => m.role === 'system').length;
@@ -157,11 +157,11 @@ export const clovaRequestBodyWithRulesSchema = clovaRequestBodySchema.superRefin
         path: ['messages'],
       });
     }
-    if (val.responseFormat && val.thinking) {
+    if (val.responseFormat && val.thinking?.effort !== 'none') {
       ctx.addIssue({
         code: 'custom',
-        message: 'responseFormat and thinking cannot be used together',
-        path: ['responseFormat'],
+        message: 'responseFormat requires thinking.effort=none',
+        path: ['thinking'],
       });
     }
   } catch {
