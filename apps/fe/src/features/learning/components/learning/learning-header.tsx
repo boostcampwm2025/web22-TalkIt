@@ -28,7 +28,7 @@ const LearningHeader = ({
           학습하기
         </Link>
       </div>
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="mb-2 text-lg font-bold md:text-3xl">안녕하세요, {nickname}님! 👋</h1>
           <p className="text-sm text-dark-gray md:text-base">

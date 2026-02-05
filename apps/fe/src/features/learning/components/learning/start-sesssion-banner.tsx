@@ -44,7 +44,7 @@ const StartSessionBanner = ({
       </div>
 
       <Tooltip.Provider delayDuration={200}>
-        <Tooltip.Root>
+        <Tooltip.Root open={isCreditInsufficient ? undefined : false}>
           <Tooltip.Trigger asChild>
             <span className="z-10 w-full md:w-auto" tabIndex={isStartDisabled ? 0 : undefined}>
               <button
@@ -67,18 +67,16 @@ const StartSessionBanner = ({
               </button>
             </span>
           </Tooltip.Trigger>
-          {isCreditInsufficient && (
-            <Tooltip.Portal>
-              <Tooltip.Content
-                side="top"
-                sideOffset={8}
-                className="z-50 rounded-lg bg-white px-3 py-2 text-xs text-black shadow-lg"
-              >
-                크레딧이 부족하여 학습을 시작할 수 없어요
-                <Tooltip.Arrow className="fill-white" />
-              </Tooltip.Content>
-            </Tooltip.Portal>
-          )}
+          <Tooltip.Portal>
+            <Tooltip.Content
+              side="top"
+              sideOffset={8}
+              className="z-50 rounded-lg bg-white px-3 py-2 text-xs text-black shadow-lg"
+            >
+              크레딧이 부족하여 학습을 시작할 수 없어요
+              <Tooltip.Arrow className="fill-white" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
         </Tooltip.Root>
       </Tooltip.Provider>
     </section>
