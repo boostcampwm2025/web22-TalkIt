@@ -109,6 +109,14 @@ export class AssessmentRepository {
   }
 
   /**
+   * 답변을 삭제합니다.
+   * 연결된 평가 잡은 onDelete: Cascade로 함께 삭제됩니다.
+   */
+  deleteAnswerById(answerId: number): Promise<UserAnswer> {
+    return this.prisma.userAnswer.delete({ where: { id: answerId } });
+  }
+
+  /**
    * `answerId`로 단일 평가 잡을 조회합니다.
    *
    * Prisma 스키마에서 `AssessmentJob.answerId`는 `@unique`로 보장됩니다.

@@ -91,12 +91,17 @@ export class AssessmentService {
           `Enqueue skipped (duplicate jobId). Treating as success. error=${message}`,
         );
       } else {
-        // 실제 실패는 DB 상태를 FAILED로 전파하고 503 반환
-        await this.repo.updateAssessmentJob(job.id, {
-          status: AssessmentStatus.FAILED,
-          error: message,
-          finishedAt: new Date(),
-        });
+        // 실제 실패는 답변/잡을 정리하고 503 반환
+        try {
+          await this.repo.deleteAnswerById(answer.id);
+          this.logger.warn(`Enqueue evaluate failed; cleaned up answer: answerId=${answer.id}`);
+        } catch (cleanupError: unknown) {
+          const cleanupMessage =
+            cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+          this.logger.error(
+            `Enqueue evaluate failed; cleanup failed: answerId=${answer.id} error=${cleanupMessage}`,
+          );
+        }
         this.logger.error(`Enqueue evaluate failed: ${message}`);
         throw new ServiceUnavailableException({
           code: 'ASSESSMENT_ENQUEUE_FAILED',

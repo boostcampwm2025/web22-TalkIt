@@ -114,6 +114,14 @@ export async function handleFeedbackStage(
       timestamp: new Date().toISOString(),
       error: message,
     });
+    try {
+      await repo.deleteAnswerById(answerId);
+      logger.warn(`[Feedback] cleanup answer: answerId=${answerId}`);
+    } catch (cleanupError: unknown) {
+      const cleanupMessage =
+        cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+      logger.error(`[Feedback] cleanup failed: answerId=${answerId} error=${cleanupMessage}`);
+    }
     throw e;
   }
 }
