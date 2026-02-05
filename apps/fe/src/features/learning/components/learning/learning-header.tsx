@@ -37,17 +37,15 @@ const LearningHeader = ({
             남았어요.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+        <div className="flex flex-wrap gap-3">
           <Tooltip.Provider delayDuration={200}>
             <Tooltip.Root>
               <Tooltip.Trigger asChild>
-                <div className="cursor-help rounded-full border border-primary/20 bg-primary/5 px-4 py-2 shadow-xs transition-colors hover:bg-primary/10">
-                  <div className="flex items-center gap-2">
-                    <Coins className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-bold text-primary">
-                      {remainingCredit.toLocaleString()} 크레딧
-                    </span>
-                  </div>
+                <div className="flex cursor-help items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 shadow-xs transition-colors hover:bg-primary/10">
+                  <Coins className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-bold text-primary">
+                    {remainingCredit.toLocaleString()} 크레딧
+                  </span>
                 </div>
               </Tooltip.Trigger>
               <Tooltip.Portal>
@@ -64,11 +62,9 @@ const LearningHeader = ({
             </Tooltip.Root>
           </Tooltip.Provider>
 
-          <div className="rounded-full border border-gray bg-white px-4 py-2 shadow-xs">
-            <div className="flex items-center gap-2">
-              <Flame className="h-5 w-5 text-orange" />
-              <span className="text-sm font-semibold">연속 {studyStats.streak}일 학습 중</span>
-            </div>
+          <div className="flex items-center gap-2 rounded-full border border-gray bg-white px-4 py-2 shadow-xs">
+            <Flame className="h-5 w-5 text-orange" />
+            <span className="text-sm font-semibold">연속 {studyStats.streak}일 학습 중</span>
           </div>
         </div>
       </div>
