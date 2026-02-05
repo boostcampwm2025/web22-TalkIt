@@ -4,7 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './src/auth/auth.module';
 import { DatabaseModule } from './src/infra/database/database.module';
 import { SessionsModule } from './src/learning/sessions/sessions.module';
-import { AssessmentModule } from './src/modules/assessment/assessment.module';
+import { AssessmentApiModule } from './src/modules/assessment/assessment.api.module';
 import { QuestionProviderModule } from './src/modules/question-provider/question-provider.module';
 import { SttModule } from './src/stt/stt.module';
 
@@ -17,7 +17,7 @@ import { SttModule } from './src/stt/stt.module';
     SessionsModule,
     SttModule,
     QuestionProviderModule,
-    AssessmentModule,
+    AssessmentApiModule,
     AuthModule,
   ],
   controllers: [],

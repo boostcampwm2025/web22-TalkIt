@@ -1,13 +1,17 @@
-import { Controller, Param, ParseIntPipe, Sse, UseGuards } from '@nestjs/common';
+import { Controller, MessageEvent, Param, ParseIntPipe, Sse, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
 import { ActiveUser } from '@/common/decorators/active-user.decorator';
+import { AssessmentStatus } from '@prisma/client';
 
 import { AssessmentRepository } from '../assessment.repository';
-import { AssessmentQueueEventBus } from '../worker/assessment.queue-events';
+import type { AssessmentSseEventDTO } from '../dto/assessment-sse-event.dto';
+import { AssessmentQueueEventBus } from '../redis/assessment.queue-events';
+import type { AssessmentQueueEvent } from '../redis/queue-events.types';
 import { Observable } from 'rxjs';
 
+// SSE에서 사용하는 메시지 외피 타입
 type SseEvent = MessageEvent;
 
 @ApiTags('Learning - Assessment')
@@ -18,39 +22,44 @@ export class AssessmentSseController {
     private readonly repo: AssessmentRepository,
   ) {}
 
-  // @Sse(':answerId/assess/stream')
+  /**
+   * 평가 진행 상황 SSE 스트림
+   * - QueueEvents(progress)를 구독하여 진행 상태를 푸시합니다.
+   * - 최초 1회 DB 스냅샷 전송으로 재연결/유실 보정.
+   */
   @ApiOperation({ summary: '평가 진행 상황 SSE 스트림 (BullMQ QueueEvents 기반)' })
   @Sse(':sessionId/answers/:answerId/assess/stream')
   @UseGuards(JwtAuthGuard)
-  //@ApiOperation({ summary: '평가 진행 상황 SSE 스트림' })
+  @ApiParam({ name: 'sessionId', type: Number })
   @ApiParam({ name: 'answerId', type: Number })
   sse(
     @ActiveUser() user: { id: number },
     @Param('sessionId', ParseIntPipe) sessionId: number,
-    @Param('answerId') answerIdParam: string,
+    @Param('answerId', ParseIntPipe) answerId: number,
   ): Observable<SseEvent> {
-    const answerId = Number(answerIdParam);
     const queueJobId = `answer-${answerId}`; // BullMQ 큐에서 사용하는 문자열 ID
     const userId = user.id;
 
+    // payload를 Nest의 MessageEvent 형태로 감싸는 헬퍼
+    const toEvent = <T extends string | object>(data: T): MessageEvent => ({ data });
+
     return new Observable<SseEvent>((subscriber) => {
       let unsub: (() => void) | null = null;
-      let heartbeatTimer: NodeJS.Timeout | null = null;
-      let dbJobId: number | null = null; // 합의된 DTO의 jobId로 사용 (숫자)
+      let dbJobId: number | null = null; // DB 스냅샷 기반 보정 시 사용
 
       (async () => {
-        // 1) 소유권 검사
+        // 1) 소유권 검사: 세션/답변이 본인 소유인지 확인
         const session = await this.repo.findSessionById(sessionId);
 
         if (!session || session.userId !== userId) {
-          subscriber.next({ data: { error: 'FORBIDDEN_SESSION' } } as any);
+          subscriber.next(toEvent({ error: 'FORBIDDEN_SESSION' as const }));
           subscriber.complete();
           return;
         }
 
         const answer = await this.repo.getAnswerWithRelations(answerId);
-        if (!answer || answer.userId !== userId) {
-          subscriber.next({ data: { error: 'FORBIDDEN' } } as any);
+        if (!answer || answer.userId !== userId || answer.sessionId !== sessionId) {
+          subscriber.next(toEvent({ error: 'FORBIDDEN' as const }));
           subscriber.complete();
           return;
         }
@@ -59,54 +68,46 @@ export class AssessmentSseController {
         const jobRow = await this.repo.getAssessmentJobByAnswerId(answerId);
         if (jobRow) {
           dbJobId = jobRow.id;
-          // 합의된 DTO 형태로 송신: { jobId:number, answerId:number, status, timestamp, error }
-          subscriber.next({
-            data: {
-              jobId: jobRow.id,
-              answerId: answerId,
-              status: jobRow.status,
-              timestamp: new Date().toISOString(),
-              error: jobRow.error ?? null,
-            },
-          } as any);
+          const snapshot: AssessmentSseEventDTO = {
+            jobId: jobRow.id,
+            answerId,
+            status: jobRow.status,
+            timestamp: new Date().toISOString(),
+            error: jobRow.error ?? null,
+          };
+          subscriber.next(toEvent(snapshot));
         }
 
         // 3) QueueEvents 스트림 구독
         const sub = this.eventBus.stream(queueJobId).subscribe({
-          next: (evt) => {
-            // progress 이벤트는 worker에서 합의된 DTO 형태로 내려오도록 구성되어 있음
-            if ((evt as any).type === 'progress') {
-              subscriber.next({ data: (evt as any).data } as any);
+          next: (evt: AssessmentQueueEvent) => {
+            // progress: worker에서 합의된 DTO 형태로 내려온 페이로드를 그대로 전달
+            if (evt.type === 'progress') {
+              const payload = evt.data;
+              subscriber.next(toEvent(payload));
               return;
             }
-            // completed/failed 이벤트는 보조적: 진행 중 progress에서 DONE/FAILED가 이미 전달됨
-            // 혹시 progress 유실 시를 대비해 보정 DTO를 만들어 한 번 더 전달
-            if ((evt as any).type === 'completed') {
-              if (dbJobId != null) {
-                subscriber.next({
-                  data: {
-                    jobId: dbJobId,
-                    answerId,
-                    status: 'DONE',
-                    timestamp: new Date().toISOString(),
-                    error: null,
-                  },
-                } as any);
-              }
+            // progress 유실 보정: completed/failed 도착 시 최소 DTO 재전달
+            if (evt.type === 'completed' && dbJobId != null) {
+              const payload: AssessmentSseEventDTO = {
+                jobId: dbJobId,
+                answerId,
+                status: AssessmentStatus.DONE,
+                timestamp: new Date().toISOString(),
+                error: null,
+              };
+              subscriber.next(toEvent(payload));
               return;
             }
-            if ((evt as any).type === 'failed') {
-              if (dbJobId != null) {
-                subscriber.next({
-                  data: {
-                    jobId: dbJobId,
-                    answerId,
-                    status: 'FAILED',
-                    timestamp: new Date().toISOString(),
-                    error: (evt as any).error ?? 'failed',
-                  },
-                } as any);
-              }
+            if (evt.type === 'failed' && dbJobId != null) {
+              const payload: AssessmentSseEventDTO = {
+                jobId: dbJobId,
+                answerId,
+                status: AssessmentStatus.FAILED,
+                timestamp: new Date().toISOString(),
+                error: evt.error ?? 'failed',
+              };
+              subscriber.next(toEvent(payload));
               return;
             }
           },
@@ -115,29 +116,11 @@ export class AssessmentSseController {
         });
 
         unsub = () => sub.unsubscribe();
-
-        // 4) heartbeat (프록시/로드밸런서에서 idle 끊김 방지)
-        // 구독자가 이미 해제된 경우 setInterval 자체를 만들지 않음(테스트/런타임 누수 방지)
-        if (!(subscriber as any).closed) {
-          heartbeatTimer = setInterval(() => {
-            if ((subscriber as any).closed) return;
-            subscriber.next({
-              // 하트비트는 클라이언트 keep-alive 용이며, 합의된 DTO 스키마와 별개로 전송
-              data: { type: 'heartbeat', timestamp: new Date().toISOString() },
-            } as any);
-          }, 25_000);
-          // 혹시 직후에 구독이 닫힌 경우 즉시 정리
-          if ((subscriber as any).closed) {
-            clearInterval(heartbeatTimer);
-            heartbeatTimer = null;
-          }
-        }
       })().catch(() => subscriber.complete());
 
       // cleanup
       return () => {
         if (unsub) unsub();
-        if (heartbeatTimer) clearInterval(heartbeatTimer);
       };
     });
   }

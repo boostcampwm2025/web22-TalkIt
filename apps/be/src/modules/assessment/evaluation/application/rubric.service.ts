@@ -1,37 +1,45 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
+import type { Rubric } from '../dtos';
 import { EvaluationRepository } from '../evaluation.repository';
 import { LlmRubricProvider } from '../infra/llm-rubric.provider';
 
-type Rubric = {
-  items: { key: string; description: string; weight: number }[];
-  scale: '0-2';
-};
-
 @Injectable()
 export class RubricService {
+  private readonly logger = new Logger(RubricService.name);
   constructor(
     private readonly repo: EvaluationRepository,
     private readonly rubricProvider: LlmRubricProvider,
   ) {}
-  async create(params: { questionId: number; questionSummary: string }): Promise<Rubric> {
-    const { questionId, questionSummary } = params;
+  async create(answerId: number): Promise<Rubric> {
+    // 답변에 연관된 문항 조회
+    const answerWithQuestion = await this.repo.findQuestionByAnswerId(answerId);
+    if (!answerWithQuestion) {
+      this.logger.error(`QUESTION_NOT_FOUND: answerId=${answerId} relation=null`);
+      throw new Error('QUESTION_NOT_FOUND');
+    }
+
+    const question = answerWithQuestion.content;
+    const questionId = answerWithQuestion.id;
+    this.logger.log(
+      `Rubric create: answerId=${answerId} questionId=${questionId} questionLen=${String(question ?? '').length}`,
+    );
 
     // 1) 기존에 생성된 루브릭이 있는지 확인
     const existingRubric = await this.repo.getRubricByQuestionId(questionId);
 
-    // 2) 없으면 LLM을 통해 루브릭 생성
+    // 2) 존재하면 재생성하지 않고 반환
     if (existingRubric) {
-      // 기존 저장 포맷에는 definition이 없으므로 빈 문자열로 보정하여 반환
-      return { definition: '', ...existingRubric } as Rubric;
+      return { ...existingRubric } as Rubric;
     }
 
-    const rubric = await this.rubricProvider.generate({ questionSummary });
+    // 3) Provider에서 정규화 포함 루브릭 생성
+    const rubric = await this.rubricProvider.generate({ question });
 
-    // // 3) 생성된 루브릭을 DB에 저장
+    // 4) 생성된 루브릭을 DB에 저장(keywordsText에 description 저장됨)
     await this.repo.saveRubric(questionId, JSON.stringify(rubric));
 
-    // 4) 루브릭 반환
+    // 5) 루브릭 반환
     return rubric;
   }
 }

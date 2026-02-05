@@ -13,7 +13,19 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       .map((s) => s.trim())
       .filter(Boolean) as any;
     const errorFormat = (process.env.PRISMA_ERROR_FORMAT as any) ?? 'pretty';
-    super({ log: logEnv, errorFormat });
+
+    // 50명 동시 처리 기준 DB 풀 설정(1GB 메모리 서버 가정)
+    // - 기본 connection_limit=40, pool_timeout=30초
+    // - 환경변수로 오버라이드 가능: DB_POOL_CONNECTION_LIMIT, DB_POOL_TIMEOUT_MS
+    const rawUrl = process.env.DATABASE_URL ?? '';
+    const connLimit = Math.max(1, Number(process.env.DB_POOL_CONNECTION_LIMIT ?? '40'));
+    const poolTimeoutMs = Math.max(1000, Number(process.env.DB_POOL_TIMEOUT_MS ?? '30000'));
+    const finalUrl = tryAppendQueryParams(rawUrl, {
+      connection_limit: String(connLimit),
+      pool_timeout: String(Math.floor(poolTimeoutMs / 1000)),
+    });
+
+    super({ log: logEnv, errorFormat, datasources: { db: { url: finalUrl || undefined } } });
   }
 
   // 테스트에서 대기 시간을 주입 가능하도록 별도 메서드로 분리
@@ -62,5 +74,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     } catch (e: any) {
       this.logger.warn(`Prisma disconnect failed: ${e?.message ?? e}`);
     }
+  }
+}
+
+// 주어진 커넥션 문자열에 쿼리 파라미터를 추가/보완합니다.
+function tryAppendQueryParams(urlStr: string, params: Record<string, string>): string {
+  try {
+    if (!urlStr) return urlStr;
+    const url = new URL(urlStr);
+    for (const [k, v] of Object.entries(params)) {
+      if (!url.searchParams.has(k)) url.searchParams.set(k, v);
+    }
+    return url.toString();
+  } catch {
+    // URL 파싱 실패 시 원본 유지(잘못된 DSN 형식 등)
+    return urlStr;
   }
 }
