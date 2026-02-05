@@ -68,6 +68,7 @@ export class LlmRubricProvider {
     const out = await this.clova.chat(messages, {
       temperature: 0,
       stream: false,
+      maxCompletionTokens: 2000,
       thinking: { effort: 'low' },
     });
     return (out.content ?? '').trim();
@@ -75,7 +76,12 @@ export class LlmRubricProvider {
 
   private async toRubricFromGoldenText(text: string): Promise<Rubric> {
     // 정규화 수행
-    const golden = await this.normalizer.normalizeGolden(text);
+    //const golden = await this.normalizer.normalizeGolden(text);
+
+    const golden = JSON.parse(text) as {
+      golden_answer: string;
+      key_points: string[];
+    };
     const points: string[] = Array.isArray(golden.key_points) ? golden.key_points : [];
     const items: RubricItem[] =
       points.length > 0

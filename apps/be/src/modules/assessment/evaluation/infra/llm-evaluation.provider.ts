@@ -37,6 +37,7 @@ export class LlmEvaluationProvider {
       const out = await this.clova.chat(messages, {
         temperature: 0,
         stream: false,
+        maxCompletionTokens: 2000,
         thinking: { effort: 'low' },
       });
       const responsePreview = this.makePreview(out.content ?? '', 200);

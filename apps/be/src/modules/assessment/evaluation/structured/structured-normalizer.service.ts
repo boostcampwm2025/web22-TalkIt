@@ -29,6 +29,7 @@ export class StructuredNormalizerService {
       temperature: 0,
       stream: false,
       responseFormat: { type: 'json', schema },
+      maxCompletionTokens: 500,
       thinking: { effort: 'none' },
     });
 
