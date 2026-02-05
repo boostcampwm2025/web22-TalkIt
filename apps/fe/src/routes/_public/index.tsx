@@ -248,23 +248,4 @@ const JourneyCard = ({
 // SEO 메타 태그 설정
 export const Route = createFileRoute('/_public/')({
   component: LandingPage,
-  head: () => ({
-    meta: [
-      { title: 'TalkIt - 당신의 성장을 돕는 AI CS 선생님' },
-      {
-        name: 'description',
-        content:
-          'AI 선생님과 함께하는 1:1 CS 기술 면접 연습. 음성 인식부터 실시간 피드백, 게이미피케이션까지.',
-      },
-      {
-        name: 'keywords',
-        content: '기술면접, CS지식, AI면접, 개발자면접, TalkIt',
-      },
-      { property: 'og:title', content: 'TalkIt - AI CS 기술 면접 파트너' },
-      {
-        property: 'og:description',
-        content: '혼자서 막막했던 기술 면접, 이제 AI 선생님과 함께 준비하세요.',
-      },
-    ],
-  }),
 });
