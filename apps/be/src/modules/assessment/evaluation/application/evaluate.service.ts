@@ -34,11 +34,15 @@ export class EvaluateService {
     // 2) 질문 컨텍스트 추출(문항 내용/필수 포함 키워드)
     const question = extractQuestionContext(answer);
     const questionContent = question.content;
-    const questionId = question.id;
+    const questionId = answer.question?.id ?? null;
+    const extraQuestionId = answer.extraQuestion?.id ?? null;
     const questionSummary = questionContent.slice(0, 200);
 
     // 3) 문항에 대한 루브릭 조회
-    const rubric = (await this.evaluationRepo.getRubricByQuestionId(questionId)) ?? {
+    const rubric = (await this.evaluationRepo.getRubricByTarget({
+      questionId: questionId ?? undefined,
+      extraQuestionId: extraQuestionId ?? undefined,
+    })) ?? {
       items: [],
       scale: '0-2' as const,
     };

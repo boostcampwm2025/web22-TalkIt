@@ -8,19 +8,46 @@ import type { Rubric, RubricItem } from './dtos';
 export class EvaluationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findQuestionByAnswerId(answerId: number) {
-    // answerId에 연결된 문항을 조회합니다.
+  async findQuestionContextByAnswerId(
+    answerId: number,
+  ): Promise<
+    | { kind: 'question'; id: number; content: string }
+    | { kind: 'extraQuestion'; id: number; content: string }
+    | null
+  > {
+    // answerId에 연결된 문항/꼬리문항 컨텍스트를 조회합니다.
     const answer = await this.prisma.userAnswer.findUnique({
       where: { id: answerId },
-      select: { question: true },
+      select: {
+        question: { select: { id: true, content: true } },
+        extraQuestion: { select: { id: true, content: true } },
+      },
     });
-    return answer?.question ?? null;
+    if (answer?.question) {
+      return { kind: 'question', id: answer.question.id, content: answer.question.content };
+    }
+    if (answer?.extraQuestion) {
+      return {
+        kind: 'extraQuestion',
+        id: answer.extraQuestion.id,
+        content: answer.extraQuestion.content,
+      };
+    }
+    return null;
   }
 
-  async getRubricByQuestionId(questionId: number): Promise<Rubric | null> {
-    // questionId에 해당하는 루브릭 항목들을 조회하여 Rubric 형태로 반환합니다.
+  async getRubricByTarget(params: {
+    questionId?: number;
+    extraQuestionId?: number;
+  }): Promise<Rubric | null> {
+    // questionId/extraQuestionId에 해당하는 루브릭 항목들을 조회하여 Rubric 형태로 반환합니다.
+    const { questionId, extraQuestionId } = params;
+    if (!questionId && !extraQuestionId) return null;
     const items = await this.prisma.questionRubricItem.findMany({
-      where: { questionId },
+      where: {
+        ...(questionId ? { questionId } : {}),
+        ...(extraQuestionId ? { extraQuestionId } : {}),
+      },
       orderBy: { id: 'asc' },
     });
     if (!items.length) return null;
@@ -44,9 +71,15 @@ export class EvaluationRepository {
     return { items: rubricItems, scale: '0-2' } as Rubric;
   }
 
-  async saveRubric(questionId: number, rubricContent: string) {
-    // questionId에 해당하는 루브릭을 항목 단위로 저장합니다.
+  async saveRubric(
+    params: { questionId?: number; extraQuestionId?: number },
+    rubricContent: string,
+  ) {
+    // questionId/extraQuestionId에 해당하는 루브릭을 항목 단위로 저장합니다.
     // rubricContent 는 JSON 문자열이어야 합니다.
+    const { questionId, extraQuestionId } = params;
+    if (!questionId && !extraQuestionId) throw new Error('RUBRIC_TARGET_REQUIRED');
+    if (questionId && extraQuestionId) throw new Error('RUBRIC_TARGET_AMBIGUOUS');
     let rubric: Rubric;
     const hasProp = <K extends string>(obj: unknown, prop: K): obj is Record<K, unknown> =>
       typeof obj === 'object' && obj !== null && prop in obj;
@@ -76,13 +109,19 @@ export class EvaluationRepository {
 
     await this.prisma.$transaction(async (tx) => {
       // 기존 항목 삭제 후 재삽입(간단/일관성)
-      await tx.questionRubricItem.deleteMany({ where: { questionId } });
+      await tx.questionRubricItem.deleteMany({
+        where: {
+          ...(questionId ? { questionId } : {}),
+          ...(extraQuestionId ? { extraQuestionId } : {}),
+        },
+      });
       if (!items.length) return;
       // 저장: description 문장을 keywordsText에 직접 보관(문장 단위 저장)
       for (const it of items) {
         await tx.questionRubricItem.create({
           data: {
-            questionId,
+            questionId: questionId ?? undefined,
+            extraQuestionId: extraQuestionId ?? undefined,
             keywordsText: String(it.description ?? ''),
             weight: Number(it.weight ?? 0.2),
           },
