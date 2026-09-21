@@ -1,0 +1,254 @@
+[
+  {
+    "category": "OS",
+    "difficulty": "EASY",
+    "term": "프로세스와 스레드",
+    "chapter": 1,
+    "conceptLevel": 1,
+    "depth": 1,
+    "keywords": [
+      "독립된 메모리 공간",
+      "스레드는 코드·데이터·힙 공유",
+      "스레드별 스택",
+      "실행 단위"
+    ],
+    "content": "프로세스와 스레드의 차이점을 설명해 주세요."
+  },
+  {
+    "category": "OS",
+    "difficulty": "EASY",
+    "term": "문맥 교환",
+    "chapter": 2,
+    "conceptLevel": 1,
+    "depth": 1,
+    "keywords": ["PCB 저장·복원", "CPU 상태 저장", "멀티태스킹", "오버헤드"],
+    "content": "문맥 교환(Context Switching)이란 무엇이고 왜 필요한가요?"
+  },
+  {
+    "category": "OS",
+    "difficulty": "MEDIUM",
+    "term": "교착 상태",
+    "chapter": 3,
+    "conceptLevel": 2,
+    "depth": 1,
+    "keywords": ["상호 배제", "점유와 대기", "비선점", "순환 대기"],
+    "content": "교착 상태(Deadlock)가 발생하기 위한 4가지 필요 조건을 설명해 주세요."
+  },
+  {
+    "category": "OS",
+    "difficulty": "MEDIUM",
+    "term": "CPU 스케줄링",
+    "chapter": 4,
+    "conceptLevel": 2,
+    "depth": 1,
+    "keywords": ["선점", "비선점", "라운드 로빈", "FCFS", "응답 시간"],
+    "content": "선점형 스케줄링과 비선점형 스케줄링의 차이를 설명해 주세요."
+  },
+  {
+    "category": "OS",
+    "difficulty": "HARD",
+    "term": "가상 메모리와 페이지 교체",
+    "chapter": 5,
+    "conceptLevel": 3,
+    "depth": 2,
+    "keywords": ["페이지 테이블", "디스크에서 적재", "희생 페이지 선정", "LRU 최근 사용 기준"],
+    "content": "페이지 부재(Page Fault)가 발생했을 때 운영체제가 처리하는 과정과 LRU 교체 알고리즘의 동작을 설명해 주세요."
+  },
+  {
+    "category": "OS",
+    "difficulty": "HARD",
+    "term": "뮤텍스와 세마포어",
+    "chapter": 6,
+    "conceptLevel": 3,
+    "depth": 2,
+    "keywords": ["상호 배제", "소유권", "카운팅 세마포어", "동기화"],
+    "content": "뮤텍스와 세마포어의 차이와 각각을 사용하는 상황을 설명해 주세요."
+  },
+  {
+    "category": "NETWORK",
+    "difficulty": "EASY",
+    "term": "TCP와 UDP",
+    "chapter": 1,
+    "conceptLevel": 1,
+    "depth": 1,
+    "keywords": ["연결 지향", "신뢰성 보장", "비연결성", "속도"],
+    "content": "TCP와 UDP의 차이를 설명해 주세요."
+  },
+  {
+    "category": "NETWORK",
+    "difficulty": "EASY",
+    "term": "OSI 7계층",
+    "chapter": 2,
+    "conceptLevel": 1,
+    "depth": 1,
+    "keywords": ["물리", "데이터 링크", "네트워크", "전송", "세션", "표현", "응용"],
+    "content": "OSI 7계층을 나열하고 각 계층의 역할을 간단히 설명해 주세요."
+  },
+  {
+    "category": "NETWORK",
+    "difficulty": "MEDIUM",
+    "term": "TCP 3-way handshake",
+    "chapter": 3,
+    "conceptLevel": 2,
+    "depth": 1,
+    "keywords": ["SYN", "SYN-ACK", "ACK", "시퀀스 번호 동기화", "양방향 연결 확인"],
+    "content": "TCP 3-way handshake 과정을 설명하고, 왜 3번의 교환이 필요한지 말해 주세요."
+  },
+  {
+    "category": "NETWORK",
+    "difficulty": "MEDIUM",
+    "term": "HTTP와 HTTPS",
+    "chapter": 4,
+    "conceptLevel": 2,
+    "depth": 1,
+    "keywords": ["TLS", "암호화", "인증서", "무결성", "대칭키·비대칭키"],
+    "content": "HTTP와 HTTPS의 차이와 HTTPS가 데이터를 보호하는 방식을 설명해 주세요."
+  },
+  {
+    "category": "NETWORK",
+    "difficulty": "HARD",
+    "term": "TCP 흐름 제어와 혼잡 제어",
+    "chapter": 5,
+    "conceptLevel": 3,
+    "depth": 2,
+    "keywords": ["수신 윈도우", "혼잡 윈도우", "슬로 스타트", "AIMD", "패킷 손실"],
+    "content": "TCP의 흐름 제어와 혼잡 제어의 차이를 설명하고, 혼잡 제어 방식 중 하나를 설명해 주세요."
+  },
+  {
+    "category": "NETWORK",
+    "difficulty": "HARD",
+    "term": "웹 요청 처리 과정",
+    "chapter": 6,
+    "conceptLevel": 3,
+    "depth": 2,
+    "keywords": ["DNS 조회", "IP 주소", "TCP 연결", "HTTP 요청", "응답 렌더링"],
+    "content": "브라우저에 URL을 입력했을 때 DNS 조회를 거쳐 웹 페이지가 표시되기까지의 과정을 설명해 주세요."
+  },
+  {
+    "category": "DB",
+    "difficulty": "EASY",
+    "term": "기본키와 외래키",
+    "chapter": 1,
+    "conceptLevel": 1,
+    "depth": 1,
+    "keywords": ["유일성", "NULL 불가", "참조 무결성", "테이블 간 관계"],
+    "content": "기본키(Primary Key)와 외래키(Foreign Key)가 각각 무엇이고 어떤 역할을 하는지 설명해 주세요."
+  },
+  {
+    "category": "DB",
+    "difficulty": "EASY",
+    "term": "트랜잭션과 ACID",
+    "chapter": 2,
+    "conceptLevel": 1,
+    "depth": 1,
+    "keywords": ["원자성", "일관성", "격리성", "지속성"],
+    "content": "트랜잭션이란 무엇이며 ACID 각 속성이 의미하는 바를 설명해 주세요."
+  },
+  {
+    "category": "DB",
+    "difficulty": "MEDIUM",
+    "term": "인덱스",
+    "chapter": 3,
+    "conceptLevel": 2,
+    "depth": 1,
+    "keywords": ["B+Tree", "탐색 시간 감소", "쓰기 비용 증가", "저장 공간"],
+    "content": "데이터베이스 인덱스가 조회 성능을 높이는 원리와 단점을 설명해 주세요."
+  },
+  {
+    "category": "DB",
+    "difficulty": "MEDIUM",
+    "term": "정규화",
+    "chapter": 4,
+    "conceptLevel": 2,
+    "depth": 1,
+    "keywords": ["이상 현상", "중복 제거", "원자값", "부분 함수 종속", "이행 함수 종속"],
+    "content": "정규화의 목적과 제1정규형부터 제3정규형까지의 개념을 설명해 주세요."
+  },
+  {
+    "category": "DB",
+    "difficulty": "HARD",
+    "term": "트랜잭션 격리 수준",
+    "chapter": 5,
+    "conceptLevel": 3,
+    "depth": 2,
+    "keywords": [
+      "READ UNCOMMITTED",
+      "READ COMMITTED",
+      "REPEATABLE READ",
+      "SERIALIZABLE",
+      "Dirty Read",
+      "Phantom Read"
+    ],
+    "content": "트랜잭션 격리 수준 네 가지와 각 수준에서 발생할 수 있는 이상 현상을 설명해 주세요."
+  },
+  {
+    "category": "DB",
+    "difficulty": "HARD",
+    "term": "락과 MVCC",
+    "chapter": 6,
+    "conceptLevel": 3,
+    "depth": 2,
+    "keywords": ["충돌 감지 시점", "버전 관리", "읽기·쓰기 비차단", "스냅샷"],
+    "content": "낙관적 락과 비관적 락의 차이를 설명하고, MVCC가 동시성 제어에 어떻게 기여하는지 설명해 주세요."
+  },
+  {
+    "category": "DATA_STRUCTURE",
+    "difficulty": "EASY",
+    "term": "스택과 큐",
+    "chapter": 1,
+    "conceptLevel": 1,
+    "depth": 1,
+    "keywords": ["LIFO", "FIFO", "push/pop", "enqueue/dequeue"],
+    "content": "스택과 큐의 차이를 설명하고, 각각이 쓰이는 예를 하나씩 들어 주세요."
+  },
+  {
+    "category": "DATA_STRUCTURE",
+    "difficulty": "EASY",
+    "term": "배열과 연결 리스트",
+    "chapter": 2,
+    "conceptLevel": 1,
+    "depth": 1,
+    "keywords": ["연속된 메모리", "인덱스 접근 O(1)", "삽입·삭제 비용", "포인터"],
+    "content": "배열과 연결 리스트의 차이를 접근, 삽입, 삭제 관점에서 설명해 주세요."
+  },
+  {
+    "category": "DATA_STRUCTURE",
+    "difficulty": "MEDIUM",
+    "term": "해시 테이블",
+    "chapter": 3,
+    "conceptLevel": 2,
+    "depth": 1,
+    "keywords": ["해시 함수", "버킷", "체이닝", "개방 주소법", "평균 O(1)"],
+    "content": "해시 테이블의 동작 원리와 충돌을 해결하는 방법을 설명해 주세요."
+  },
+  {
+    "category": "DATA_STRUCTURE",
+    "difficulty": "MEDIUM",
+    "term": "이진 탐색 트리",
+    "chapter": 4,
+    "conceptLevel": 2,
+    "depth": 1,
+    "keywords": ["왼쪽 작고 오른쪽 큼", "탐색 O(log n)", "편향 트리", "최악 O(n)"],
+    "content": "이진 탐색 트리의 특징과 탐색 시간 복잡도, 그리고 최악의 경우가 언제인지 설명해 주세요."
+  },
+  {
+    "category": "DATA_STRUCTURE",
+    "difficulty": "HARD",
+    "term": "균형 이진 트리",
+    "chapter": 5,
+    "conceptLevel": 3,
+    "depth": 2,
+    "keywords": ["회전", "균형 인수", "높이 차 1 이하", "삽입·삭제 비용", "조회 성능"],
+    "content": "AVL 트리와 레드-블랙 트리는 어떻게 균형을 유지하며, 두 트리에는 어떤 차이가 있나요?"
+  },
+  {
+    "category": "DATA_STRUCTURE",
+    "difficulty": "HARD",
+    "term": "힙과 우선순위 큐",
+    "chapter": 6,
+    "conceptLevel": 3,
+    "depth": 2,
+    "keywords": ["완전 이진 트리", "최대 힙·최소 힙", "O(log n)", "heapify"],
+    "content": "힙이 우선순위 큐를 효율적으로 구현하는 방식과 삽입·삭제의 시간 복잡도를 설명해 주세요."
+  }
+]

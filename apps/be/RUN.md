@@ -52,21 +52,23 @@ pnpm run script:upload -- -path ./resource/os_terms_questions.jsonl
 
 업로드 키: `questionbank/os_terms_questions.jsonl`
 
-## 4. 데이터 Import(JSONL → DB, pnpm)
+## 4. 데이터 Import(JSON → DB, pnpm)
 
-로컬 파일에서 직접 import:
-
-```
-pnpm run script:import -- -source local -path ./resource/os_terms_questions.jsonl
-```
-
-Object Storage에서 읽어 import(버킷/키 환경변수 필요):
+로컬 개발용 샘플 문제(4개 분야 × 3개 난이도, 총 24문제)를 import:
 
 ```
-pnpm run script:import -- -source object
+pnpm run script:import -- -source local -path ./prisma/sample-questions.json
 ```
 
-결과 로그 예: `lines=1234 inserted=1200 updated=34 failed=0`
+`-path`에는 JSON 파일 또는 `*.json`이 든 디렉토리를 지정할 수 있습니다. 각 항목은 `category`, `difficulty`, `term`, `chapter`, `conceptLevel`, `depth`, `keywords`, `content`를 가집니다.
+
+Object Storage(`question-bank/v1/*.json`)에서 읽어 import(버킷/키 환경변수 필요, 운영 문제은행용):
+
+```
+pnpm run script:import
+```
+
+결과 로그 예: `Done: inserted=24 updated=0 failed=0`
 
 ## 5. Redis 워밍업(qpool 생성, pnpm)
 
@@ -74,7 +76,7 @@ pnpm run script:import -- -source object
 pnpm run script:warmup
 ```
 
-각 조합별 로그 예: `qpool:OS:Advanced size+=N (total M)`
+각 조합별 로그 예: `qpool:OS:EASY size+=N (total M)`
 
 ## 6. 서버 실행 및 API 검증 (pnpm)
 

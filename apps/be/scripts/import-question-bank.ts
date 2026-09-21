@@ -1,11 +1,15 @@
 /*
- * question-bank version JSON을 Object Storage에서 읽어 DB로 import하는 스크립트 (Prisma)
+ * question-bank version JSON을 DB로 import하는 스크립트 (Prisma)
  * 사용법:
- *  ts-node scripts/import-questionbank.ts
+ *  Object Storage: ts-node scripts/import-question-bank.ts
+ *  로컬 파일:      ts-node scripts/import-question-bank.ts -source local -path ./prisma/sample-questions.json
+ *                  (-path에는 JSON 파일 또는 *.json이 든 디렉토리를 지정)
  */
 import { PrismaService } from '../src/modules/question-provider/infra/prisma/prisma.service';
 import 'dotenv/config';
 import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
 const BUCKET = process.env.OBJECT_STORAGE_BUCKET_NAME ?? '';
 const ENDPOINT = process.env.NCLOUD_OBJECT_ENDPOINT ?? 'https://kr.object.ncloudstorage.com';
@@ -52,6 +56,41 @@ async function getObject(client: any, key: string): Promise<string> {
   return res.Body.transformToString('utf-8');
 }
 
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const res: Record<string, string | boolean> = {};
+  for (let i = 0; i < args.length; i++) {
+    const key = args[i];
+    if (typeof key !== 'string' || !key.startsWith('-')) continue;
+    const val = args[i + 1];
+    if (typeof val === 'undefined' || val.startsWith('-')) {
+      res[key] = true;
+    } else {
+      res[key] = val;
+      i++;
+    }
+  }
+  return res;
+}
+
+type Source = { name: string; load: () => Promise<string> };
+
+function localSources(path: string): Source[] {
+  const files = statSync(path).isDirectory()
+    ? readdirSync(path)
+        .filter((f) => f.endsWith('.json'))
+        .sort()
+        .map((f) => join(path, f))
+    : [path];
+  return files.map((file) => ({ name: file, load: async () => readFileSync(file, 'utf-8') }));
+}
+
+async function objectSources(): Promise<Source[]> {
+  const client = createS3Client();
+  const keys = await listKeys(client);
+  return keys.map((key) => ({ name: key, load: () => getObject(client, key) }));
+}
+
 function mapCategory(val: string): 'OS' | 'NETWORK' | 'DB' | 'DATA_STRUCTURE' | null {
   const v = (val || '').toUpperCase();
   if (['OS', 'NETWORK', 'DB', 'DATA_STRUCTURE'].includes(v)) return v as any;
@@ -68,20 +107,30 @@ function mapDifficulty(val: string): 'EASY' | 'MEDIUM' | 'HARD' | null {
 }
 
 async function main() {
-  const client = createS3Client();
+  const args = parseArgs();
+  let sources: Source[];
+  if (args['-source'] === 'local') {
+    const path = args['-path'];
+    if (typeof path !== 'string') {
+      throw new Error('-source local 에는 -path <JSON 파일 또는 디렉토리>가 필요합니다.');
+    }
+    sources = localSources(path);
+    console.log(`Found ${sources.length} local file(s) in ${path}`);
+  } else {
+    sources = await objectSources();
+    console.log(`Found ${sources.length} files in ${PREFIX}`);
+  }
+
   const prisma = new PrismaService();
   await prisma.$connect?.();
-
-  const keys = await listKeys(client);
-  console.log(`Found ${keys.length} files in ${PREFIX}`);
 
   let inserted = 0;
   let updated = 0;
   let failed = 0;
 
-  for (const key of keys) {
-    console.log(`Importing ${key} ...`);
-    const body = await getObject(client, key);
+  for (const source of sources) {
+    console.log(`Importing ${source.name} ...`);
+    const body = await source.load();
     const items: any[] = JSON.parse(body);
 
     for (const j of items) {
